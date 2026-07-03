@@ -1,0 +1,99 @@
+replicaCount: 1
+
+image:
+  repository: pyclaw-api
+  pullPolicy: IfNotPresent
+  tag: dev
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext:
+  fsGroup: 1000
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  runAsGroup: 1000
+  runAsNonRoot: true
+  runAsUser: 1000
+
+service:
+  type: ClusterIP
+  port: 8000
+  targetPort: 8000
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: pyclaw.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 512Mi
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+
+env:
+  OPENCLAW_CHATDATA_DIR: /app/chatdata
+  OPENAI_MODEL: gpt-4.1-mini
+  OPENAI_API_MODE: responses
+
+extraEnv: []
+
+secret:
+  create: true
+  existingSecret: ""
+  values:
+    OPENAI_API_KEY: ""
+    OPENAI_BASE_URL: ""
+    OPENAI_ORGANIZATION: ""
+    OPENAI_PROJECT: ""
+
+persistence:
+  enabled: true
+  existingClaim: ""
+  storageClassName: ""
+  accessModes:
+    - ReadWriteOnce
+  size: 5Gi
+  mountPath: /app/chatdata
+
+livenessProbe:
+  enabled: true
+  path: /healthz
+  initialDelaySeconds: 20
+  periodSeconds: 30
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  enabled: true
+  path: /healthz
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

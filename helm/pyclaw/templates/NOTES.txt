@@ -1,0 +1,13 @@
+pyclaw has been installed.
+
+Release: {{ .Release.Name }}
+Namespace: {{ .Release.Namespace }}
+
+Health check inside the cluster:
+  kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "pyclaw.fullname" . }} 8000:{{ .Values.service.port }}
+  curl http://localhost:8000/healthz
+
+Run an agent request:
+  curl -X POST http://localhost:8000/v1/agent/run \
+    -H "Content-Type: application/json" \
+    -d '{"prompt":"hello","provider":"openai","session_id":"demo","tool_profile":"minimal"}'
