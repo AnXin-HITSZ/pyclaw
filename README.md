@@ -5,16 +5,19 @@
 - OpenAI / OpenAI-compatible provider adapter
 - mock provider
 - session transcript JSONL 持久化
+- FastAPI API 入口：`/healthz`、`/v1/agent/run`
+- Spring Backend 鉴权入口：登录、JWT、API Token、用户管理、Provider 管理、微信/飞书 Channel 管理、审计和用量记录
 - CLI 入口：`pyclaw` / `python -m openclaw`
 - 工具系统：`read`、`list_dir`、`write`、`edit`、`apply_patch`、`shell`、`web_fetch`、`web_search`
 - 工具安全边界：workspace path guard、readonly guard、SSRF guard、shell cwd guard
+- Helm / K3s 部署配置
 
 ## 1. 安装与虚拟环境
 
 在 Windows cmd 中：
 
 ```cmd
-cd /d D:\project\pyclaw
+cd /d <repo>
 py -m venv .venv
 .venv\Scripts\activate.bat
 python -m pip install -e ".[openai]"
@@ -90,7 +93,7 @@ pyclaw --json "你好"
 | `--api-mode` | `auto` / `responses` / `chat_completions` / `chat-completions`，默认 `auto` | OpenAI SDK API 模式。 |
 | `--reasoning-effort` | `low` / `medium` / `high` | 传递 reasoning effort。Chat Completions 模式会自动剔除不兼容字段。 |
 | `--max-output-tokens` | 整数 | 限制最大输出 token。Chat Completions 会映射为 `max_tokens`。 |
-| `--tool-profile` | `readonly` / `coding` / `full`，默认 `coding` | 控制 Agent 暴露给模型的工具集合。 |
+| `--tool-profile` | `minimal` / `readonly` / `coding` / `messaging` / `full`，默认 `coding` | 控制 Agent 暴露给模型的工具集合。 |
 | `--json` | 无 | 输出 JSON；在 `tools run` 中也表示以 JSON 格式输出工具结果。 |
 
 ## 5. Tool Profile
@@ -99,8 +102,10 @@ pyclaw --json "你好"
 
 | Profile | 暴露工具 | 适用场景 |
 | --- | --- | --- |
+| `minimal` | 最小工具集合 | API 调试、低风险调用。 |
 | `readonly` | `read`、`list_dir` | 只允许读取 workspace 内文件。 |
 | `coding` | `read`、`list_dir`、`write`、`edit`、`apply_patch` | 默认编码模式。 |
+| `messaging` | 消息渠道相关工具 | 微信 / 飞书渠道场景。 |
 | `full` | `read`、`list_dir`、`write`、`edit`、`apply_patch`、`shell`、`web_fetch`、`web_search` | 显式启用 shell 和 web 工具。 |
 
 示例：
@@ -116,7 +121,7 @@ pyclaw --tool-profile full "请读取 README 并搜索相关资料"
 默认 transcript 保存在：
 
 ```text
-D:\project\pyclaw\chatdata
+./chatdata
 ```
 
 指定 session id 运行：
@@ -136,7 +141,7 @@ pyclaw transcripts show demo --format json
 指定 transcript 目录：
 
 ```cmd
-pyclaw --chatdata-dir D:\project\pyclaw\chatdata transcripts show demo --format detail
+pyclaw --chatdata-dir .\chatdata transcripts show demo --format detail
 ```
 
 ## 7. Tools 命令
@@ -323,7 +328,80 @@ pyclaw --json tools run web_search "{\"query\":\"OpenClaw agent tools\",\"limit\
 | `limit` | integer | 否 | 最多返回多少条结果，默认 5。 |
 | `timeout_seconds` | integer | 否 | 请求超时时间，默认 10。 |
 
-## 9. Gateway 命令
+## 9. API 服务
+
+安装 API 依赖后可启动 FastAPI 服务：
+
+```cmd
+python -m pip install -e ".[api,openai]"
+uvicorn openclaw.api:app --host 0.0.0.0 --port 8000
+```
+
+健康检查：
+
+```cmd
+curl http://localhost:8000/healthz
+```
+
+调用 Agent：
+
+```cmd
+curl -X POST http://localhost:8000/v1/agent/run ^
+  -H "Content-Type: application/json" ^
+  -d "{\"prompt\":\"hello\",\"provider\":\"mock\",\"session_id\":\"demo\",\"tool_profile\":\"minimal\"}"
+```
+
+如果设置了 `PYCLAW_API_TOKEN`，`/v1/agent/run` 需要携带：
+
+```text
+Authorization: Bearer <PYCLAW_API_TOKEN>
+```
+
+## 10. Spring Backend
+
+`spring-backend/` 是 pyclaw 的 Spring Boot 鉴权与管理后端，职责包括：
+
+- 登录与 JWT
+- API Token
+- 用户管理
+- Provider 配置管理
+- 微信 / 飞书 Channel 配置管理
+- Agent 代理调用
+- 审计日志
+- 用量记录
+
+本地验证：
+
+```cmd
+cd spring-backend
+mvn -s .mvn\settings.xml -gs .mvn\settings.xml test
+```
+
+相关文档：
+
+- [Spring 后端技术设计](docs/000/0001/spring-backend-auth-technical-design.md)
+- [Spring 后端实现记录](docs/000/0001/spring-backend-auth-implementation-log.md)
+- [Spring 后端 API Contract](docs/000/0001/spring-backend-api-contract.md)
+- [Spring Backend K3s 部署 SOP](docs/000/0000/spring-backend-k3s-deployment-sop.md)
+
+## 11. K3s / Helm 部署文档
+
+主要部署文档：
+
+- [pyclaw K3s Helm 部署 SOP](docs/000/0000/pyclaw-k3s-helm-deployment-sop.md)
+- [Spring Backend K3s 部署 SOP](docs/000/0000/spring-backend-k3s-deployment-sop.md)
+- [K3s 系统镜像 ACR 镜像 SOP](docs/000/0000/k3s-system-images-acr-mirror-sop.md)
+- [pyclaw Helm Chart 实现说明](docs/000/0000/pyclaw-helm-chart-implementation-notes.md)
+
+推荐生产入口：
+
+```text
+公网 -> Spring Backend -> pyclaw-api ClusterIP -> 模型服务
+```
+
+`pyclaw-api` 自身应保留 `PYCLAW_API_TOKEN` 作为内部服务鉴权。
+
+## 12. Gateway 命令
 
 当前 `gateway run` 只是保留入口，还没有实现：
 
@@ -337,15 +415,16 @@ pyclaw gateway run
 gateway run is registered but not implemented yet.
 ```
 
-## 10. 验证命令
+## 13. 验证命令
 
 ```cmd
 py -m compileall openclaw tests
 py -m unittest discover -s tests
 ```
 
-当前版本测试结果：
+Spring Backend 验证：
 
-```text
-58 tests OK
+```cmd
+cd spring-backend
+mvn -s .mvn\settings.xml -gs .mvn\settings.xml test
 ```
