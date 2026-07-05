@@ -1,4 +1,4 @@
-﻿# pyclaw 云服务器 K8s 部署技术方案
+# pyclaw 云服务器 K8s 部署技术方案
 
 ## 1. 文档目标
 
@@ -224,6 +224,28 @@ uvicorn openclaw.api:app --host 0.0.0.0 --port 8000
 
 如果暂时没有 API 层，则不建议直接部署到 K8s 对外提供服务。
 
+### 7.3 镜像仓库建议
+
+当前可以使用已开通的阿里云 ACR 个人版作为镜像仓库：
+
+```text
+地域: 华南 1（深圳）
+公网地址: crpi-li78f6lp5zheaj11.cn-shenzhen.personal.cr.aliyuncs.com
+镜像地址格式: crpi-li78f6lp5zheaj11.cn-shenzhen.personal.cr.aliyuncs.com/<namespace>/pyclaw-api:<tag>
+```
+
+推荐流程：
+
+1. 在 ACR 控制台创建命名空间。
+2. 创建 `pyclaw-api` 镜像仓库。
+3. 设置 ACR 访问凭证固定密码。
+4. 本地或 ECS 上 `docker build`。
+5. `docker tag` 到 ACR 完整镜像地址。
+6. `docker push` 到 ACR。
+7. Helm values 中使用 ACR 镜像地址。
+
+如果 ACR 仓库为私有仓库，K8s 侧需要创建 `docker-registry` 类型 Secret，并通过 `imagePullSecrets` 引用。
+
 ---
 
 ## 8. 推荐的 K8s 对象设计
@@ -363,6 +385,7 @@ helm/
 
 - `image.repository`
 - `image.tag`
+- `imagePullSecrets`
 - `service.port`
 - `ingress.host`
 - `resources.requests`
@@ -397,7 +420,22 @@ helm/
 
 并能访问 `/healthz`。
 
-### 步骤 3：编写 Helm Chart
+### 步骤 3：推送镜像到阿里云 ACR
+
+示例：
+
+```bash
+ACR_REGISTRY=crpi-li78f6lp5zheaj11.cn-shenzhen.personal.cr.aliyuncs.com
+ACR_NAMESPACE=<namespace>
+IMAGE_TAG=0.1.0
+
+docker login ${ACR_REGISTRY}
+docker build -t pyclaw-api:dev .
+docker tag pyclaw-api:dev ${ACR_REGISTRY}/${ACR_NAMESPACE}/pyclaw-api:${IMAGE_TAG}
+docker push ${ACR_REGISTRY}/${ACR_NAMESPACE}/pyclaw-api:${IMAGE_TAG}
+```
+
+### 步骤 4：编写 Helm Chart
 
 先准备：
 
@@ -407,7 +445,18 @@ helm/
 - ConfigMap
 - Secret
 
-### 步骤 4：准备集群
+并在 values 中配置：
+
+```yaml
+image:
+  repository: crpi-li78f6lp5zheaj11.cn-shenzhen.personal.cr.aliyuncs.com/<namespace>/pyclaw-api
+  tag: 0.1.0
+
+imagePullSecrets:
+  - name: aliyun-acr-pull-secret
+```
+
+### 步骤 5：准备集群
 
 如果你是第一次独立部署，推荐两种方式任选一种：
 
@@ -440,13 +489,26 @@ helm/
 - 如果重点是“练业务部署与云原生交付”，优先托管 K8s
 - 如果重点是“理解 K8s 底层安装与节点结构”，可以试 K3s
 
-### 步骤 5：部署 Ingress Controller
+### 步骤 6：部署 Ingress Controller
 
 如果集群没有现成 Ingress Controller，需要先装：
 
 - NGINX Ingress Controller
 
-### 步骤 6：部署 `pyclaw`
+### 步骤 7：创建镜像拉取 Secret
+
+如果 ACR 镜像仓库是私有仓库，先创建拉取凭证：
+
+```bash
+kubectl create namespace pyclaw
+kubectl -n pyclaw create secret docker-registry aliyun-acr-pull-secret \
+  --docker-server=crpi-li78f6lp5zheaj11.cn-shenzhen.personal.cr.aliyuncs.com \
+  --docker-username='你的 ACR 登录用户名' \
+  --docker-password='你的 ACR 固定密码' \
+  --docker-email='unused@example.com'
+```
+
+### 步骤 8：部署 `pyclaw`
 
 执行：
 
@@ -454,7 +516,7 @@ helm/
 helm upgrade --install pyclaw ./helm/pyclaw -n pyclaw --create-namespace
 ```
 
-### 步骤 7：验证
+### 步骤 9：验证
 
 依次验证：
 

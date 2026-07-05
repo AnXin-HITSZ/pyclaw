@@ -400,7 +400,17 @@ persistence:
 2. Docker Compose。
 3. Helm Chart。
 4. K8s YAML。
-5. 镜像推送到镜像仓库。
+5. 镜像推送到镜像仓库的实测。
+
+后续部署可以使用已开通的阿里云 ACR 个人版：
+
+```text
+公网地址: crpi-li78f6lp5zheaj11.cn-shenzhen.personal.cr.aliyuncs.com
+地域: 华南 1（深圳）
+镜像地址格式: crpi-li78f6lp5zheaj11.cn-shenzhen.personal.cr.aliyuncs.com/<namespace>/pyclaw-api:<tag>
+```
+
+需要先在 ACR 控制台创建命名空间和 `pyclaw-api` 镜像仓库，并在“访问凭证”中设置固定密码。
 
 如果当前开发机没有 Docker Desktop 或网络无法拉取 `python:3.11-slim`，可以先只提交 Dockerfile，等具备 Docker 环境后再执行 build 验证。
 
@@ -419,6 +429,14 @@ py -m unittest discover -s tests
 docker build -t pyclaw-api:dev .
 docker run --rm -p 8000:8000 pyclaw-api:dev
 curl http://localhost:8000/healthz
+```
+
+推送到 ACR 的建议流程：
+
+```cmd
+docker login crpi-li78f6lp5zheaj11.cn-shenzhen.personal.cr.aliyuncs.com
+docker tag pyclaw-api:dev crpi-li78f6lp5zheaj11.cn-shenzhen.personal.cr.aliyuncs.com/<namespace>/pyclaw-api:0.1.0
+docker push crpi-li78f6lp5zheaj11.cn-shenzhen.personal.cr.aliyuncs.com/<namespace>/pyclaw-api:0.1.0
 ```
 
 ## 12. 下一步

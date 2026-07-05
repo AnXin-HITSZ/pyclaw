@@ -1,0 +1,6 @@
+apiVersion: v2
+name: pyclaw-spring-backend
+description: Spring Boot auth gateway and admin backend for pyclaw
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

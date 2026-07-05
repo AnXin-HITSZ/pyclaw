@@ -63,6 +63,34 @@ class ApiTests(unittest.TestCase):
             self.assertEqual(response.status_code, 400)
             self.assertIn("OPENAI_API_KEY", response.json()["detail"])
 
+    def test_agent_run_requires_api_token_when_configured(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            with patch.dict("os.environ", {"PYCLAW_API_TOKEN": "secret-token"}, clear=False):
+                response = self.client.post(
+                    "/v1/agent/run",
+                    json={
+                        "prompt": "hello api",
+                        "provider": "mock",
+                        "session_id": "api-demo",
+                        "chatdata_dir": temp_dir,
+                    },
+                )
+
+                self.assertEqual(response.status_code, 401)
+
+                allowed = self.client.post(
+                    "/v1/agent/run",
+                    headers={"Authorization": "Bearer secret-token"},
+                    json={
+                        "prompt": "hello api",
+                        "provider": "mock",
+                        "session_id": "api-demo",
+                        "chatdata_dir": temp_dir,
+                    },
+                )
+
+            self.assertEqual(allowed.status_code, 200, allowed.text)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -68,6 +68,7 @@ secret:
     OPENAI_BASE_URL: ""
     OPENAI_ORGANIZATION: ""
     OPENAI_PROJECT: ""
+    PYCLAW_API_TOKEN: ""
 
 persistence:
   enabled: true

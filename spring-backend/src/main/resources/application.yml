@@ -1,0 +1,38 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  application:
+    name: pyclaw-spring-backend
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:h2:file:./data/pyclaw-backend;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE}
+    username: ${SPRING_DATASOURCE_USERNAME:sa}
+    password: ${SPRING_DATASOURCE_PASSWORD:}
+  h2:
+    console:
+      enabled: ${SPRING_H2_CONSOLE_ENABLED:false}
+  jpa:
+    hibernate:
+      ddl-auto: ${SPRING_JPA_DDL_AUTO:update}
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+pyclaw:
+  security:
+    jwt-secret: ${JWT_SIGNING_SECRET:change-me-change-me-change-me-change-me}
+    jwt-ttl-seconds: ${JWT_TTL_SECONDS:3600}
+    bootstrap-admin-username: ${BOOTSTRAP_ADMIN_USERNAME:admin}
+    bootstrap-admin-password: ${BOOTSTRAP_ADMIN_PASSWORD:ChangeMe123!}
+  runtime:
+    base-url: ${PYCLAW_BASE_URL:http://localhost:8000}
+    api-token: ${PYCLAW_API_TOKEN:}
+    connect-timeout-seconds: ${PYCLAW_CONNECT_TIMEOUT_SECONDS:3}
+    read-timeout-seconds: ${PYCLAW_READ_TIMEOUT_SECONDS:90}

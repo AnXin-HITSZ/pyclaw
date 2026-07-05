@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+import hmac
 import os
 from pathlib import Path
 from typing import Any, Literal
 from uuid import uuid4
 
 try:
-    from fastapi import FastAPI, HTTPException
+    from fastapi import Depends, FastAPI, Header, HTTPException
     from pydantic import BaseModel, Field
 except ImportError as exc:  # pragma: no cover - exercised only without the api extra installed.
     raise RuntimeError(
@@ -78,7 +79,10 @@ def healthz() -> HealthResponse:
 
 
 @app.post("/v1/agent/run", response_model=AgentRunResponse)
-async def run_agent(request: AgentRunRequest) -> AgentRunResponse:
+async def run_agent(
+    request: AgentRunRequest,
+    _: None = Depends(require_api_token),
+) -> AgentRunResponse:
     try:
         message, session_id = await run_agent_request(request)
     except ValueError as exc:
@@ -90,6 +94,20 @@ async def run_agent(request: AgentRunRequest) -> AgentRunResponse:
         message=message_to_dict(message),
         text=assistant_text(message),
     )
+
+
+def require_api_token(authorization: str | None = Header(default=None)) -> None:
+    expected = os.environ.get("PYCLAW_API_TOKEN")
+    if not expected:
+        return
+
+    prefix = "Bearer "
+    if not authorization or not authorization.startswith(prefix):
+        raise HTTPException(status_code=401, detail="Missing API token")
+
+    token = authorization[len(prefix) :]
+    if not hmac.compare_digest(token, expected):
+        raise HTTPException(status_code=401, detail="Invalid API token")
 
 
 async def run_agent_request(request: AgentRunRequest) -> tuple[AssistantMessage, str]:

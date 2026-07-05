@@ -1,39 +1,29 @@
-# OpenClaw Channel / 平台适配 / 入站消息 / Offset 存储实现技术文档
+# OpenClaw Channel 平台适配技术笔记：微信 / 飞书
 
-本文档面向将 OpenClaw TypeScript 通道实现迁移、改造为 Python 版本的场景，整理当前目录 `D:\learn\openclaw` 中与 Channel 抽象、平台适配、并发模型、统一消息格式和 offset 存储相关的源码位置与技术细节。
+本文档用于指导 `pyclaw` 以 Python 方式落地 Channel 平台适配。当前范围明确收敛为：
 
-## 1. 总览对照
+- 微信：公众号 / 企业微信等回调入口、签名校验、会话归一化、后续客服消息发送。
+- 飞书：事件回调 / 长连接事件、同会话顺序处理、文本与卡片消息发送。
 
-| 关注点 | 简化设计中的做法 | OpenClaw 当前实现 | 关键源码 |
-| --- | --- | --- | --- |
-| Channel 抽象 | `receive()` / `send()` 两个抽象方法 | `ChannelPlugin` 聚合 `config`、`outbound`、`message`、`lifecycle`、`status`、`gateway`、`directory` 等多类适配器；`message` 再拆成 send / receive / durable final / live message | [types.plugin.ts:66](D:/learn/openclaw/src/channels/plugins/types.plugin.ts:66), [types.ts:396](D:/learn/openclaw/src/channels/message/types.ts:396) |
-| receive / send | 单一接口 | 出站由 `ChannelMessageSendAdapter` 的 `text/media/payload/poll` 承载；入站 ack 由 `ChannelMessageReceiveAdapterShape` 声明默认策略和支持策略 | [types.ts:307](D:/learn/openclaw/src/channels/message/types.ts:307), [types.ts:390](D:/learn/openclaw/src/channels/message/types.ts:390) |
-| 生命周期 | 通常无生命周期钩子 | 插件根对象支持 `lifecycle`；消息发送也支持 `beforeSendAttempt`、`afterSendSuccess`、`afterSendFailure`、`afterCommit` | [types.plugin.ts:94](D:/learn/openclaw/src/channels/plugins/types.plugin.ts:94), [types.ts:292](D:/learn/openclaw/src/channels/message/types.ts:292) |
-| 平台数量 | CLI、Telegram、Feishu 等少量平台 | 仓库中至少二十多个 `channel.ts` 平台插件：Telegram、Discord、Slack、Feishu/Lark、Matrix、Mattermost、WhatsApp、Signal、iMessage、LINE、IRC、MSTeams、QQ Bot、Zalo 等 | [telegram/channel.ts:698](D:/learn/openclaw/extensions/telegram/src/channel.ts:698), [discord/channel.ts:283](D:/learn/openclaw/extensions/discord/src/channel.ts:283), [slack/channel.ts:543](D:/learn/openclaw/extensions/slack/src/channel.ts:543), [feishu/channel.ts:649](D:/learn/openclaw/extensions/feishu/src/channel.ts:649) |
-| 并发模型 | 每个 channel 一个线程 + 共享队列 | 核心层有 SQLite-backed durable ingress queue；平台层按平台语义加队列，例如 Discord inbound job queue key、Slack debounce queue、Feishu per-key sequential queue；网关/监控侧使用 async 生命周期 | [ingress-queue.ts:121](D:/learn/openclaw/src/channels/message/ingress-queue.ts:121), [discord/inbound-job.ts:25](D:/learn/openclaw/extensions/discord/src/monitor/inbound-job.ts:25), [slack/message-handler.ts:92](D:/learn/openclaw/extensions/slack/src/monitor/message-handler.ts:92), [feishu/sequential-queue.ts:42](D:/learn/openclaw/extensions/feishu/src/sequential-queue.ts:42) |
-| 消息格式 | `InboundMessage` dataclass | OpenClaw 没有单一 dataclass 名称，而是使用统一的 message adapter contract、receive context、send context、receipt、rendered batch、platform payload 类型组合表达消息生命周期 | [receive.ts:18](D:/learn/openclaw/src/channels/message/receive.ts:18), [types.ts:148](D:/learn/openclaw/src/channels/message/types.ts:148), [types.ts:84](D:/learn/openclaw/src/channels/message/types.ts:84) |
-| Offset 存储 | 明文 offset 文件 | Telegram offset 是版本化状态对象，写入 plugin-state keyed store；旧文件迁移读取通过 JSON helper；SDK 还提供 atomic JSON 写入工具 | [update-offset-store.ts:12](D:/learn/openclaw/extensions/telegram/src/update-offset-store.ts:12), [update-offset-store.ts:134](D:/learn/openclaw/extensions/telegram/src/update-offset-store.ts:134), [plugin-state-store.types.ts:11](D:/learn/openclaw/src/plugin-state/plugin-state-store.types.ts:11), [json-store.ts:27](D:/learn/openclaw/src/plugin-sdk/json-store.ts:27) |
+除微信、飞书和通用 Channel 运行时以外，本文档不再保留其他平台的迁移内容。
 
-## 2. Channel 抽象与插件根对象
+## 1. 设计目标
 
-OpenClaw 的通道不是一个简单的抽象基类，而是一个插件根对象。`ChannelPlugin` 类型定义了完整平台能力面：`id`、`meta`、`capabilities`、`config` 是基础必需字段，之后可选接入 `setup`、`pairing`、`security`、`outbound`、`status`、`gateway`、`commands`、`lifecycle`、`message`、`messaging`、`directory`、`actions`、`heartbeat` 等能力。
+`pyclaw` 不应把平台接入写成两个孤立的 HTTP handler。微信和飞书虽然接入协议不同，但都需要同一套可靠消息边界：
 
-核心类型入口：
+- 平台原始事件进入统一 `RawInboundEvent`。
+- 按平台规则校验签名、解密或验签。
+- 将平台 payload 归一化为 `PreparedInboundMessage`。
+- 入站事件进入 durable ingress queue，支持幂等、重试、重复检测。
+- 同一个会话使用 lane / sequential key 保持顺序。
+- Agent 回复通过平台出站 adapter 发送，并返回 `MessageReceipt`。
+- 平台 token、租户信息、去重记录等进入 keyed state store。
 
-- [types.plugin.ts:66](D:/learn/openclaw/src/channels/plugins/types.plugin.ts:66)：`ChannelPlugin<ResolvedAccount, Probe, Audit>` 根类型。
-- [types.plugin.ts:69](D:/learn/openclaw/src/channels/plugins/types.plugin.ts:69)：`capabilities` 描述平台能力。
-- [types.plugin.ts:94](D:/learn/openclaw/src/channels/plugins/types.plugin.ts:94)：`lifecycle?: ChannelLifecycleAdapter`。
-- [types.plugin.ts:102](D:/learn/openclaw/src/channels/plugins/types.plugin.ts:102)：`message?: ChannelMessageAdapterShape`。
+因此第一阶段优先迁移 OpenClaw 的通用 Channel 边界，再分别补微信、飞书平台 adapter。
 
-这意味着 Python 版本如果只设计：
+## 2. ChannelPlugin 根对象
 
-```python
-class Channel(ABC):
-    async def receive(self): ...
-    async def send(self, message): ...
-```
-
-会覆盖基础收发，但会丢失 OpenClaw 已经抽象出来的配置解析、账号解析、平台状态、目录查询、权限、绑定关系、生命周期维护、消息动作等能力。更合适的 Python 结构是：
+OpenClaw 的 Channel 不是一个简单的 `receive()` / `send()` 基类，而是插件根对象。Python 版本应保留这个边界：
 
 ```python
 @dataclass
@@ -41,303 +31,58 @@ class ChannelPlugin:
     id: str
     meta: ChannelMeta
     capabilities: ChannelCapabilities
-    config: ChannelConfigAdapter
     message: ChannelMessageAdapter | None = None
-    outbound: ChannelOutboundAdapter | None = None
+    config: ChannelConfigAdapter | None = None
     lifecycle: ChannelLifecycleAdapter | None = None
     status: ChannelStatusAdapter | None = None
-    actions: ChannelActionAdapter | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 ```
 
-这样能先保持 OpenClaw 的插件化结构，再逐步移植各平台。
+微信插件建议：
 
-## 3. Message Adapter：send / receive / durable / live
-
-核心消息契约在 [src/channels/message/types.ts](D:/learn/openclaw/src/channels/message/types.ts:1)。这个文件把消息通道能力拆成多个层次。
-
-### 3.1 出站发送
-
-`ChannelMessageSendAdapter` 定义了平台可实现的发送能力：
-
-- [types.ts:307](D:/learn/openclaw/src/channels/message/types.ts:307)：`ChannelMessageSendAdapter`。
-- [types.ts:311](D:/learn/openclaw/src/channels/message/types.ts:311)：`text?: (...) => Promise<TSendResult>`。
-- [types.ts:312](D:/learn/openclaw/src/channels/message/types.ts:312)：`media?: (...) => Promise<TSendResult>`。
-- [types.ts:313](D:/learn/openclaw/src/channels/message/types.ts:313)：`payload?: (...) => Promise<TSendResult>`。
-- [types.ts:314](D:/learn/openclaw/src/channels/message/types.ts:314)：`poll?: (...) => Promise<TSendResult>`。
-- [types.ts:315](D:/learn/openclaw/src/channels/message/types.ts:315)：`lifecycle?: ChannelMessageSendLifecycleAdapter`。
-
-对应的上下文类型包括：
-
-- [types.ts:169](D:/learn/openclaw/src/channels/message/types.ts:169)：`ChannelMessageSendTextContext`。
-- [types.ts:185](D:/learn/openclaw/src/channels/message/types.ts:185)：`ChannelMessageSendMediaContext`。
-- [types.ts:197](D:/learn/openclaw/src/channels/message/types.ts:197)：`ChannelMessageSendPayloadContext`。
-- [types.ts:210](D:/learn/openclaw/src/channels/message/types.ts:210)：`ChannelMessageSendPollContext`。
-
-发送结果统一归一到 `ChannelMessageSendResult`，其中包含 `receipt` 和可选 `messageId`：
-
-- [types.ts:220](D:/learn/openclaw/src/channels/message/types.ts:220)：`ChannelMessageSendResult`。
-- [types.ts:84](D:/learn/openclaw/src/channels/message/types.ts:84)：`MessageReceipt`。
-- [types.ts:74](D:/learn/openclaw/src/channels/message/types.ts:74)：`MessageReceiptPart`。
-
-### 3.2 接收 ack 策略
-
-接收侧的重点不是 `receive()` 函数本身，而是“什么时候 ack”。OpenClaw 用 `ChannelMessageReceiveAckPolicy` 表达 ack 时机：
-
-- [types.ts:375](D:/learn/openclaw/src/channels/message/types.ts:375)：ack policy 枚举。
-- [types.ts:382](D:/learn/openclaw/src/channels/message/types.ts:382)：稳定顺序的策略列表。
-- [types.ts:390](D:/learn/openclaw/src/channels/message/types.ts:390)：`ChannelMessageReceiveAdapterShape`。
-
-策略包括：
-
-- `after_receive_record`：入站记录成功后 ack。
-- `after_agent_dispatch`：成功派发给 agent 后 ack。
-- `after_durable_send`：完成可靠回复发送后 ack。
-- `manual`：平台或插件自行 ack。
-
-`createMessageReceiveContext` 则把 ack/nack 做成幂等状态机：
-
-- [receive.ts:18](D:/learn/openclaw/src/channels/message/receive.ts:18)：`MessageReceiveContext`。
-- [receive.ts:37](D:/learn/openclaw/src/channels/message/receive.ts:37)：`shouldAckMessageAfterStage`。
-- [receive.ts:59](D:/learn/openclaw/src/channels/message/receive.ts:59)：`createMessageReceiveContext`。
-- [receive.ts:81](D:/learn/openclaw/src/channels/message/receive.ts:81)：ack 回调必须幂等。
-
-`defineChannelMessageAdapter` 还会给没有声明 receive 的 adapter 默认补 `manual` ack：
-
-- [adapter.ts:12](D:/learn/openclaw/src/channels/message/adapter.ts:12)：默认 manual receive adapter。
-- [adapter.ts:25](D:/learn/openclaw/src/channels/message/adapter.ts:25)：`defineChannelMessageAdapter`。
-
-### 3.3 durable final delivery 与生命周期钩子
-
-OpenClaw 发送不只是调用平台 API。它有 durable final delivery 能力声明和未知发送结果 reconciliation：
-
-- [types.ts:17](D:/learn/openclaw/src/channels/message/types.ts:17)：`durableFinalDeliveryCapabilities`。
-- [types.ts:319](D:/learn/openclaw/src/channels/message/types.ts:319)：`ChannelMessageDurableFinalAdapter`。
-- [types.ts:276](D:/learn/openclaw/src/channels/message/types.ts:276)：未知发送结果可返回 `sent` / `not_sent` / `unresolved`。
-
-消息发送生命周期钩子：
-
-- [types.ts:292](D:/learn/openclaw/src/channels/message/types.ts:292)：`ChannelMessageSendLifecycleAdapter`。
-- [types.ts:298](D:/learn/openclaw/src/channels/message/types.ts:298)：`beforeSendAttempt`。
-- [types.ts:299](D:/learn/openclaw/src/channels/message/types.ts:299)：`afterSendSuccess`。
-- [types.ts:302](D:/learn/openclaw/src/channels/message/types.ts:302)：`afterSendFailure`。
-- [types.ts:303](D:/learn/openclaw/src/channels/message/types.ts:303)：`afterCommit`。
-
-`sendDurableMessageBatch` 是实际的可靠发送管线入口之一：
-
-- [send.ts:135](D:/learn/openclaw/src/channels/message/send.ts:135)：`DurableMessageSendContextParams`。
-- [send.ts:153](D:/learn/openclaw/src/channels/message/send.ts:153)：`DurableMessageSendContext`。
-- [send.ts:162](D:/learn/openclaw/src/channels/message/send.ts:162)：`withDurableMessageSendContext`。
-- [send.ts:202](D:/learn/openclaw/src/channels/message/send.ts:202)：`ctx.send(rendered)` 调用 `deliverOutboundPayloadsInternal`。
-- [send.ts:224](D:/learn/openclaw/src/channels/message/send.ts:224)：将平台结果归一成 `MessageReceipt`。
-- [send.ts:342](D:/learn/openclaw/src/channels/message/send.ts:342)：`sendDurableMessageBatch`。
-
-Python 迁移建议：不要把 `send()` 设计成只返回平台 message id。建议返回：
-
-```python
-@dataclass
-class MessageReceipt:
-    primary_platform_message_id: str | None
-    platform_message_ids: list[str]
-    parts: list[MessageReceiptPart]
-    thread_id: str | None = None
-    reply_to_id: str | None = None
-    sent_at: float = field(default_factory=time.time)
+```text
+id = "wechat"
+capabilities.inbound = true
+capabilities.outbound_text = true
 ```
 
-并保留 `before_send_attempt`、`after_send_success`、`after_send_failure`、`after_commit` 钩子。
+飞书插件建议：
 
-## 4. 平台适配入口
+```text
+id = "feishu"
+capabilities.inbound = true
+capabilities.outbound_text = true
+capabilities.outbound_payload = true
+```
 
-### 4.1 Telegram
+`message` 负责收发契约，`config` 负责平台配置解析，`lifecycle` 负责 webhook worker、token refresh、长连接等后台任务。
 
-Telegram 的插件入口：
+## 3. 统一消息模型
 
-- [telegram/channel.ts:247](D:/learn/openclaw/extensions/telegram/src/channel.ts:247)：`telegramMessageAdapter`。
-- [telegram/channel.ts:264](D:/learn/openclaw/extensions/telegram/src/channel.ts:264)：Telegram 显式声明 `receive`。
-- [telegram/channel.ts:698](D:/learn/openclaw/extensions/telegram/src/channel.ts:698)：`telegramPlugin = createChatChannelPlugin(...)`。
-- [telegram/channel.ts:843](D:/learn/openclaw/extensions/telegram/src/channel.ts:843)：生命周期相关配置。
-- [telegram/channel.ts:888](D:/learn/openclaw/extensions/telegram/src/channel.ts:888)：插件根对象挂载 `message: telegramMessageAdapter`。
+### 3.1 RawInboundEvent
 
-Telegram 监控与 offset：
-
-- [monitor.ts:202](D:/learn/openclaw/extensions/telegram/src/monitor.ts:202)：注入 `deleteTelegramUpdateOffset`、`readTelegramUpdateOffset`、`writeTelegramUpdateOffset`。
-- [monitor.ts:235](D:/learn/openclaw/extensions/telegram/src/monitor.ts:235)：读取持久化 offset。
-- [monitor.ts:267](D:/learn/openclaw/extensions/telegram/src/monitor.ts:267)：写入最新 update offset。
-
-### 4.2 Discord
-
-Discord 的插件入口：
-
-- [discord/channel.ts:87](D:/learn/openclaw/extensions/discord/src/channel.ts:87)：`discordMessageAdapter`。
-- [discord/channel.ts:283](D:/learn/openclaw/extensions/discord/src/channel.ts:283)：`discordPlugin`。
-- [discord/channel.ts:390](D:/learn/openclaw/extensions/discord/src/channel.ts:390)：挂载 `message: discordMessageAdapter`。
-- [discord/channel.ts:710](D:/learn/openclaw/extensions/discord/src/channel.ts:710)：启动 `monitorDiscordProvider`。
-
-Discord 出站适配：
-
-- [outbound-adapter.ts:107](D:/learn/openclaw/extensions/discord/src/outbound-adapter.ts:107)：`discordOutbound`。
-- [outbound-adapter.ts:145](D:/learn/openclaw/extensions/discord/src/outbound-adapter.ts:145)：`durableFinal` 能力。
-- [outbound-adapter.ts:170](D:/learn/openclaw/extensions/discord/src/outbound-adapter.ts:170)：`sendText`。
-- [outbound-adapter.ts:212](D:/learn/openclaw/extensions/discord/src/outbound-adapter.ts:212)：`sendMedia`。
-
-Discord 入站并发：
-
-- [inbound-job.ts:25](D:/learn/openclaw/extensions/discord/src/monitor/inbound-job.ts:25)：`DiscordInboundJob` 包含 `queueKey`、`payload`、`runtime`。
-- [inbound-job.ts:32](D:/learn/openclaw/extensions/discord/src/monitor/inbound-job.ts:32)：`resolveDiscordInboundJobQueueKey`，同一个 key 用于 run-queue 序列化。
-- [inbound-job.ts:46](D:/learn/openclaw/extensions/discord/src/monitor/inbound-job.ts:46)：`buildDiscordInboundJob`。
-- [inbound-job.ts:89](D:/learn/openclaw/extensions/discord/src/monitor/inbound-job.ts:89)：`materializeDiscordInboundJob`。
-- [listeners.queue.ts:54](D:/learn/openclaw/extensions/discord/src/monitor/listeners.queue.ts:54)：slow listener 检测与日志。
-
-### 4.3 Slack
-
-Slack 的插件入口：
-
-- [slack/channel.ts:523](D:/learn/openclaw/extensions/slack/src/channel.ts:523)：`slackMessageAdapter`。
-- [slack/channel.ts:543](D:/learn/openclaw/extensions/slack/src/channel.ts:543)：`slackPlugin`。
-- [slack/channel.ts:684](D:/learn/openclaw/extensions/slack/src/channel.ts:684)：挂载 `message: slackMessageAdapter`。
-- [slack/channel.ts:763](D:/learn/openclaw/extensions/slack/src/channel.ts:763)：启动 `monitorSlackProvider`。
-
-Slack 出站能力：
-
-- [slack/channel.ts:433](D:/learn/openclaw/extensions/slack/src/channel.ts:433)：`durableFinal`。
-- [slack/channel.ts:449](D:/learn/openclaw/extensions/slack/src/channel.ts:449)：`sendPayload`。
-- [slack/channel.ts:478](D:/learn/openclaw/extensions/slack/src/channel.ts:478)：`sendText`。
-- [slack/channel.ts:493](D:/learn/openclaw/extensions/slack/src/channel.ts:493)：`sendMedia`。
-
-Slack 入站处理：
-
-- [events/messages.ts:155](D:/learn/openclaw/extensions/slack/src/monitor/events/messages.ts:155)：注册 Slack message/app_mention 事件。
-- [events/messages.ts:222](D:/learn/openclaw/extensions/slack/src/monitor/events/messages.ts:222)：处理 `message` 事件。
-- [events/messages.ts:256](D:/learn/openclaw/extensions/slack/src/monitor/events/messages.ts:256)：处理 `app_mention`。
-- [message-handler.ts:92](D:/learn/openclaw/extensions/slack/src/monitor/message-handler.ts:92)：`createSlackMessageHandler`。
-- [message-handler.ts:335](D:/learn/openclaw/extensions/slack/src/monitor/message-handler.ts:335)：入站消息进入 debouncer。
-- [message-handler/types.ts:12](D:/learn/openclaw/extensions/slack/src/monitor/message-handler/types.ts:12)：`PreparedSlackMessage`。
-
-### 4.4 Feishu / Lark
-
-Feishu 的插件入口：
-
-- [feishu/channel.ts:171](D:/learn/openclaw/extensions/feishu/src/channel.ts:171)：`feishuMessageAdapter`。
-- [feishu/channel.ts:173](D:/learn/openclaw/extensions/feishu/src/channel.ts:173)：`durableFinal`。
-- [feishu/channel.ts:649](D:/learn/openclaw/extensions/feishu/src/channel.ts:649)：`feishuPlugin`。
-- [feishu/channel.ts:1312](D:/learn/openclaw/extensions/feishu/src/channel.ts:1312)：动态导入 `monitorFeishuProvider`。
-- [feishu/channel.ts:1328](D:/learn/openclaw/extensions/feishu/src/channel.ts:1328)：启动 Feishu monitor。
-- [feishu/channel.ts:1340](D:/learn/openclaw/extensions/feishu/src/channel.ts:1340)：挂载 `message: feishuMessageAdapter`。
-
-Feishu 出站能力：
-
-- [send.ts:535](D:/learn/openclaw/extensions/feishu/src/send.ts:535)：`SendFeishuMessageParams`。
-- [send.ts:599](D:/learn/openclaw/extensions/feishu/src/send.ts:599)：`sendMessageFeishu`。
-- [send.ts:646](D:/learn/openclaw/extensions/feishu/src/send.ts:646)：`sendCardFeishu`。
-- [send.ts:789](D:/learn/openclaw/extensions/feishu/src/send.ts:789)：`sendStructuredCardFeishu`。
-- [send.ts:834](D:/learn/openclaw/extensions/feishu/src/send.ts:834)：`sendMarkdownCardFeishu`。
-
-Feishu 入站传输：
-
-- [monitor.transport.ts:220](D:/learn/openclaw/extensions/feishu/src/monitor.transport.ts:220)：WebSocket monitor。
-- [monitor.transport.ts:340](D:/learn/openclaw/extensions/feishu/src/monitor.transport.ts:340)：Webhook monitor。
-- [monitor.transport.ts:355](D:/learn/openclaw/extensions/feishu/src/monitor.transport.ts:355)：Webhook port/path/host 配置。
-- [monitor.transport.ts:367](D:/learn/openclaw/extensions/feishu/src/monitor.transport.ts:367)：校验过的 webhook 请求会更新 transport health。
-
-Feishu 入站顺序队列：
-
-- [sequential-queue.ts:5](D:/learn/openclaw/extensions/feishu/src/sequential-queue.ts:5)：按 key 串行执行任务。
-- [sequential-queue.ts:7](D:/learn/openclaw/extensions/feishu/src/sequential-queue.ts:7)：不同 key 可并发。
-- [sequential-queue.ts:24](D:/learn/openclaw/extensions/feishu/src/sequential-queue.ts:24)：`SequentialQueueOptions`。
-- [sequential-queue.ts:42](D:/learn/openclaw/extensions/feishu/src/sequential-queue.ts:42)：`createSequentialQueue`。
-- [monitor.message-handler.ts:164](D:/learn/openclaw/extensions/feishu/src/monitor.message-handler.ts:164)：`createFeishuMessageReceiveHandler`。
-- [monitor.message-handler.ts:187](D:/learn/openclaw/extensions/feishu/src/monitor.message-handler.ts:187)：创建 sequential queue。
-- [monitor.message-handler.ts:215](D:/learn/openclaw/extensions/feishu/src/monitor.message-handler.ts:215)：按 sequential key 入队。
-
-## 5. 并发与队列模型
-
-OpenClaw 并不是“一个平台线程 + 一个共享 queue”的简单模型。更准确的描述是：
-
-1. 核心层有 durable ingress queue，用于存储、claim、complete、fail、release 入站事件。
-2. 平台层根据平台语义做局部队列，例如按 Discord conversation key 串行、Slack debounce、Feishu same-chat FIFO。
-3. 网关和 monitor 以 async 生命周期运行，插件通过 `monitor*Provider` 接入。
-
-### 5.1 核心 durable ingress queue
-
-核心队列位置：[src/channels/message/ingress-queue.ts](D:/learn/openclaw/src/channels/message/ingress-queue.ts:1)。
-
-关键类型和行为：
-
-- [ingress-queue.ts:24](D:/learn/openclaw/src/channels/message/ingress-queue.ts:24)：`ChannelIngressQueueRecord`。
-- [ingress-queue.ts:40](D:/learn/openclaw/src/channels/message/ingress-queue.ts:40)：被 worker claim 的 `ChannelIngressQueueClaim`。
-- [ingress-queue.ts:60](D:/learn/openclaw/src/channels/message/ingress-queue.ts:60)：completed tombstone，用于重复检测。
-- [ingress-queue.ts:70](D:/learn/openclaw/src/channels/message/ingress-queue.ts:70)：failed tombstone，用于重复检测和诊断。
-- [ingress-queue.ts:121](D:/learn/openclaw/src/channels/message/ingress-queue.ts:121)：`ChannelIngressQueue` 接口。
-- [ingress-queue.ts:351](D:/learn/openclaw/src/channels/message/ingress-queue.ts:351)：`createChannelIngressQueue`。
-- [ingress-queue.ts:375](D:/learn/openclaw/src/channels/message/ingress-queue.ts:375)：enqueue 使用 `runOpenClawStateWriteTransaction`。
-- [ingress-queue.ts:475](D:/learn/openclaw/src/channels/message/ingress-queue.ts:475)：claim 相关写事务。
-- [ingress-queue.ts:605](D:/learn/openclaw/src/channels/message/ingress-queue.ts:605)：complete 相关写事务。
-
-该队列支持：
-
-- pending / claimed / completed / failed 状态区分。
-- duplicate detection。
-- claim token 防止错误 worker 完成别人的任务。
-- stale claim recovery。
-- pending/completed/failed retention prune。
-- `laneKey` / `blockedLaneKeys` 控制同一 lane 的串行处理。
-
-Python 迁移建议：
-
-- 先实现一个 `IngressQueue` 协议，底层用 SQLite。
-- `enqueue(event_id, payload, lane_key=None)` 必须幂等。
-- `claim_next(owner_id, blocked_lane_keys)` 返回 claim token。
-- `complete(claim)` / `release(claim)` / `fail(claim)` 必须校验 claim token。
-- 每个平台 handler 不直接调用 agent，而是先入 durable queue；worker 再从 queue 派发。
-
-### 5.2 平台层局部队列
-
-Discord 使用 `DiscordInboundJob.queueKey` 作为 run queue 序列化 key：
-
-- [inbound-job.ts:25](D:/learn/openclaw/extensions/discord/src/monitor/inbound-job.ts:25)。
-- [inbound-job.ts:32](D:/learn/openclaw/extensions/discord/src/monitor/inbound-job.ts:32)。
-
-Slack 使用 debouncer 合并/去重短时间内的消息：
-
-- [message-handler.ts:105](D:/learn/openclaw/extensions/slack/src/monitor/message-handler.ts:105)：基于 `buildSlackDebounceKey`。
-- [message-handler.ts:335](D:/learn/openclaw/extensions/slack/src/monitor/message-handler.ts:335)：`debouncer.enqueue(...)`。
-
-Feishu 使用 per-key sequential queue 保证同 chat 顺序：
-
-- [sequential-queue.ts:42](D:/learn/openclaw/extensions/feishu/src/sequential-queue.ts:42)：Map key -> Promise chain。
-- [sequential-queue.ts:48](D:/learn/openclaw/extensions/feishu/src/sequential-queue.ts:48)：取前一个同 key task。
-- [sequential-queue.ts:51](D:/learn/openclaw/extensions/feishu/src/sequential-queue.ts:51)：设置下一个 promise。
-- [sequential-queue.ts:65](D:/learn/openclaw/extensions/feishu/src/sequential-queue.ts:65)：`Promise.race([task(), timeoutPromise])`，超时后释放阻塞链。
-
-## 6. 入站消息格式：没有单一 InboundMessage，但有统一生命周期上下文
-
-OpenClaw 的入站消息不是一个全局统一的 `InboundMessage` dataclass。更接近的统一层是：
-
-- `MessageReceiveContext<TMessage>`：包住平台原始消息、通道、账号、ack 状态。
-- 平台自己的 prepared message 类型：例如 Slack 的 `PreparedSlackMessage`。
-- turn kernel / dispatch 管线：把平台事件组装成可投递给 agent 的 channel turn。
-
-关键位置：
-
-- [receive.ts:18](D:/learn/openclaw/src/channels/message/receive.ts:18)：`MessageReceiveContext<TMessage>`。
-- [message-handler/types.ts:12](D:/learn/openclaw/extensions/slack/src/monitor/message-handler/types.ts:12)：`PreparedSlackMessage`。
-- [turn/kernel.ts:404](D:/learn/openclaw/src/channels/turn/kernel.ts:404)：`dispatchAssembledChannelTurn`。
-- [turn/kernel.ts:655](D:/learn/openclaw/src/channels/turn/kernel.ts:655)：`runPreparedChannelTurn`。
-- [turn/kernel.ts:840](D:/learn/openclaw/src/channels/turn/kernel.ts:840)：`runChannelInboundEvent`。
-
-Python 迁移时建议分两层：
+平台 webhook 或事件流进入系统后的第一层对象：
 
 ```python
-@dataclass
-class RawInboundEvent(Generic[T]):
+@dataclass(frozen=True)
+class RawInboundEvent:
     id: str
     channel: str
     account_id: str | None
-    platform_payload: T
+    platform_payload: Mapping[str, Any]
     received_at: float
-    ack_policy: MessageAckPolicy
+    ack_policy: ChannelMessageReceiveAckPolicy
+    lane_key: str | None = None
+```
 
-@dataclass
+微信可以把回调 XML / JSON 原文解析后放入 `platform_payload`。飞书可以把 event callback 或长连接事件放入 `platform_payload`。
+
+### 3.2 PreparedInboundMessage
+
+平台 payload 归一化后再派发给 Agent：
+
+```python
+@dataclass(frozen=True)
 class PreparedInboundMessage:
     id: str
     channel: str
@@ -351,177 +96,281 @@ class PreparedInboundMessage:
     raw: Mapping[str, Any] = field(default_factory=dict)
 ```
 
-也就是说，`InboundMessage` 可以存在于 Python 版本中，但最好是“平台 payload -> prepared message -> agent turn”的中间产物，而不是直接等同于平台 webhook/update 对象。
+微信字段建议：
 
-## 7. Telegram Offset 存储
+```text
+conversation_id = openid / external_userid / 群会话 ID
+sender_id = openid / userid / external_userid
+channel = "wechat"
+```
 
-Telegram offset 实现位于 [extensions/telegram/src/update-offset-store.ts](D:/learn/openclaw/extensions/telegram/src/update-offset-store.ts:1)。
+飞书字段建议：
 
-### 7.1 状态结构
+```text
+conversation_id = chat_id
+sender_id = open_id / union_id / user_id
+channel = "feishu"
+```
 
-`TelegramUpdateOffsetState` 是版本化对象：
+### 3.3 MessageReceipt
 
-- [update-offset-store.ts:7](D:/learn/openclaw/extensions/telegram/src/update-offset-store.ts:7)：当前 `STORE_VERSION = 3`。
-- [update-offset-store.ts:12](D:/learn/openclaw/extensions/telegram/src/update-offset-store.ts:12)：`TelegramUpdateOffsetState`。
-- [update-offset-store.ts:13](D:/learn/openclaw/extensions/telegram/src/update-offset-store.ts:13)：`version`。
-- [update-offset-store.ts:14](D:/learn/openclaw/extensions/telegram/src/update-offset-store.ts:14)：`lastUpdateId`。
-- [update-offset-store.ts:15](D:/learn/openclaw/extensions/telegram/src/update-offset-store.ts:15)：`botId`。
-- [update-offset-store.ts:16](D:/learn/openclaw/extensions/telegram/src/update-offset-store.ts:16)：`tokenFingerprint`。
-
-这比明文 offset 文件多了三类保护：
-
-- 版本号用于迁移旧结构。
-- `botId` 防止不同 bot 复用旧 offset。
-- `tokenFingerprint` 识别 token rotation，避免误跳过新 bot 的 update。
-
-### 7.2 Keyed store
-
-Telegram 不直接 `fs.writeFile(offset.txt)`，而是打开 plugin-state keyed store：
-
-- [update-offset-store.ts:9](D:/learn/openclaw/extensions/telegram/src/update-offset-store.ts:9)：namespace `telegram.update-offsets`。
-- [update-offset-store.ts:31](D:/learn/openclaw/extensions/telegram/src/update-offset-store.ts:31)：`openUpdateOffsetStore`。
-- [update-offset-store.ts:34](D:/learn/openclaw/extensions/telegram/src/update-offset-store.ts:34)：`getTelegramRuntime().state.openKeyedStore<TelegramUpdateOffsetState>(...)`。
-
-keyed store 的接口：
-
-- [plugin-state-store.types.ts:11](D:/learn/openclaw/src/plugin-state/plugin-state-store.types.ts:11)：`PluginStateKeyedStore<T>`。
-- [plugin-state-store.types.ts:12](D:/learn/openclaw/src/plugin-state/plugin-state-store.types.ts:12)：`register(key, value)`。
-- [plugin-state-store.types.ts:19](D:/learn/openclaw/src/plugin-state/plugin-state-store.types.ts:19)：`lookup(key)`。
-- [plugin-state-store.types.ts:21](D:/learn/openclaw/src/plugin-state/plugin-state-store.types.ts:21)：`delete(key)`。
-- [plugin-state-store.ts:1](D:/learn/openclaw/src/plugin-state/plugin-state-store.ts:1)：插件状态 store 是持久化 per-plugin state operations。
-- [plugin-state-store.ts:284](D:/learn/openclaw/src/plugin-state/plugin-state-store.ts:284)：异步 `register` 实现入口。
-- [plugin-state-store.ts:319](D:/learn/openclaw/src/plugin-state/plugin-state-store.ts:319)：异步 `lookup`。
-- [plugin-state-store.ts:337](D:/learn/openclaw/src/plugin-state/plugin-state-store.ts:337)：异步 `delete`。
-
-### 7.3 读写与 rotation
-
-读取 offset：
-
-- [update-offset-store.ts:134](D:/learn/openclaw/extensions/telegram/src/update-offset-store.ts:134)：`readTelegramUpdateOffset`。
-- [update-offset-store.ts:143](D:/learn/openclaw/extensions/telegram/src/update-offset-store.ts:143)：`lookup(key)`。
-- [update-offset-store.ts:146](D:/learn/openclaw/extensions/telegram/src/update-offset-store.ts:146)：`safeParseState`。
-- [update-offset-store.ts:150](D:/learn/openclaw/extensions/telegram/src/update-offset-store.ts:150)：检测 rotation 后返回 `null`。
-
-写入 offset：
-
-- [update-offset-store.ts:159](D:/learn/openclaw/extensions/telegram/src/update-offset-store.ts:159)：`writeTelegramUpdateOffset`。
-- [update-offset-store.ts:165](D:/learn/openclaw/extensions/telegram/src/update-offset-store.ts:165)：校验 update id 必须是非负 safe integer。
-- [update-offset-store.ts:168](D:/learn/openclaw/extensions/telegram/src/update-offset-store.ts:168)：构造 version 3 payload。
-- [update-offset-store.ts:174](D:/learn/openclaw/extensions/telegram/src/update-offset-store.ts:174)：`register(accountId, payload)`。
-
-删除 offset：
-
-- [update-offset-store.ts:180](D:/learn/openclaw/extensions/telegram/src/update-offset-store.ts:180)：`deleteTelegramUpdateOffset`。
-
-旧文件迁移：
-
-- [update-offset-store.ts:195](D:/learn/openclaw/extensions/telegram/src/update-offset-store.ts:195)：`listTelegramLegacyUpdateOffsetEntries`。
-- [update-offset-store.ts:200](D:/learn/openclaw/extensions/telegram/src/update-offset-store.ts:200)：读取 legacy JSON 文件。
-
-OpenClaw SDK 也提供 atomic JSON 写入工具：
-
-- [json-store.ts:16](D:/learn/openclaw/src/plugin-sdk/json-store.ts:16)：`readJsonFileWithFallback`。
-- [json-store.ts:27](D:/learn/openclaw/src/plugin-sdk/json-store.ts:27)：注释说明 secure permissions + atomic replacement。
-- [json-store.ts:28](D:/learn/openclaw/src/plugin-sdk/json-store.ts:28)：`writeJsonFileAtomically`。
-
-Python 迁移建议：
+出站发送结果需要可追踪：
 
 ```python
-@dataclass
-class TelegramUpdateOffsetState:
-    version: int
-    last_update_id: int | None
-    bot_id: str | None
-    token_fingerprint: str | None
+@dataclass(frozen=True)
+class MessageReceipt:
+    primary_platform_message_id: str | None
+    platform_message_ids: list[str]
+    parts: list[MessageReceiptPart]
+    thread_id: str | None = None
+    reply_to_id: str | None = None
+    sent_at: float = field(default_factory=time.time)
+    metadata: dict[str, Any] = field(default_factory=dict)
+```
 
-class KeyedStateStore(Protocol[T]):
+微信客服消息、企业微信消息、飞书文本消息、飞书卡片消息都应返回 receipt，便于审计、重试、诊断和后续编辑/撤回扩展。
+
+## 4. ACK Policy
+
+入站消息不能只靠 HTTP 200 简单处理。需要明确 ack 时机：
+
+```text
+AFTER_RECEIVE_RECORD   入站记录成功后 ack
+AFTER_AGENT_DISPATCH   派发给 Agent 成功后 ack
+AFTER_DURABLE_SEND     可靠回复发送完成后 ack
+MANUAL                 平台 adapter 自行 ack
+```
+
+微信 webhook 常见做法是尽快返回平台要求的响应，但业务处理仍需进入队列，避免超时导致平台重试。飞书也需要区分事件接收确认和业务处理完成。
+
+`MessageReceiveContext` 应保证：
+
+- `ack()` 幂等。
+- `nack(error)` 幂等。
+- `ack` 后不能 `nack`。
+- `nack` 后不能 `ack`。
+- `ack_after_stage(stage)` 根据策略自动判断。
+
+## 5. Durable Ingress Queue
+
+微信、飞书都需要可靠入站队列。建议使用 SQLite 作为第一阶段实现：
+
+```text
+event_id      平台事件唯一 ID，主键
+channel       wechat / feishu
+lane_key      同会话顺序 key
+payload_json  平台 payload
+status        pending / claimed / completed / failed
+attempts      claim 次数
+owner_id      当前 worker
+claim_token   claim 所有权 token
+error         失败诊断
+created_at / updated_at / claimed_at
+```
+
+核心行为：
+
+- `enqueue()` 对 `event_id` 幂等，重复事件返回 `False`。
+- `claim_next()` 使用 claim token，避免多个 worker 同时完成同一任务。
+- 同一 `lane_key` 同时只允许一个 active claim。
+- stale claim 超时后可释放，避免 worker 崩溃导致永久阻塞。
+- `complete()`、`release()`、`fail()` 必须校验 claim token。
+
+推荐 lane key：
+
+```text
+wechat:<account_id>:<openid_or_conversation_id>
+feishu:<tenant_key>:<chat_id>
+```
+
+这样同一会话内顺序稳定，不同会话仍可并发。
+
+## 6. Plugin State Keyed Store
+
+微信和飞书都会产生平台状态，不能散落为临时文件。建议统一使用 keyed state store：
+
+```python
+class PluginStateKeyedStore(Protocol[T]):
     async def register(self, key: str, value: T, ttl_ms: int | None = None) -> None: ...
     async def lookup(self, key: str) -> T | None: ...
     async def delete(self, key: str) -> bool: ...
 ```
 
-底层可以先用 SQLite，也可以用 JSON 文件。但如果用 JSON 文件，不建议写成单个 `offset.txt`，而应该：
+可存储内容：
 
-1. 写完整版本化对象。
-2. 先写临时文件。
-3. `fsync` 后原子 rename 替换。
-4. 记录 bot id/token fingerprint，token rotation 时丢弃旧 offset。
+- 微信 access token / jsapi ticket 缓存。
+- 微信 webhook challenge 或去重 tombstone。
+- 飞书 tenant access token 缓存。
+- 飞书 app ticket / tenant_key 映射。
+- 平台账号绑定关系。
+- 已处理事件 ID 的短期去重记录。
 
-## 8. 推荐的 Python 迁移分层
+第一阶段可以使用 JSON 文件实现，但写入必须使用临时文件 + `fsync` + 原子替换。后续可迁移到 SQLite。
 
-### 8.1 包结构建议
+## 7. 微信适配要点
+
+### 7.1 回调验签
+
+微信回调 URL 校验常见签名规则：
 
 ```text
-pyclaw/
-  channels/
-    core.py              # ChannelPlugin, capabilities, registry
-    message/
-      types.py           # receipt, send context, receive context
-      adapter.py         # define_channel_message_adapter
-      receive.py         # ack/nack state machine
-      send.py            # durable send context
-      ingress_queue.py   # SQLite durable ingress queue
-  plugins/
-    telegram/
-      channel.py
-      monitor.py
-      offset_store.py
-    discord/
-      channel.py
-      monitor.py
-      outbound.py
-    slack/
-      channel.py
-      monitor.py
-    feishu/
-      channel.py
-      monitor.py
-      sequential_queue.py
-  state/
-    plugin_state.py      # keyed JSON/SQLite store
+1. token、timestamp、nonce 字典序排序
+2. 拼接为字符串
+3. SHA-1
+4. 与 signature 常量时间比较
 ```
 
-### 8.2 最小可落地迁移顺序
+Python helper：
 
-1. 先移植核心类型：`ChannelPlugin`、`ChannelMessageAdapter`、`MessageReceipt`、`MessageReceiveContext`。
-2. 实现 `PluginStateKeyedStore`，用于 Telegram offset 和后续平台状态。
-3. 实现 durable ingress queue，底层优先 SQLite。
-4. 迁移 Telegram：offset store + polling monitor + send text/media。
-5. 迁移 Feishu：webhook/ws monitor + per-chat sequential queue。
-6. 再迁移 Slack/Discord：因为它们的平台事件和 rich message/action 能力更复杂。
-7. 最后补 durable final delivery、unknown send reconciliation、live preview/finalizer。
+```python
+def build_wechat_signature(token: str, timestamp: str, nonce: str) -> str:
+    pieces = sorted([token, timestamp, nonce])
+    raw = "".join(pieces).encode("utf-8")
+    return hashlib.sha1(raw).hexdigest()
 
-### 8.3 不建议省略的能力
 
-- ack policy：否则 webhook/polling 平台在失败场景下容易重复或丢消息。
-- receipt：否则后续 edit/delete/thread reply/durable retry 很难实现。
-- keyed state store：否则 offset、绑定关系、去重记录会散落成平台私有文件。
-- per-conversation queue/lane：否则同一会话内消息顺序可能错乱。
-- lifecycle hooks：否则迁移、清理旧状态、启动维护任务会无处挂载。
+def verify_wechat_signature(token: str, timestamp: str, nonce: str, signature: str) -> bool:
+    expected = build_wechat_signature(token, timestamp, nonce)
+    return hmac.compare_digest(expected, signature)
+```
 
-## 9. 阅读源码顺序
+### 7.2 入站流程
 
-建议按以下顺序阅读：
+建议流程：
 
-1. [src/channels/plugins/types.plugin.ts](D:/learn/openclaw/src/channels/plugins/types.plugin.ts:66)：理解插件根对象。
-2. [src/channels/message/types.ts](D:/learn/openclaw/src/channels/message/types.ts:13)：理解 message contract。
-3. [src/channels/message/receive.ts](D:/learn/openclaw/src/channels/message/receive.ts:18)：理解 ack/nack。
-4. [src/channels/message/send.ts](D:/learn/openclaw/src/channels/message/send.ts:162)：理解 durable send。
-5. [src/channels/message/ingress-queue.ts](D:/learn/openclaw/src/channels/message/ingress-queue.ts:121)：理解 durable ingress queue。
-6. [extensions/telegram/src/update-offset-store.ts](D:/learn/openclaw/extensions/telegram/src/update-offset-store.ts:12)：理解 offset 版本化状态。
-7. [extensions/telegram/src/channel.ts](D:/learn/openclaw/extensions/telegram/src/channel.ts:247)：看一个消息 adapter 和插件挂载示例。
-8. [extensions/discord/src/outbound-adapter.ts](D:/learn/openclaw/extensions/discord/src/outbound-adapter.ts:107)：看复杂出站 adapter。
-9. [extensions/slack/src/monitor/message-handler.ts](D:/learn/openclaw/extensions/slack/src/monitor/message-handler.ts:92)：看入站去重/合并。
-10. [extensions/feishu/src/sequential-queue.ts](D:/learn/openclaw/extensions/feishu/src/sequential-queue.ts:42)：看 per-key 顺序队列。
+```text
+HTTP callback
+  -> verify signature
+  -> parse XML / JSON
+  -> build RawInboundEvent
+  -> enqueue durable ingress queue
+  -> platform ack
+  -> worker claim
+  -> build PreparedInboundMessage
+  -> dispatch Agent
+  -> send reply through WeChat adapter
+  -> complete queue record
+```
 
-## 10. 结论
+### 7.3 出站流程
 
-OpenClaw 的 Channel 系统已经从“平台收发接口”演进为“插件化消息运行时”。它的核心价值不只是接入 Telegram、Discord、Slack、Feishu 等平台，而是把消息收发中的可靠性问题拆成了可组合模块：
+后续可分两类 adapter：
 
-- 平台插件负责平台 SDK、鉴权、monitor、send。
-- message contract 负责 send/receive/lifecycle/durable/live 的统一抽象。
-- ingress queue 负责入站事件可靠调度和重复检测。
-- plugin-state keyed store 负责平台状态、offset、迁移状态的持久化。
-- 平台局部队列负责保持同一会话/同一 sender 的顺序与防抖。
+- 公众号客服消息 / 模板消息 / 订阅消息。
+- 企业微信应用消息 / 客户联系消息。
 
-Python 版本 `pyclaw` 如果要成为可维护的开源项目，建议保留这些边界，只把 TypeScript 类型和 async 运行时替换为 Python 的 `dataclass` / `Protocol` / `asyncio` / SQLite 实现。这样既能加入自己的业务逻辑，也不会把平台差异、可靠投递、offset、ack、重试全部揉进一个难以演化的 `Channel.receive()` / `Channel.send()` 基类中。
+无论具体 API 如何，最终都应返回 `MessageReceipt`。
+
+## 8. 飞书适配要点
+
+### 8.1 入站传输
+
+飞书可通过 webhook event callback 或长连接事件接入。两者都应归一到：
+
+```text
+RawInboundEvent(channel="feishu", ...)
+```
+
+事件处理时应注意：
+
+- URL verification / challenge 响应。
+- 事件 token 或签名校验。
+- tenant_key / app_id / chat_id 解析。
+- event_id 幂等入队。
+
+### 8.2 同会话顺序队列
+
+飞书同一个 chat 内连续消息需要保持顺序。建议保留 per-key sequential queue：
+
+```python
+class SequentialQueue:
+    async def run(self, key: str, task: Callable[[], Awaitable[T]]) -> T:
+        ...
+```
+
+行为：
+
+- 相同 key 串行。
+- 不同 key 并发。
+- 可配置单任务 timeout，避免某个 chat 永久阻塞。
+
+推荐 key：
+
+```text
+feishu:<tenant_key>:<chat_id>
+```
+
+### 8.3 出站能力
+
+飞书建议优先支持：
+
+- 发送文本消息。
+- 发送卡片消息。
+- 发送结构化 payload。
+
+出站 adapter 应把平台 API 结果归一为 `MessageReceipt`，并保留飞书 message_id。
+
+## 9. 推荐 Python 包结构
+
+```text
+openclaw/
+  channels/
+    core.py
+    message/
+      adapter.py
+      ingress_queue.py
+      receive.py
+      send.py
+      types.py
+  plugins/
+    wechat/
+      signature.py
+      webhook.py          # 后续补充
+      send.py             # 后续补充
+    feishu/
+      sequential_queue.py
+      webhook.py          # 后续补充
+      send.py             # 后续补充
+  state/
+    plugin_state.py
+```
+
+## 10. 最小落地顺序
+
+1. 落地通用 Channel 类型、message contract、receipt、receive context。
+2. 落地 SQLite durable ingress queue。
+3. 落地 plugin-state keyed store。
+4. 落地微信签名校验 helper。
+5. 落地飞书 per-key sequential queue。
+6. 补微信 webhook adapter：验签、解析、入队、派发、回复。
+7. 补飞书 webhook / 长连接 adapter：验签、入队、顺序处理、回复。
+8. 补出站 text / payload adapter，并记录 `MessageReceipt`。
+
+## 11. 当前 pyclaw 实现状态
+
+当前已经落地的第一阶段能力：
+
+- `openclaw/channels/core.py`
+- `openclaw/channels/message/types.py`
+- `openclaw/channels/message/receive.py`
+- `openclaw/channels/message/adapter.py`
+- `openclaw/channels/message/send.py`
+- `openclaw/channels/message/ingress_queue.py`
+- `openclaw/state/plugin_state.py`
+- `openclaw/plugins/wechat/signature.py`
+- `openclaw/plugins/feishu/sequential_queue.py`
+- `tests/test_channels.py`
+
+当前尚未落地：
+
+- 微信 webhook 路由与 XML / JSON 解析。
+- 微信出站消息 API。
+- 飞书 webhook / 长连接 monitor。
+- 飞书文本 / 卡片发送 API。
+- Channel turn dispatcher 到 `AgentSession` 的完整桥接。
+
+## 12. 结论
+
+微信和飞书接入的核心难点不在于调用某个 HTTP API，而在于消息可靠性：验签、幂等、ACK 时机、同会话顺序、失败重试、状态缓存、发送回执。
+
+`pyclaw` 当前应保留 OpenClaw 的插件化 Channel 思路，但平台范围只聚焦微信和飞书。这样可以先把国内常用协作入口跑通，同时避免在早期维护过多平台适配带来的复杂度。

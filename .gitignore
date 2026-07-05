@@ -8,3 +8,6 @@ build/
 *.egg-info/
 chatdata/*
 !chatdata/.gitkeep
+spring-backend/target/
+spring-backend/data/
+spring-backend/maven-repository/

@@ -1,0 +1,53 @@
+replicaCount: 1
+
+image:
+  repository: spring-backend
+  tag: dev
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+
+service:
+  type: ClusterIP
+  port: 8080
+
+ingress:
+  enabled: false
+  className: traefik
+  annotations: {}
+  hosts:
+    - host: api.anxin-hitsz.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+env:
+  SPRING_DATASOURCE_URL: jdbc:h2:file:/data/pyclaw-backend;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE
+  SPRING_DATASOURCE_USERNAME: sa
+  SPRING_JPA_DDL_AUTO: update
+  PYCLAW_BASE_URL: http://pyclaw.pyclaw.svc.cluster.local:8000
+  BOOTSTRAP_ADMIN_USERNAME: admin
+
+secret:
+  create: true
+  existingSecret: ""
+  values:
+    SPRING_DATASOURCE_PASSWORD: ""
+    JWT_SIGNING_SECRET: ""
+    BOOTSTRAP_ADMIN_PASSWORD: ""
+    PYCLAW_API_TOKEN: ""
+
+persistence:
+  enabled: true
+  storageClassName: ""
+  size: 2Gi
+  mountPath: /data
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 512Mi
+  limits:
+    cpu: 1000m
+    memory: 1Gi

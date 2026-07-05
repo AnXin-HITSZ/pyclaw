@@ -100,9 +100,21 @@ pyclaw-api:dev
 
 ```yaml
 image:
-  repository: registry.example.com/pyclaw/pyclaw-api
+  repository: crpi-li78f6lp5zheaj11.cn-shenzhen.personal.cr.aliyuncs.com/<namespace>/pyclaw-api
   tag: 0.1.0
+
+imagePullSecrets:
+  - name: aliyun-acr-pull-secret
 ```
+
+当前项目可以使用已开通的阿里云 ACR 个人版实例：
+
+```text
+公网地址: crpi-li78f6lp5zheaj11.cn-shenzhen.personal.cr.aliyuncs.com
+地域: 华南 1（深圳）
+```
+
+如果 ACR 仓库是私有仓库，需要先在目标 namespace 中创建 `docker-registry` 类型 Secret，并在 values 中通过 `imagePullSecrets` 引用。
 
 ### 5.2 服务配置
 
@@ -334,8 +346,11 @@ helm template pyclaw ./helm/pyclaw
 ```yaml
 # values-prod.yaml
 image:
-  repository: your-registry/pyclaw-api
+  repository: crpi-li78f6lp5zheaj11.cn-shenzhen.personal.cr.aliyuncs.com/<namespace>/pyclaw-api
   tag: 0.1.0
+
+imagePullSecrets:
+  - name: aliyun-acr-pull-secret
 
 secret:
   values:
@@ -359,6 +374,19 @@ helm upgrade --install pyclaw ./helm/pyclaw \
 ```
 
 如果镜像没有推送到远程仓库，而是在单机 K8s 节点上本地构建，需要确保节点能看到 `pyclaw-api:dev` 镜像。
+
+当前推荐把镜像推送到阿里云 ACR 个人版：
+
+```bash
+ACR_REGISTRY=crpi-li78f6lp5zheaj11.cn-shenzhen.personal.cr.aliyuncs.com
+ACR_NAMESPACE=<namespace>
+IMAGE_TAG=0.1.0
+
+docker login ${ACR_REGISTRY}
+docker build -t pyclaw-api:dev .
+docker tag pyclaw-api:dev ${ACR_REGISTRY}/${ACR_NAMESPACE}/pyclaw-api:${IMAGE_TAG}
+docker push ${ACR_REGISTRY}/${ACR_NAMESPACE}/pyclaw-api:${IMAGE_TAG}
+```
 
 ## 15. 验证命令
 
