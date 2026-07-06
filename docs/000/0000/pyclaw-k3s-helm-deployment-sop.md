@@ -678,7 +678,7 @@ OPENAI_API_MODE=chat_completions
 OPENAI_MODEL=...
 ```
 
-其中 `OPENAI_API_KEY` / `OPENAI_BASE_URL` 来自 Secret；`OPENAI_API_MODE` / `OPENAI_MODEL` 通常来自 `values-k3s.yaml` 渲染出的 ConfigMap。
+其中 `OPENAI_API_KEY` / `OPENAI_BASE_URL` 来自 Secret；`OPENAI_API_MODE` / `OPENAI_MODEL` 通常来自 `pyclaw-values-k3s.yaml` 渲染出的 ConfigMap。
 
 ## 11. 准备 K3s 部署 values 文件
 
@@ -688,7 +688,7 @@ OPENAI_MODEL=...
 
 ```bash
 cd /opt/pyclaw
-nano values-k3s.yaml
+nano pyclaw-values-k3s.yaml
 ```
 
 OpenAI 官方 Responses API 示例：
@@ -749,7 +749,7 @@ persistence:
 
 这里的 `env` 会被 Helm 渲染为 ConfigMap，适合放 `OPENAI_MODEL`、`OPENAI_API_MODE` 等非敏感配置；`secret.existingSecret` 指向 Kubernetes Secret，适合放 `OPENAI_API_KEY`、`OPENAI_BASE_URL` 等敏感或连接配置。
 
-建议把 `values-k3s.yaml` 加入 `.gitignore`，避免误提交真实环境配置。
+建议把 `pyclaw-values-k3s.yaml` 加入 `.gitignore`，避免误提交真实环境配置。
 
 ## 12. 渲染 Helm Chart
 
@@ -757,7 +757,7 @@ persistence:
 
 ```bash
 cd /opt/pyclaw
-sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml helm template pyclaw ./helm/pyclaw -f values-k3s.yaml
+sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml helm template pyclaw ./helm/pyclaw -f pyclaw-values-k3s.yaml
 ```
 
 这一步用于检查 Helm 模板语法。
@@ -775,7 +775,7 @@ cd /opt/pyclaw
 sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml helm upgrade --install pyclaw ./helm/pyclaw \
   -n pyclaw \
   --create-namespace \
-  -f values-k3s.yaml
+  -f pyclaw-values-k3s.yaml
 ```
 
 命令含义：
@@ -785,7 +785,7 @@ sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml helm upgrade --install pyclaw ./helm/p
 - `./helm/pyclaw`：Chart 路径。
 - `-n pyclaw`：部署到 `pyclaw` namespace。
 - `--create-namespace`：namespace 不存在时自动创建。
-- `-f values-k3s.yaml`：使用当前环境的配置覆盖默认 values。
+- `-f pyclaw-values-k3s.yaml`：使用当前环境的配置覆盖默认 values。
 
 查看 release：
 
@@ -937,7 +937,7 @@ sudo k3s kubectl -n pyclaw get secret aliyun-acr-pull-secret
 
 常见原因：
 
-1. `values-k3s.yaml` 中的 ACR 地址、命名空间、仓库名或 tag 写错。
+1. `pyclaw-values-k3s.yaml` 中的 ACR 地址、命名空间、仓库名或 tag 写错。
 2. ACR 仓库是私有仓库，但没有创建 `aliyun-acr-pull-secret`。
 3. `imagePullSecrets` 没有写入 values。
 4. ACR 固定密码已变更，但 Kubernetes Secret 还是旧密码。
@@ -1141,12 +1141,12 @@ sudo docker tag pyclaw-api:dev ${ACR_REGISTRY}/${ACR_NAMESPACE}/pyclaw-api:${IMA
 sudo docker push ${ACR_REGISTRY}/${ACR_NAMESPACE}/pyclaw-api:${IMAGE_TAG}
 ```
 
-然后把 `values-k3s.yaml` 中的 `image.tag` 改成新版本，并执行：
+然后把 `pyclaw-values-k3s.yaml` 中的 `image.tag` 改成新版本，并执行：
 
 ```bash
 sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml helm upgrade --install pyclaw ./helm/pyclaw \
   -n pyclaw \
-  -f values-k3s.yaml
+  -f pyclaw-values-k3s.yaml
 ```
 
 重启 Deployment：
@@ -1374,17 +1374,17 @@ sudo k3s kubectl -n pyclaw create secret generic pyclaw-provider-secret \
 # 如果使用 OpenAI-compatible 服务，创建 provider secret 时还需要加：
 #   --from-literal=OPENAI_BASE_URL='https://你的_base_url'
 
-# 6. 创建 values-k3s.yaml
-nano values-k3s.yaml
+# 6. 创建 pyclaw-values-k3s.yaml
+nano pyclaw-values-k3s.yaml
 
 # 7. 渲染检查
-sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml helm template pyclaw ./helm/pyclaw -f values-k3s.yaml
+sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml helm template pyclaw ./helm/pyclaw -f pyclaw-values-k3s.yaml
 
 # 8. 部署
 sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml helm upgrade --install pyclaw ./helm/pyclaw \
   -n pyclaw \
   --create-namespace \
-  -f values-k3s.yaml
+  -f pyclaw-values-k3s.yaml
 
 # 9. 查看 Pod
 sudo k3s kubectl -n pyclaw get pods

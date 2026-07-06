@@ -4,6 +4,13 @@ on:
   push:
     branches:
       - main
+    paths:
+      - "openclaw/**"
+      - "helm/pyclaw/**"
+      - "Dockerfile"
+      - "pyproject.toml"
+      - ".dockerignore"
+      - ".github/workflows/deploy-pyclaw-api.yml"
   workflow_dispatch:
 
 jobs:
@@ -45,7 +52,7 @@ jobs:
             sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml helm upgrade --install pyclaw ./helm/pyclaw \
               -n pyclaw \
               --create-namespace \
-              -f values-k3s.yaml \
+              -f pyclaw-values-k3s.yaml \
               --set image.repository=${{ secrets.ACR_REGISTRY }}/${{ env.IMAGE_NAME }} \
               --set image.tag=${{ env.IMAGE_TAG }}
           "

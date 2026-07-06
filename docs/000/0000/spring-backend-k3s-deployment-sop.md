@@ -148,7 +148,7 @@ pyclaw-api 收到请求后用 PYCLAW_API_TOKEN 校验。
 cd /opt/pyclaw
 ```
 
-创建或更新 `values-k3s.yaml` 中的 pyclaw secret 配置，确保包含：
+创建或更新 `pyclaw-values-k3s.yaml` 中的 pyclaw secret 配置，确保包含：
 
 ```yaml
 secret:
@@ -175,7 +175,7 @@ ingress:
 sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml helm upgrade --install pyclaw ./helm/pyclaw \
   -n pyclaw \
   --create-namespace \
-  -f values-k3s.yaml
+  -f pyclaw-values-k3s.yaml
 ```
 
 验证 pyclaw Pod 正常：
