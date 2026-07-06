@@ -6,6 +6,8 @@ metadata:
     {{- include "spring-backend.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.replicaCount }}
+  strategy:
+    type: {{ .Values.deploymentStrategy.type }}
   selector:
     matchLabels:
       app.kubernetes.io/name: {{ include "spring-backend.name" . }}
