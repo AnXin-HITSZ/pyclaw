@@ -92,7 +92,7 @@ pyclaw-spring-backend.pyclaw.svc.cluster.local:8080
 因此浏览器访问的是：
 
 ```text
-https://console.anxin-hitsz.com/api/auth/me
+https://pyclaw.anxin-hitsz.com/api/auth/me
 ```
 
 但真实请求会在集群内部转发到：
@@ -241,7 +241,7 @@ ingress:
   enabled: true
   className: traefik
   hosts:
-    - host: console.anxin-hitsz.com
+    - host: pyclaw.anxin-hitsz.com
 ```
 
 手动部署命令：
@@ -321,7 +321,7 @@ ECS_SSH_KEY
 当前前端 values 默认域名：
 
 ```text
-console.anxin-hitsz.com
+pyclaw.anxin-hitsz.com
 ```
 
 需要在 DNS 中添加解析到 ECS 公网 IP。
@@ -335,11 +335,11 @@ api.anxin-hitsz.com
 推荐最终形态：
 
 ```text
-console.anxin-hitsz.com  -> pyclaw-web
+pyclaw.anxin-hitsz.com  -> pyclaw-web
 api.anxin-hitsz.com      -> spring-backend
 ```
 
-不过前端默认通过同源 `/api` 调用后端，所以日常使用只需要打开 `console.anxin-hitsz.com`。
+不过前端默认通过同源 `/api` 调用后端，所以日常使用只需要打开 `pyclaw.anxin-hitsz.com`。
 
 ## 11. 安全注意事项
 

@@ -19,7 +19,7 @@ ingress:
   className: traefik
   annotations: {}
   hosts:
-    - host: console.anxin-hitsz.com
+    - host: pyclaw.anxin-hitsz.com
       paths:
         - path: /
           pathType: Prefix
