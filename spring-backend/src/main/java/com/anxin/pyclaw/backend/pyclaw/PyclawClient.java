@@ -22,6 +22,7 @@ public class PyclawClient {
         this.properties = properties;
         this.objectMapper = objectMapper;
         this.httpClient = HttpClient.newBuilder()
+                .version(HttpClient.Version.HTTP_1_1)
                 .connectTimeout(Duration.ofSeconds(properties.connectTimeoutSeconds()))
                 .build();
     }
@@ -30,7 +31,8 @@ public class PyclawClient {
         try {
             String body = objectMapper.writeValueAsString(request);
             HttpRequest.Builder builder = HttpRequest.newBuilder()
-                    .uri(URI.create(properties.baseUrl() + "/v1/agent/run"))
+                    .uri(URI.create(trimTrailingSlash(properties.baseUrl()) + "/v1/agent/run"))
+                    .version(HttpClient.Version.HTTP_1_1)
                     .timeout(Duration.ofSeconds(properties.readTimeoutSeconds()))
                     .header(HttpHeaders.CONTENT_TYPE, "application/json")
                     .POST(HttpRequest.BodyPublishers.ofString(body));
@@ -47,5 +49,9 @@ public class PyclawClient {
         } catch (Exception exc) {
             throw new ApiException(HttpStatus.BAD_GATEWAY, "pyclaw call failed: " + exc.getMessage());
         }
+    }
+
+    private String trimTrailingSlash(String value) {
+        return value.endsWith("/") ? value.substring(0, value.length() - 1) : value;
     }
 }
