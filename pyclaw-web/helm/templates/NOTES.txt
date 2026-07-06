@@ -1,0 +1,11 @@
+pyclaw-web has been installed.
+
+Release: {{ .Release.Name }}
+Namespace: {{ .Release.Namespace }}
+
+Health check:
+  kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "pyclaw-web.fullname" . }} 8081:{{ .Values.service.port }}
+  curl http://localhost:8081/healthz
+
+Console:
+  http://localhost:8081/

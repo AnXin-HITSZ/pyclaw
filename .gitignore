@@ -11,3 +11,5 @@ chatdata/*
 spring-backend/target/
 spring-backend/data/
 spring-backend/maven-repository/
+pyclaw-web/node_modules/
+pyclaw-web/dist/
