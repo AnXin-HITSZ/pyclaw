@@ -27,9 +27,18 @@
           <p class="eyebrow">pyclaw Console</p>
           <h1>登录管理控制台</h1>
           <p>通过 Spring Backend 统一鉴权后访问 Agent、Provider、Channel、审计与用量接口。</p>
+          <div class="login-bullets">
+            <span>Agent 调用</span>
+            <span>Token 管理</span>
+            <span>审计追踪</span>
+          </div>
         </div>
-        <form class="panel form-grid" @submit.prevent="login">
-          <label>
+        <form class="panel form-grid login-card" @submit.prevent="login">
+          <div class="panel-title">
+            <h2>账户登录</h2>
+            <span>Bearer Access</span>
+          </div>
+          <label class="wide">
             后端地址
             <input v-model="state.apiBase" placeholder="留空表示同源，例如 K3s Ingress" />
           </label>
@@ -41,10 +50,10 @@
             密码
             <input v-model="loginForm.password" type="password" autocomplete="current-password" />
           </label>
-          <button class="primary" type="submit" :disabled="state.loading">
+          <button class="primary wide" type="submit" :disabled="state.loading">
             {{ state.loading ? "登录中" : "登录" }}
           </button>
-          <p v-if="state.error" class="error">{{ state.error }}</p>
+          <p v-if="state.error" class="error wide">{{ state.error }}</p>
         </form>
       </section>
 
@@ -72,7 +81,7 @@
 
         <section v-if="state.view === 'dashboard'" class="stack">
           <div class="metric-grid">
-            <article class="metric">
+            <article class="metric" :class="{ good: dashboard.health === 'ok' }">
               <span>后端健康</span>
               <strong>{{ dashboard.health }}</strong>
             </article>
@@ -103,7 +112,10 @@
         <section v-if="state.view === 'agent'" class="two-column">
           <form class="panel form-grid" @submit.prevent="runAgent">
             <div class="panel-title">
-              <h2>Agent Playground</h2>
+              <div>
+                <h2>Agent Playground</h2>
+                <p>快速验证 Provider、模型与工具权限是否可用。</p>
+              </div>
               <button class="primary" type="submit" :disabled="state.loading">
                 {{ state.loading ? "运行中" : "运行" }}
               </button>
@@ -137,8 +149,11 @@
           </form>
           <article class="panel result-panel">
             <div class="panel-title">
-              <h2>响应</h2>
-              <span v-if="agentResult.latencyMs">{{ agentResult.latencyMs }} ms</span>
+              <div>
+                <h2>响应</h2>
+                <p>返回内容与原始 JSON 会保留在当前页面。</p>
+              </div>
+              <span v-if="agentResult.latencyMs" class="latency">{{ agentResult.latencyMs }} ms</span>
             </div>
             <pre class="answer">{{ agentResult.text || "等待调用结果" }}</pre>
             <details>
@@ -151,7 +166,10 @@
         <section v-if="state.view === 'tokens'" class="stack">
           <form class="panel form-grid" @submit.prevent="createToken">
             <div class="panel-title">
-              <h2>创建 API Token</h2>
+              <div>
+                <h2>创建 API Token</h2>
+                <p>Token 只会在创建后显示一次，请及时保存。</p>
+              </div>
               <button class="primary" type="submit">创建</button>
             </div>
             <label>
@@ -177,7 +195,10 @@
         <section v-if="state.view === 'users'" class="stack">
           <form class="panel form-grid" @submit.prevent="createUser">
             <div class="panel-title">
-              <h2>创建用户</h2>
+              <div>
+                <h2>创建用户</h2>
+                <p>为控制台用户分配可访问的权限范围。</p>
+              </div>
               <button class="primary" type="submit">创建</button>
             </div>
             <label>
@@ -207,7 +228,10 @@
         <section v-if="state.view === 'providers'" class="stack">
           <form class="panel form-grid" @submit.prevent="saveProvider">
             <div class="panel-title">
-              <h2>{{ providerForm.id ? "编辑 Provider" : "创建 Provider" }}</h2>
+              <div>
+                <h2>{{ providerForm.id ? "编辑 Provider" : "创建 Provider" }}</h2>
+                <p>配置模型网关、默认模型与密钥引用。</p>
+              </div>
               <div>
                 <button v-if="providerForm.id" type="button" @click="resetProviderForm">取消编辑</button>
                 <button class="primary" type="submit">保存</button>
@@ -256,7 +280,10 @@
         <section v-if="state.view === 'channels'" class="stack">
           <form class="panel form-grid" @submit.prevent="saveChannel">
             <div class="panel-title">
-              <h2>{{ channelForm.id ? "编辑 Channel" : "创建 Channel" }}</h2>
+              <div>
+                <h2>{{ channelForm.id ? "编辑 Channel" : "创建 Channel" }}</h2>
+                <p>维护企业微信、飞书等外部入口配置。</p>
+              </div>
               <div>
                 <button v-if="channelForm.id" type="button" @click="resetChannelForm">取消编辑</button>
                 <button class="primary" type="submit">保存</button>
@@ -337,7 +364,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from "vue";
+import { computed, h, onMounted, reactive, ref } from "vue";
 
 const TOKEN_KEY = "pyclaw.console.token";
 const BASE_KEY = "pyclaw.console.baseUrl";
@@ -414,6 +441,52 @@ const providerColumns = ["name", "providerType", "baseUrl", "model", "apiMode", 
 const channelColumns = ["channelType", "name", "configJson", "secretRef", "enabled", "updatedAt"];
 const auditColumns = ["createdAt", "actorType", "actorId", "action", "resourceType", "resourceId", "success", "errorMessage"];
 const usageColumns = ["createdAt", "userId", "sessionId", "provider", "model", "totalTokens", "success", "latencyMs"];
+const DataTable = {
+  props: {
+    title: { type: String, required: true },
+    rows: { type: Array, required: true },
+    columns: { type: Array, required: true }
+  },
+  setup(props, { slots }) {
+    const cellValue = (value) => {
+      if (value === null || value === undefined || value === "") return "-";
+      if (typeof value === "object") return JSON.stringify(value);
+      return String(value);
+    };
+
+    return () => h("article", { class: "panel table-panel" }, [
+      h("div", { class: "panel-title" }, [
+        h("h2", props.title),
+        h("span", `${props.rows.length} 条`)
+      ]),
+      h("div", { class: "table-wrap" }, [
+        h("table", [
+          h("thead", [
+            h("tr", [
+              ...props.columns.map((column) => h("th", { key: column }, column)),
+              slots.actions ? h("th", "操作") : null
+            ])
+          ]),
+          h("tbody", props.rows.length
+            ? props.rows.map((row) => h("tr", { key: row.id || JSON.stringify(row) }, [
+                ...props.columns.map((column) => h("td", { key: column }, [
+                  typeof row[column] === "boolean"
+                    ? h("code", String(row[column]))
+                    : h("span", cellValue(row[column]))
+                ])),
+                slots.actions ? h("td", { class: "actions" }, slots.actions({ row })) : null
+              ]))
+            : [h("tr", [
+                h("td", {
+                  class: "empty",
+                  colspan: props.columns.length + (slots.actions ? 1 : 0)
+                }, "暂无数据")
+              ])])
+        ])
+      ])
+    ]);
+  }
+};
 
 const usageStats = computed(() => {
   const rows = usageRecords.value;
@@ -813,65 +886,13 @@ function notice(message) {
 }
 </script>
 
-<script>
-export default {
-  components: {
-    DataTable: {
-      props: {
-        title: { type: String, required: true },
-        rows: { type: Array, required: true },
-        columns: { type: Array, required: true }
-      },
-      template: `
-        <article class="panel table-panel">
-          <div class="panel-title">
-            <h2>{{ title }}</h2>
-            <span>{{ rows.length }} 条</span>
-          </div>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th v-for="column in columns" :key="column">{{ column }}</th>
-                  <th v-if="$slots.actions">操作</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-if="!rows.length">
-                  <td :colspan="columns.length + ($slots.actions ? 1 : 0)" class="empty">暂无数据</td>
-                </tr>
-                <tr v-for="row in rows" :key="row.id || JSON.stringify(row)">
-                  <td v-for="column in columns" :key="column">
-                    <code v-if="typeof row[column] === 'boolean'">{{ row[column] }}</code>
-                    <span v-else>{{ cell(row[column]) }}</span>
-                  </td>
-                  <td v-if="$slots.actions" class="actions">
-                    <slot name="actions" :row="row" />
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </article>
-      `,
-      methods: {
-        cell(value) {
-          if (value === null || value === undefined || value === "") return "-";
-          if (typeof value === "object") return JSON.stringify(value);
-          return String(value);
-        }
-      }
-    }
-  }
-};
-</script>
-
 <style>
 :root {
   color: #18212f;
-  background: #f4f6f8;
+  background: #f3f5f7;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-size: 15px;
+  line-height: 1.5;
 }
 
 * {
@@ -880,6 +901,7 @@ export default {
 
 body {
   margin: 0;
+  background: #f3f5f7;
 }
 
 button,
@@ -890,32 +912,46 @@ textarea {
 }
 
 button {
+  min-height: 38px;
   border: 1px solid #c8d0da;
   border-radius: 6px;
   background: #ffffff;
   color: #253246;
   cursor: pointer;
-  padding: 0.55rem 0.8rem;
+  padding: 0.5rem 0.78rem;
+  transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease, transform 0.16s ease;
 }
 
 button:hover {
   border-color: #6f8199;
+  background: #f8fafc;
+}
+
+button:active {
+  transform: translateY(1px);
 }
 
 button:disabled {
   cursor: not-allowed;
   opacity: 0.55;
+  transform: none;
 }
 
 .primary {
-  background: #116a5b;
-  border-color: #116a5b;
+  background: #0f766e;
+  border-color: #0f766e;
   color: #ffffff;
+  font-weight: 700;
+}
+
+.primary:hover {
+  background: #115e59;
+  border-color: #115e59;
 }
 
 .danger {
-  color: #9f1d20;
-  border-color: #e4b6b6;
+  color: #a11c25;
+  border-color: #efc2c5;
 }
 
 .ghost {
@@ -925,122 +961,193 @@ button:disabled {
 .app {
   min-height: 100vh;
   display: grid;
-  grid-template-columns: 240px 1fr;
+  grid-template-columns: 232px minmax(0, 1fr);
 }
 
 .sidebar {
-  background: #17202d;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  background: #152130;
   color: #e6edf5;
-  padding: 1.25rem 1rem;
+  padding: 1rem 0.85rem;
+  overflow: auto;
 }
 
 .brand {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 0.35rem 0.25rem 1.25rem;
+  padding: 0.45rem 0.3rem 1.1rem;
 }
 
 .brand-mark {
-  width: 36px;
-  height: 36px;
+  width: 38px;
+  height: 38px;
   display: grid;
   place-items: center;
   border-radius: 8px;
-  background: #36a38f;
+  background: #2bb19f;
   color: #ffffff;
   font-weight: 800;
+  box-shadow: 0 8px 22px rgba(43, 177, 159, 0.28);
+}
+
+.brand strong {
+  letter-spacing: 0;
 }
 
 .brand small {
   display: block;
-  color: #93a4b8;
+  color: #9fb0c3;
 }
 
 nav {
   display: grid;
-  gap: 0.35rem;
+  gap: 0.3rem;
 }
 
 nav button {
   width: 100%;
   display: flex;
   align-items: center;
-  gap: 0.6rem;
+  gap: 0.62rem;
   background: transparent;
   border-color: transparent;
   color: #cbd5e1;
   text-align: left;
+  font-weight: 650;
 }
 
 nav button span {
   width: 30px;
   height: 24px;
+  flex: 0 0 30px;
   display: grid;
   place-items: center;
   border-radius: 5px;
-  background: #263447;
-  font-size: 0.78rem;
+  background: #25354a;
+  color: #d9e4ef;
+  font-size: 0.76rem;
+  font-weight: 700;
 }
 
 nav button.active,
 nav button:hover {
-  background: #263447;
+  background: #25354a;
+  border-color: #334963;
   color: #ffffff;
 }
 
 .main {
+  min-width: 0;
   padding: 1.25rem;
   overflow: auto;
 }
 
 .main.centered {
   grid-column: 1 / -1;
+  min-height: 100vh;
   display: grid;
   place-items: center;
+  padding: 1.5rem;
 }
 
 .login-panel {
-  width: min(920px, 100%);
+  width: min(980px, 100%);
   display: grid;
-  grid-template-columns: 1fr 390px;
-  gap: 1.25rem;
+  grid-template-columns: minmax(0, 1fr) 420px;
+  gap: 1.4rem;
   align-items: center;
+}
+
+.login-copy {
+  max-width: 520px;
 }
 
 .login-copy h1,
 .topbar h1 {
   margin: 0;
+  color: #121a27;
   letter-spacing: 0;
 }
 
+.login-copy h1 {
+  font-size: clamp(2rem, 3.5vw, 3rem);
+}
+
+.login-copy p:not(.eyebrow) {
+  margin: 0.85rem 0 0;
+  color: #405066;
+  font-size: 1.02rem;
+}
+
+.login-bullets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin-top: 1.2rem;
+}
+
+.login-bullets span,
+.latency {
+  border: 1px solid #c8d0da;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #405066;
+  padding: 0.38rem 0.66rem;
+  font-size: 0.84rem;
+}
+
+.login-card {
+  box-shadow: 0 20px 60px rgba(15, 23, 42, 0.08);
+}
+
 .eyebrow {
-  margin: 0 0 0.3rem;
-  color: #607083;
-  font-size: 0.82rem;
+  margin: 0 0 0.25rem;
+  color: #66778c;
+  font-size: 0.78rem;
+  font-weight: 750;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
 .topbar {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   gap: 1rem;
-  margin-bottom: 1rem;
+  margin: 0 auto 1rem;
+  max-width: 1440px;
+}
+
+.topbar h1 {
+  font-size: clamp(1.65rem, 2vw, 2.35rem);
 }
 
 .userbox {
   display: flex;
   align-items: center;
-  gap: 0.7rem;
+  gap: 0.65rem;
   background: #ffffff;
   border: 1px solid #dce2ea;
   border-radius: 8px;
-  padding: 0.5rem;
+  padding: 0.45rem;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.04);
+}
+
+.userbox span {
+  font-weight: 700;
 }
 
 .userbox small {
-  color: #607083;
+  color: #66778c;
+}
+
+.stack,
+.two-column {
+  max-width: 1440px;
+  margin: 0 auto;
 }
 
 .stack {
@@ -1050,14 +1157,20 @@ nav button:hover {
 
 .two-column {
   display: grid;
-  grid-template-columns: minmax(360px, 0.9fr) minmax(420px, 1.1fr);
+  grid-template-columns: minmax(380px, 0.92fr) minmax(440px, 1.08fr);
   gap: 1rem;
+  align-items: start;
 }
 
-.panel {
+.panel,
+.metric {
   background: #ffffff;
   border: 1px solid #dce2ea;
   border-radius: 8px;
+  box-shadow: 0 1px 0 rgba(15, 23, 42, 0.03);
+}
+
+.panel {
   padding: 1rem;
 }
 
@@ -1065,13 +1178,26 @@ nav button:hover {
   display: flex;
   justify-content: space-between;
   gap: 0.75rem;
-  align-items: center;
+  align-items: flex-start;
   margin-bottom: 1rem;
 }
 
 .panel-title h2 {
   margin: 0;
+  color: #162033;
   font-size: 1rem;
+}
+
+.panel-title p {
+  margin: 0.25rem 0 0;
+  color: #66778c;
+  font-size: 0.86rem;
+}
+
+.panel-title > span {
+  color: #66778c;
+  font-size: 0.84rem;
+  white-space: nowrap;
 }
 
 .form-grid {
@@ -1090,6 +1216,7 @@ label {
   gap: 0.35rem;
   color: #405066;
   font-size: 0.9rem;
+  font-weight: 650;
 }
 
 input,
@@ -1102,6 +1229,19 @@ textarea {
   background: #ffffff;
   padding: 0.6rem 0.7rem;
   resize: vertical;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: #0f766e;
+  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.14);
+  outline: none;
+}
+
+textarea {
+  min-height: 168px;
 }
 
 .checkline {
@@ -1121,20 +1261,35 @@ textarea {
 }
 
 .metric {
-  background: #ffffff;
-  border: 1px solid #dce2ea;
-  border-radius: 8px;
+  position: relative;
+  min-height: 104px;
   padding: 1rem;
+  overflow: hidden;
+}
+
+.metric::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0;
+  height: 3px;
+  background: #c8d0da;
+}
+
+.metric.good::after {
+  background: #0f766e;
 }
 
 .metric span {
   display: block;
-  color: #607083;
+  color: #66778c;
   margin-bottom: 0.45rem;
 }
 
 .metric strong {
-  font-size: 1.45rem;
+  color: #121a27;
+  font-size: 1.52rem;
+  line-height: 1.1;
+  overflow-wrap: anywhere;
 }
 
 .chips {
@@ -1147,11 +1302,33 @@ textarea {
   border: 1px solid #c8d0da;
   border-radius: 999px;
   padding: 0.35rem 0.65rem;
-  background: #f7fafc;
+  background: #f8fafc;
+  color: #334155;
+  font-size: 0.88rem;
+}
+
+.table-panel {
+  padding: 0;
+  overflow: hidden;
+}
+
+.table-panel .panel-title {
+  margin: 0;
+  padding: 0.95rem 1rem;
+  border-bottom: 1px solid #e4e9ef;
 }
 
 .table-wrap {
   overflow: auto;
+}
+
+.table-wrap::-webkit-scrollbar {
+  height: 10px;
+}
+
+.table-wrap::-webkit-scrollbar-thumb {
+  background: #c8d0da;
+  border-radius: 999px;
 }
 
 table {
@@ -1163,20 +1340,22 @@ table {
 th,
 td {
   border-bottom: 1px solid #e4e9ef;
-  padding: 0.65rem;
+  padding: 0.72rem 0.85rem;
   text-align: left;
   vertical-align: top;
 }
 
 th {
-  color: #607083;
-  font-size: 0.82rem;
-  font-weight: 700;
+  color: #66778c;
+  font-size: 0.78rem;
+  font-weight: 800;
   background: #f8fafc;
+  text-transform: uppercase;
 }
 
 td {
   max-width: 320px;
+  color: #263447;
   overflow-wrap: anywhere;
 }
 
@@ -1189,8 +1368,10 @@ td {
 }
 
 .empty {
+  height: 112px;
   text-align: center;
-  color: #607083;
+  color: #66778c;
+  background: #fbfcfe;
 }
 
 pre {
@@ -1217,6 +1398,7 @@ summary {
   cursor: pointer;
   color: #405066;
   margin-bottom: 0.5rem;
+  font-weight: 700;
 }
 
 .toast {
@@ -1224,9 +1406,10 @@ summary {
   justify-content: space-between;
   gap: 1rem;
   align-items: center;
+  max-width: 1440px;
+  margin: 0 auto 1rem;
   border-radius: 8px;
   padding: 0.8rem 1rem;
-  margin-bottom: 1rem;
 }
 
 .error {
@@ -1247,6 +1430,7 @@ summary {
 .modal-backdrop {
   position: fixed;
   inset: 0;
+  z-index: 20;
   display: grid;
   place-items: center;
   padding: 1rem;
@@ -1273,27 +1457,60 @@ summary {
   margin-top: 1rem;
 }
 
+@media (max-width: 1100px) {
+  .metric-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .two-column {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 960px) {
   .app {
     grid-template-columns: 1fr;
   }
 
   .sidebar {
-    position: static;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    height: auto;
+    padding: 0.7rem 0.9rem;
+  }
+
+  .brand {
+    padding: 0.2rem 0 0.6rem;
   }
 
   nav {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    display: flex;
+    gap: 0.45rem;
+    margin: 0 -0.2rem;
+    padding: 0 0.2rem 0.15rem;
+    overflow-x: auto;
+  }
+
+  nav button {
+    width: auto;
+    flex: 0 0 auto;
+    min-width: 116px;
+    padding: 0.5rem 0.62rem;
+  }
+
+  .main {
+    padding: 1rem;
   }
 
   .login-panel,
-  .two-column,
-  .metric-grid {
+  .metric-grid,
+  .form-grid {
     grid-template-columns: 1fr;
   }
 
-  .form-grid {
-    grid-template-columns: 1fr;
+  .login-panel {
+    align-items: stretch;
   }
 
   .topbar {
@@ -1303,6 +1520,54 @@ summary {
 
   .userbox {
     justify-content: space-between;
+  }
+}
+
+@media (max-width: 560px) {
+  :root {
+    font-size: 14px;
+  }
+
+  .main.centered {
+    place-items: start stretch;
+    padding: 1rem;
+  }
+
+  .login-panel {
+    gap: 1rem;
+  }
+
+  .login-copy h1,
+  .topbar h1 {
+    font-size: 1.8rem;
+  }
+
+  .panel-title {
+    flex-direction: column;
+  }
+
+  .panel-title button,
+  .panel-title > div + div {
+    align-self: stretch;
+  }
+
+  .panel-title > div + div {
+    display: grid;
+    gap: 0.5rem;
+  }
+
+  .metric-grid {
+    gap: 0.75rem;
+  }
+
+  .metric {
+    min-height: 92px;
+  }
+
+  .modal-actions,
+  .toast {
+    align-items: stretch;
+    flex-direction: column;
   }
 }
 </style>
