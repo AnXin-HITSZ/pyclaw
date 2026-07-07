@@ -21,6 +21,9 @@ from openclaw.cli import DEFAULT_MODEL, DEFAULT_SYSTEM_PROMPT, sanitize_session_
 from openclaw.config import load_env_file
 from openclaw.llm.openai_provider import OpenAIProvider
 from openclaw.llm.provider import MockProvider
+from openclaw.channels.config import load_channel_agent_config
+from openclaw.channels.dispatcher import build_channel_session_id
+from openclaw.channels.api_routes import create_channel_router
 from openclaw.llm.types import AssistantMessage, message_to_dict
 from openclaw.session.agent_session import AgentSession, SessionContextPolicy
 from openclaw.session.context import CompactionSettings
@@ -72,6 +75,44 @@ class AgentRunResponse(BaseModel):
 
 app = FastAPI(title="pyclaw API", version="0.1.0")
 
+
+
+async def build_channel_agent_session(message: Any) -> AgentSession:
+    load_env_file_if_configured()
+    channel_agent = load_channel_agent_config()
+    request = AgentRunRequest(
+        prompt="channel bootstrap",
+        session_id=build_channel_session_id(message),
+        provider=channel_agent.provider,
+        model=channel_agent.model,
+        system=channel_agent.system or DEFAULT_SYSTEM_PROMPT,
+        api_mode=channel_agent.api_mode,
+        chatdata_dir=channel_agent.chatdata_dir,
+        tool_profile=channel_agent.tool_profile,
+        shell_approval=channel_agent.shell_approval,
+    )
+    session_id = build_channel_session_id(message)
+    cwd = os.getcwd()
+    model = request.model or os.environ.get("OPENAI_MODEL") or DEFAULT_MODEL
+    provider = build_provider(request, model=model)
+    policy = build_policy(request)
+    agent = Agent(
+        model=model,
+        provider=provider,
+        system_prompt=request.system,
+        tools=build_tool_registry(policy),
+        model_options=build_model_options(request),
+        session_id=session_id,
+        cwd=cwd,
+        workspace_dir=cwd,
+        chatdata_dir=resolve_chatdata_dir(request.chatdata_dir),
+        readonly=policy.readonly,
+        tool_metadata=build_tool_metadata(request),
+    )
+    return build_session(request, agent, session_id=session_id, cwd=cwd)
+
+
+app.include_router(create_channel_router(session_factory=build_channel_agent_session))
 
 def require_api_token(authorization: str | None = Header(default=None)) -> None:
     expected = os.environ.get("PYCLAW_API_TOKEN")

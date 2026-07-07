@@ -8,3 +8,8 @@ data:
   {{- range $key, $value := .Values.env }}
   {{ $key }}: {{ $value | quote }}
   {{- end }}
+  {{- if .Values.ingressQueue.enabled }}
+  {{- if not (hasKey .Values.env "OPENCLAW_INGRESS_QUEUE_STALE_AFTER_SECONDS") }}
+  OPENCLAW_INGRESS_QUEUE_STALE_AFTER_SECONDS: {{ .Values.ingressQueue.staleAfterSeconds | quote }}
+  {{- end }}
+  {{- end }}

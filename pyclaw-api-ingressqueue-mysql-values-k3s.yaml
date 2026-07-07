@@ -1,0 +1,6 @@
+ingressQueue:
+  enabled: true
+  staleAfterSeconds: 300
+  mysql:
+    dsnSecretName: pyclaw-ingress-queue-secret
+    dsnSecretKey: OPENCLAW_INGRESS_QUEUE_DSN

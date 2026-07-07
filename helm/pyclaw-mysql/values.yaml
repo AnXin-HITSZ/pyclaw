@@ -1,0 +1,81 @@
+replicaCount: 1
+
+image:
+  repository: mysql
+  tag: "8.4"
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+service:
+  type: ClusterIP
+  port: 3306
+
+mysql:
+  database: pyclaw
+  user: pyclaw
+  auth:
+    createSecret: false
+    existingSecret: pyclaw-mysql-secret
+    rootPasswordKey: MYSQL_ROOT_PASSWORD
+    databaseKey: MYSQL_DATABASE
+    userKey: MYSQL_USER
+    passwordKey: MYSQL_PASSWORD
+    values:
+      rootPassword: ""
+      password: ""
+
+config:
+  characterSetServer: utf8mb4
+  collationServer: utf8mb4_unicode_ci
+  defaultAuthenticationPlugin: caching_sha2_password
+  extra: ""
+
+persistence:
+  enabled: true
+  storageClassName: ""
+  accessModes:
+    - ReadWriteOnce
+  size: 10Gi
+  mountPath: /var/lib/mysql
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 512Mi
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+
+podAnnotations: {}
+podLabels: {}
+podSecurityContext:
+  fsGroup: 999
+securityContext: {}
+
+startupProbe:
+  enabled: true
+  initialDelaySeconds: 20
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 30
+
+readinessProbe:
+  enabled: true
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 6
+
+livenessProbe:
+  enabled: true
+  initialDelaySeconds: 60
+  periodSeconds: 30
+  timeoutSeconds: 5
+  failureThreshold: 6
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

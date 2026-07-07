@@ -374,3 +374,126 @@ openclaw/
 微信和飞书接入的核心难点不在于调用某个 HTTP API，而在于消息可靠性：验签、幂等、ACK 时机、同会话顺序、失败重试、状态缓存、发送回执。
 
 `pyclaw` 当前应保留 OpenClaw 的插件化 Channel 思路，但平台范围只聚焦微信和飞书。这样可以先把国内常用协作入口跑通，同时避免在早期维护过多平台适配带来的复杂度。
+
+## 13. Ingress Queue 的 MySQL 生产后端补充
+
+第一阶段保留 SQLite 作为本地开发和单机验证默认实现，但生产环境可以切换到 MySQL。原因是微信 / 飞书入站消息队列后续会被多个组件共享：webhook receiver、message worker、Agent dispatcher、审计页面和运维脚本都可能需要读取或更新消息状态。
+
+因此 Python 版 `pyclaw` 的 durable ingress queue 应抽象为统一接口：
+
+```text
+IngressQueue
+  enqueue(event_id, channel, payload, lane_key=None)
+  claim_next(owner_id, blocked_lane_keys=())
+  complete(claim)
+  fail(claim, error=None)
+  release(claim)
+  get(event_id)
+```
+
+当前后端实现：
+
+```text
+SQLiteIngressQueue
+  默认实现。
+  适合本地开发、单机 demo、小规模测试。
+  不需要额外服务。
+
+MySQLIngressQueue
+  生产候选实现。
+  适合 K3s / 多 worker / 长期运行。
+  依赖 pymysql，可通过 pyclaw[mysql] 安装。
+```
+
+配置方式：
+
+```text
+OPENCLAW_INGRESS_QUEUE_BACKEND=sqlite
+OPENCLAW_INGRESS_QUEUE_SQLITE_PATH=chatdata/ingress_queue.db
+
+OPENCLAW_INGRESS_QUEUE_BACKEND=mysql
+OPENCLAW_INGRESS_QUEUE_DSN=mysql+pymysql://user:pass@mysql:3306/pyclaw?charset=utf8mb4&table=ingress_queue
+OPENCLAW_INGRESS_QUEUE_STALE_AFTER_SECONDS=300
+```
+
+MySQL 表结构保留与 SQLite 一致的核心语义：
+
+```text
+event_id      入站事件唯一 ID，主键
+channel       平台名，wechat 或 feishu
+lane_key      同会话顺序 key
+payload_json  原始 payload JSON
+status        pending / claimed / completed / failed
+attempts      claim 次数
+owner_id      当前 worker
+claim_token   claim 所有权 token
+error         fail 诊断信息
+created_at / updated_at / claimed_at
+```
+
+并发领取时，MySQL 后端使用事务和：
+
+```sql
+FOR UPDATE SKIP LOCKED
+```
+
+让多个 worker 可以并发 claim 不同消息，避免抢到同一行。它仍然会检查同一 `lane_key` 是否已有 active claim，因此同一微信 openid / 飞书 chat_id 的消息保持串行，不同会话可以并发处理。
+
+实现原则：
+
+```text
+1. SQLite 不删除，继续作为默认。
+2. MySQL 是可选依赖，不影响未安装 pymysql 的环境。
+3. 上层代码依赖 IngressQueue 协议，不直接绑定 SQLite。
+4. 表名只允许安全 identifier，避免把 DSN query 参数变成 SQL 注入入口。
+5. 真实部署时 MySQL 用户权限应限制在目标 database/table 范围内。
+```
+
+## 14. 本轮 MySQL 与 Channel Runtime 补充结论
+
+本轮在第 13 节 MySQL 队列设计基础上，同时补齐了 Channel runtime 的最小可执行桥接层。
+
+新增代码边界：
+
+```text
+openclaw/channels/config.py       平台配置加载
+openclaw/channels/dispatcher.py   PreparedInboundMessage -> AgentSession -> send adapter
+openclaw/channels/http.py         标准库异步 HTTP JSON helper
+openclaw/channels/worker.py       ingress queue 消费 worker
+```
+
+这些文件仍然不是微信 / 飞书真实 SDK adapter，而是后续 adapter 需要接入的运行时骨架。也就是说：
+
+```text
+平台 webhook / 长连接
+  -> RawInboundEvent
+  -> IngressQueue.enqueue
+  -> IngressQueueWorker.claim_next
+  -> receive_adapter.prepare
+  -> ChannelTurnDispatcher.dispatch
+  -> AgentSession.run_prompt
+  -> send_adapter.text
+  -> queue.complete / queue.fail
+```
+
+MySQL 队列当前作为可选生产后端；SQLite 继续作为默认本地后端。
+
+## 15. 微信 / 飞书 Adapter 当前边界
+
+当前 adapter 已经可以覆盖无真实网络依赖的核心转换路径：
+
+```text
+微信：签名校验、XML/JSON payload 解析、RawInboundEvent 构造、PreparedInboundMessage 构造、文本发送 payload 构造。
+飞书：challenge、token/signature 辅助、事件 payload 解析、RawInboundEvent 构造、PreparedInboundMessage 构造、文本/卡片发送 payload 构造。
+```
+
+仍未完成的生产能力：
+
+```text
+微信 access_token 持久缓存与刷新锁。
+微信企业微信 / 公众号多消息类型完整适配。
+飞书加密事件解密。
+飞书长连接事件接入。
+真实 webhook FastAPI route 与 K3s ingress 暴露。
+真实平台 API 集成测试。
+```

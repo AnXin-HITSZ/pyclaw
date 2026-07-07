@@ -1,0 +1,11 @@
+pyclaw MySQL has been installed.
+
+Release: {{ .Release.Name }}
+Namespace: {{ .Release.Namespace }}
+Service: {{ include "pyclaw-mysql.fullname" . }}:{{ .Values.service.port }}
+
+Check pod status:
+  kubectl -n {{ .Release.Namespace }} get pods -l app.kubernetes.io/instance={{ .Release.Name }}
+
+Check MySQL inside the pod:
+  kubectl -n {{ .Release.Namespace }} exec statefulset/{{ include "pyclaw-mysql.fullname" . }} -- sh -c 'mysqladmin ping -h 127.0.0.1 -uroot -p"$MYSQL_ROOT_PASSWORD"'

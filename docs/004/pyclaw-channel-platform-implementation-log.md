@@ -394,3 +394,279 @@ Ran 9 tests OK
 6. 平台配置加载：从 env / YAML / Secret 映射到 `ChannelPlugin.config`。
 
 这些补齐后，pyclaw 就可以从 HTTP API / CLI 扩展到微信和飞书消息入口。
+
+## 13. MySQL Durable Ingress Queue 补充实现
+
+本次在不破坏现有 SQLite 行为的前提下，新增 MySQL 入站队列后端。
+
+### 13.1 代码变更
+
+涉及文件：
+
+```text
+openclaw/channels/message/ingress_queue.py
+openclaw/channels/message/__init__.py
+pyproject.toml
+tests/test_channels.py
+```
+
+新增类型：
+
+```text
+IngressQueue
+MySQLIngressQueueConfig
+MySQLIngressQueue
+```
+
+新增 helper：
+
+```text
+parse_mysql_dsn()
+validate_mysql_identifier()
+create_ingress_queue_from_env()
+```
+
+### 13.2 后端选择
+
+默认仍然是 SQLite：
+
+```text
+OPENCLAW_INGRESS_QUEUE_BACKEND=sqlite
+```
+
+生产环境可切换 MySQL：
+
+```text
+OPENCLAW_INGRESS_QUEUE_BACKEND=mysql
+OPENCLAW_INGRESS_QUEUE_DSN=mysql+pymysql://user:pass@mysql:3306/pyclaw?charset=utf8mb4&table=ingress_queue
+```
+
+### 13.3 MySQL 行为
+
+MySQL 后端保持与 SQLite 后端一致的调用语义：
+
+```text
+enqueue       幂等写入，event_id 已存在则返回 False
+claim_next    领取 pending 消息，写 owner_id / claim_token / claimed_at
+complete      claim token 匹配时置 completed
+fail          claim token 匹配时置 failed 并记录 error
+release       claim token 匹配时释放回 pending
+get           查询单条 event record
+```
+
+并发策略：
+
+```text
+claim_next 使用事务 + FOR UPDATE SKIP LOCKED。
+同一 lane_key 仍只允许一个 active claim。
+stale_after_seconds 到期后会释放 claimed 消息，避免 worker 崩溃永久阻塞。
+```
+
+### 13.4 依赖变更
+
+`pyproject.toml` 新增：
+
+```toml
+mysql = ["pymysql>=1.1.1"]
+```
+
+`all` extra 也包含 `pymysql`。
+
+### 13.5 测试
+
+新增测试覆盖：
+
+```text
+parse_mysql_dsn() 能解析 mysql+pymysql DSN。
+validate_mysql_identifier() 会拒绝危险表名。
+create_ingress_queue_from_env() 默认可创建 SQLiteIngressQueue。
+```
+
+已验证：
+
+```powershell
+py -m unittest tests.test_channels
+py -m unittest
+py -m compileall openclaw tests
+```
+
+结果：
+
+```text
+tests.test_channels: Ran 11 tests OK
+全量 unittest: Ran 105 tests OK, skipped=4
+compileall: OK
+```
+
+## 14. Channel Runtime 桥接层补充实现
+
+本次继续补充第 12 节列出的后续建议中的一部分，使 Channel 平台不再只停留在类型定义和队列层。
+
+新增文件：
+
+```text
+openclaw/channels/config.py
+openclaw/channels/dispatcher.py
+openclaw/channels/http.py
+openclaw/channels/worker.py
+```
+
+### 14.1 配置加载
+
+`load_channel_config(channel)` 支持以下优先级：
+
+```text
+1. OPENCLAW_<CHANNEL>_CONFIG_JSON
+2. OPENCLAW_<CHANNEL>_CONFIG_FILE
+3. OPENCLAW_CHANNEL_CONFIG_FILE 中按 channel 选择
+4. 微信 / 飞书专属环境变量
+```
+
+返回 `ChannelRuntimeConfig`，并提供：
+
+```text
+require(key)   必填配置读取，缺失时报错
+get_str(key)   字符串配置读取
+get_bool(key)  布尔配置读取
+```
+
+### 14.2 Dispatcher
+
+`ChannelTurnDispatcher` 负责把平台归一化消息交给 session：
+
+```text
+PreparedInboundMessage
+  -> session_factory(message)
+  -> AgentSession.run_prompt(message.text)
+  -> assistant_text
+  -> send_adapter.text(...)
+```
+
+如果当前 channel 注册了 send adapter，Agent 回复会被包装为 `ChannelMessageSendTextContext` 再发回平台。
+
+### 14.3 Worker
+
+`IngressQueueWorker.process_one()` 的流程：
+
+```text
+queue.claim_next(owner_id)
+  -> raw_event_from_claim
+  -> receive_adapters[channel].prepare
+  -> dispatcher.dispatch
+  -> queue.complete
+```
+
+如果中间任意步骤失败，会调用：
+
+```text
+queue.fail(claim, error=str(exc))
+```
+
+这样 worker 崩溃或 adapter 出错时，队列状态可诊断，而不是静默丢消息。
+
+### 14.4 HTTP helper
+
+`UrlLibHttpClient` 使用标准库 `urllib.request`，并通过 `asyncio.to_thread()` 提供 async 接口。这样本阶段不新增 `httpx` 以外的强依赖，也便于后续 fake client 单测。
+
+### 14.5 测试补充
+
+新增测试覆盖：
+
+```text
+load_channel_config() 从环境变量读取微信配置。
+ChannelTurnDispatcher 能构建稳定 channel session id，并通过 send adapter 发送 Agent 回复。
+IngressQueueWorker 能 claim SQLite 队列消息、prepare、dispatch 并 complete。
+MySQL DSN 的 charset / table identifier 安全校验。
+```
+
+最新验证：
+
+```powershell
+py -m unittest tests.test_channels
+py -m unittest
+py -m compileall openclaw tests
+```
+
+## 15. 微信 / 飞书 Adapter 骨架补充实现
+
+本次工作区还补充了微信与飞书的 adapter 骨架，范围是 webhook payload 解析、签名辅助、文本发送 adapter，不包含真实平台长连接 monitor 或完整 SDK 能力。
+
+新增文件：
+
+```text
+openclaw/plugins/wechat/adapter.py
+openclaw/plugins/feishu/adapter.py
+openclaw/plugins/feishu/signature.py
+```
+
+同步更新导出：
+
+```text
+openclaw/plugins/wechat/__init__.py
+openclaw/plugins/feishu/__init__.py
+```
+
+### 15.1 微信 adapter
+
+当前支持：
+
+```text
+build_wechat_webhook_event()
+parse_wechat_payload()
+WeChatReceiveAdapter.prepare()
+WeChatTextSendAdapter.text()
+```
+
+处理链路：
+
+```text
+query signature / timestamp / nonce
+  -> verify_wechat_signature
+  -> XML / JSON body parse
+  -> RawInboundEvent(channel="wechat")
+  -> PreparedInboundMessage
+  -> customer text send API payload
+  -> MessageReceipt
+```
+
+### 15.2 飞书 adapter
+
+当前支持：
+
+```text
+build_feishu_signature()
+verify_feishu_signature()
+build_feishu_webhook_event()
+FeishuReceiveAdapter.prepare()
+FeishuTextSendAdapter.text()
+FeishuTextSendAdapter.card()
+```
+
+处理链路：
+
+```text
+optional sign_secret header verification
+  -> JSON body parse
+  -> challenge response support
+  -> encrypted payload 显式拒绝
+  -> RawInboundEvent(channel="feishu")
+  -> PreparedInboundMessage
+  -> im/v1/messages payload
+  -> MessageReceipt
+```
+
+### 15.3 测试补充
+
+新增 fake HTTP 测试，不访问真实微信或飞书网络：
+
+```text
+微信 XML webhook 解析、prepare、文本发送 payload 与 receipt。
+飞书 event callback 解析、prepare、文本发送 Authorization / payload / receipt。
+```
+
+最新专项测试：
+
+```text
+py -m unittest tests.test_channels
+Ran 16 tests OK
+```

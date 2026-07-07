@@ -54,21 +54,62 @@ resources:
     memory: 1Gi
 
 env:
+  # Base runtime.
   OPENCLAW_CHATDATA_DIR: /app/chatdata
+
+  # LLM provider. Use chat_completions for OpenAI-compatible gateways.
   OPENAI_MODEL: gpt-4.1-mini
   OPENAI_API_MODE: responses
 
+  # Channel Agent runtime.
+  OPENCLAW_CHANNEL_PROVIDER: openai
+  OPENCLAW_CHANNEL_API_MODE: auto
+  OPENCLAW_CHANNEL_TOOL_PROFILE: messaging
+  OPENCLAW_CHANNEL_SHELL_APPROVAL: deny
+  OPENCLAW_CHANNEL_WEBHOOK_SYNC: "false"
+
+  # Channel platform switches. Keep disabled until secrets are configured.
+  OPENCLAW_WECHAT_ENABLED: "false"
+  OPENCLAW_WECHAT_NAME: wechat
+  OPENCLAW_FEISHU_ENABLED: "false"
+  OPENCLAW_FEISHU_NAME: feishu
+
 extraEnv: []
+ingressQueue:
+  enabled: true
+  staleAfterSeconds: 300
+  mysql:
+    dsnSecretName: ""
+    dsnSecretKey: OPENCLAW_INGRESS_QUEUE_DSN
 
 secret:
   create: true
   existingSecret: ""
   values:
+    # pyclaw API and LLM provider secrets.
     OPENAI_API_KEY: ""
     OPENAI_BASE_URL: ""
     OPENAI_ORGANIZATION: ""
     OPENAI_PROJECT: ""
     PYCLAW_API_TOKEN: ""
+
+    # WeChat channel secrets.
+    OPENCLAW_WECHAT_ACCOUNT_ID: ""
+    OPENCLAW_WECHAT_TOKEN: ""
+    OPENCLAW_WECHAT_APP_ID: ""
+    OPENCLAW_WECHAT_APP_SECRET: ""
+    OPENCLAW_WECHAT_ACCESS_TOKEN: ""
+    OPENCLAW_WECHAT_API_BASE_URL: ""
+
+    # Feishu channel secrets.
+    OPENCLAW_FEISHU_ACCOUNT_ID: ""
+    OPENCLAW_FEISHU_APP_ID: ""
+    OPENCLAW_FEISHU_APP_SECRET: ""
+    OPENCLAW_FEISHU_VERIFICATION_TOKEN: ""
+    OPENCLAW_FEISHU_SIGN_SECRET: ""
+    OPENCLAW_FEISHU_ENCRYPT_KEY: ""
+    OPENCLAW_FEISHU_TENANT_ACCESS_TOKEN: ""
+    OPENCLAW_FEISHU_API_BASE_URL: ""
 
 persistence:
   enabled: true

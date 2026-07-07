@@ -44,7 +44,8 @@ jobs:
 
           ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_ed25519 ${{ secrets.ECS_USER }}@${{ secrets.ECS_HOST }} "
             cd /opt/pyclaw &&
-            git pull &&
+            git fetch origin ${{ github.ref_name }} &&
+            git reset --hard ${{ github.sha }} &&
             sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml helm upgrade --install spring-backend ./spring-backend/helm \
               -n pyclaw \
               --create-namespace \

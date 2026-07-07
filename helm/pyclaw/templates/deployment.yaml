@@ -48,9 +48,18 @@ spec:
             - secretRef:
                 name: {{ include "pyclaw.secretName" . }}
                 optional: true
-          {{- with .Values.extraEnv }}
+          {{- if or .Values.extraEnv (and .Values.ingressQueue.enabled .Values.ingressQueue.mysql.dsnSecretName) }}
           env:
+            {{- if and .Values.ingressQueue.enabled .Values.ingressQueue.mysql.dsnSecretName }}
+            - name: OPENCLAW_INGRESS_QUEUE_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.ingressQueue.mysql.dsnSecretName }}
+                  key: {{ .Values.ingressQueue.mysql.dsnSecretKey }}
+            {{- end }}
+            {{- with .Values.extraEnv }}
             {{- toYaml . | nindent 12 }}
+            {{- end }}
           {{- end }}
           {{- if .Values.readinessProbe.enabled }}
           readinessProbe:
