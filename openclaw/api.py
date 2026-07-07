@@ -77,6 +77,15 @@ app = FastAPI(title="pyclaw API", version="0.1.0")
 
 
 
+
+def include_routes(target_app: FastAPI, router: Any) -> None:
+    target_app.include_router(router)
+    route_paths = {getattr(route, "path", None) for route in target_app.routes}
+    missing_routes = [route for route in getattr(router, "routes", []) if getattr(route, "path", None) not in route_paths]
+    if missing_routes:
+        target_app.router.routes.extend(missing_routes)
+
+
 async def build_channel_agent_session(message: Any) -> AgentSession:
     load_env_file_if_configured()
     channel_agent = load_channel_agent_config()
@@ -112,7 +121,7 @@ async def build_channel_agent_session(message: Any) -> AgentSession:
     return build_session(request, agent, session_id=session_id, cwd=cwd)
 
 
-app.include_router(create_channel_router(session_factory=build_channel_agent_session))
+include_routes(app, create_channel_router(session_factory=build_channel_agent_session))
 
 def require_api_token(authorization: str | None = Header(default=None)) -> None:
     expected = os.environ.get("PYCLAW_API_TOKEN")

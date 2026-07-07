@@ -23,6 +23,15 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(response.json()["status"], "ok")
         self.assertEqual(response.json()["service"], "pyclaw-api")
 
+    def test_channel_webhook_routes_are_registered(self) -> None:
+        from openclaw.api import app
+
+        routes = {(getattr(route, "path", None), tuple(sorted(getattr(route, "methods", []) or []))) for route in app.routes}
+
+        self.assertIn(("/v1/channels/wechat/webhook", ("GET",)), routes)
+        self.assertIn(("/v1/channels/wechat/webhook", ("POST",)), routes)
+        self.assertIn(("/v1/channels/feishu/webhook", ("POST",)), routes)
+
     def test_agent_run_with_mock_provider_writes_transcript(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             response = self.client.post(
