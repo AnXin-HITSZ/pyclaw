@@ -115,12 +115,18 @@ async def _build_wechat_passive_reply_xml(event: Any, session_factory: SessionFa
             ChannelTurnDispatcher(session_factory=session_factory).dispatch(prepared),
             timeout=timeout,
         )
-        text = turn.assistant_text.strip() or fallback
+        text = _passive_reply_text(turn, fallback)
     except Exception:
         LOGGER.exception("failed to build WeChat passive reply: event_id=%s", getattr(event, "id", "unknown"))
         text = fallback
     return build_wechat_passive_text_response(inbound_payload=dict(event.platform_payload), text=text)
 
+
+def _passive_reply_text(turn: Any, fallback: str) -> str:
+    assistant = getattr(turn, "assistant", None)
+    if getattr(assistant, "error_message", None) or getattr(assistant, "stop_reason", None) == "aborted":
+        return fallback
+    return str(getattr(turn, "assistant_text", "")).strip() or fallback
 
 def _reply_mode(config: Any) -> str:
     mode = (config.get_str("reply_mode") or ASYNC_WORKER_REPLY_MODE).strip().lower().replace("-", "_")

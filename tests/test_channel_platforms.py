@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import time
 import unittest
+from types import SimpleNamespace
 from uuid import uuid4
 
 from openclaw.channels.config import ChannelRuntimeConfig
@@ -35,10 +36,11 @@ from openclaw.plugins.wechat.signature import build_wechat_signature
 try:
     from fastapi import HTTPException
 
-    from openclaw.channels.api_routes import _ensure_channel_enabled
+    from openclaw.channels.api_routes import _ensure_channel_enabled, _passive_reply_text
 except ModuleNotFoundError:  # pragma: no cover - depends on optional api extra.
     HTTPException = None
     _ensure_channel_enabled = None
+    _passive_reply_text = None
 
 
 class MemoryIngressQueue:
@@ -312,6 +314,16 @@ class WorkerDispatcherTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(event.id, "evt-no-time")
         self.assertEqual(event.channel, "wechat")
         self.assertGreater(event.received_at, 0)
+
+    @unittest.skipIf(_passive_reply_text is None, "fastapi extra is not installed")
+    async def test_passive_reply_uses_fallback_for_cancelled_agent_run(self) -> None:
+        assert _passive_reply_text is not None
+        turn = SimpleNamespace(
+            assistant=AssistantMessage(content=[], stop_reason="aborted", error_message="agent run was cancelled"),
+            assistant_text="agent run was cancelled",
+        )
+
+        self.assertEqual(_passive_reply_text(turn, "fallback text"), "fallback text")
 
     @unittest.skipIf(_ensure_channel_enabled is None, "fastapi extra is not installed")
     async def test_disabled_channel_is_rejected(self) -> None:
