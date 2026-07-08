@@ -67,6 +67,9 @@ env:
   OPENCLAW_CHANNEL_TOOL_PROFILE: messaging
   OPENCLAW_CHANNEL_SHELL_APPROVAL: deny
   OPENCLAW_CHANNEL_WEBHOOK_SYNC: "false"
+  OPENCLAW_CHANNEL_CONFIG_SOURCE: spring
+  OPENCLAW_SPRING_BACKEND_BASE_URL: http://pyclaw-spring-backend.pyclaw.svc.cluster.local:8080
+  OPENCLAW_CHANNEL_CONFIG_TIMEOUT_SECONDS: "3"
 
   # Channel platform switches. Keep disabled until secrets are configured.
   OPENCLAW_WECHAT_ENABLED: "false"

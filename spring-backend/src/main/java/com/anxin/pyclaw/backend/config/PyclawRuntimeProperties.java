@@ -6,7 +6,13 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public record PyclawRuntimeProperties(
         String baseUrl,
         String apiToken,
+        String internalToken,
         int connectTimeoutSeconds,
         int readTimeoutSeconds
 ) {
+    public PyclawRuntimeProperties {
+        if (internalToken == null || internalToken.isBlank()) {
+            internalToken = apiToken;
+        }
+    }
 }

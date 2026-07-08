@@ -4,6 +4,9 @@ from __future__ import annotations
 
 import json
 import os
+import urllib.error
+import urllib.parse
+import urllib.request
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -69,13 +72,17 @@ def load_channel_config(channel: str, *, account_id: str | None = None) -> Chann
     """Load a channel config from JSON/YAML/env variables.
 
     Priority:
-    1. OPENCLAW_<CHANNEL>_CONFIG_JSON
-    2. OPENCLAW_<CHANNEL>_CONFIG_FILE
-    3. OPENCLAW_CHANNEL_CONFIG_FILE, keyed by channel
-    4. Channel-specific environment variables
+    1. Spring Backend runtime config when OPENCLAW_CHANNEL_CONFIG_SOURCE=spring
+    2. OPENCLAW_<CHANNEL>_CONFIG_JSON
+    3. OPENCLAW_<CHANNEL>_CONFIG_FILE
+    4. OPENCLAW_CHANNEL_CONFIG_FILE, keyed by channel
+    5. Channel-specific environment variables
     """
 
     normalized = channel.strip().lower()
+    if os.environ.get("OPENCLAW_CHANNEL_CONFIG_SOURCE", "").strip().lower() == "spring":
+        return _load_spring_channel_config(normalized, account_id=account_id)
+
     prefix = f"OPENCLAW_{normalized.upper()}_"
     raw = _load_channel_mapping(normalized, prefix)
     if account_id:
@@ -86,6 +93,68 @@ def load_channel_config(channel: str, *, account_id: str | None = None) -> Chann
         name=_optional_str(raw.get("name")),
         enabled=_coerce_bool(raw.get("enabled", True)),
         config={_normalize_key(key): value for key, value in raw.items()},
+    )
+
+
+def _load_spring_channel_config(channel: str, *, account_id: str | None = None) -> ChannelRuntimeConfig:
+    base_url = (
+        os.environ.get("OPENCLAW_SPRING_BACKEND_BASE_URL")
+        or os.environ.get("OPENCLAW_CHANNEL_CONFIG_BASE_URL")
+        or ""
+    ).strip()
+    if not base_url:
+        raise ValueError("OPENCLAW_SPRING_BACKEND_BASE_URL is required when OPENCLAW_CHANNEL_CONFIG_SOURCE=spring")
+
+    token = (
+        os.environ.get("OPENCLAW_CHANNEL_CONFIG_TOKEN")
+        or os.environ.get("OPENCLAW_INTERNAL_API_TOKEN")
+        or os.environ.get("PYCLAW_API_TOKEN")
+        or ""
+    )
+    if not token.strip():
+        raise ValueError("OPENCLAW_CHANNEL_CONFIG_TOKEN or PYCLAW_API_TOKEN is required for Spring channel config")
+
+    query: dict[str, str] = {}
+    if account_id:
+        query["accountId"] = account_id
+    encoded_query = urllib.parse.urlencode(query)
+    url = (
+        base_url.rstrip("/")
+        + "/api/internal/channels/"
+        + urllib.parse.quote(channel, safe="")
+        + "/runtime-config"
+        + (f"?{encoded_query}" if encoded_query else "")
+    )
+    timeout = float(os.environ.get("OPENCLAW_CHANNEL_CONFIG_TIMEOUT_SECONDS", "3"))
+    request = urllib.request.Request(url, headers={"Authorization": "Bearer " + token}, method="GET")
+
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        if exc.code == 404:
+            payload = {"channel": channel, "accountId": account_id, "enabled": False, "config": {}}
+        else:
+            detail = exc.read().decode("utf-8", errors="replace")
+            raise ValueError(f"Spring channel config request failed: HTTP {exc.code} {detail}") from exc
+    except urllib.error.URLError as exc:
+        raise ValueError(f"Spring channel config request failed: {exc.reason}") from exc
+
+    raw = _as_mapping(payload, source="spring channel runtime config")
+    config = _as_mapping(raw.get("config") or {}, source="spring channel runtime config.config")
+    resolved_account_id = raw.get("account_id") or raw.get("accountId") or account_id
+    normalized_config = {_normalize_key(str(key)): value for key, value in config.items()}
+    normalized_config.setdefault("enabled", raw.get("enabled", True))
+    if resolved_account_id:
+        normalized_config.setdefault("account_id", resolved_account_id)
+    if raw.get("name"):
+        normalized_config.setdefault("name", raw.get("name"))
+    return ChannelRuntimeConfig(
+        channel=str(raw.get("channel") or channel).strip().lower(),
+        account_id=_optional_str(resolved_account_id),
+        name=_optional_str(raw.get("name")),
+        enabled=_coerce_bool(raw.get("enabled", True)),
+        config=normalized_config,
     )
 
 

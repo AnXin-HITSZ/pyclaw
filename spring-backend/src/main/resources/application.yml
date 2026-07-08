@@ -34,5 +34,6 @@ pyclaw:
   runtime:
     base-url: ${PYCLAW_BASE_URL:http://localhost:8000}
     api-token: ${PYCLAW_API_TOKEN:}
+    internal-token: ${PYCLAW_INTERNAL_API_TOKEN:${PYCLAW_API_TOKEN:}}
     connect-timeout-seconds: ${PYCLAW_CONNECT_TIMEOUT_SECONDS:3}
     read-timeout-seconds: ${PYCLAW_READ_TIMEOUT_SECONDS:90}

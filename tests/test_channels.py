@@ -141,6 +141,70 @@ class MemoryIngressQueue:
     def _lane_has_active_claim(self, lane_key: str) -> bool:
         return any(record.lane_key == lane_key and record.status == "claimed" for record in self.records.values())
 
+
+class _FakeUrlopenResponse:
+    def __init__(self, payload: dict) -> None:
+        self.payload = payload
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> None:
+        return None
+
+    def read(self) -> bytes:
+        return json.dumps(self.payload).encode("utf-8")
+
+
+class ChannelConfigLoadingTests(unittest.TestCase):
+    def test_load_channel_config_from_spring_backend(self) -> None:
+        payload = {
+            "channel": "wechat",
+            "accountId": "gh_demo",
+            "name": "demo-wechat",
+            "enabled": True,
+            "config": {
+                "token": "wechat-token",
+                "appId": "wx_app",
+            },
+        }
+
+        with patch.dict(
+            os.environ,
+            {
+                "OPENCLAW_CHANNEL_CONFIG_SOURCE": "spring",
+                "OPENCLAW_SPRING_BACKEND_BASE_URL": "http://spring:8080",
+                "PYCLAW_API_TOKEN": "internal-token",
+            },
+            clear=True,
+        ), patch("urllib.request.urlopen", return_value=_FakeUrlopenResponse(payload)) as urlopen:
+            config = load_channel_config("wechat", account_id="gh_demo")
+
+        request = urlopen.call_args.args[0]
+        self.assertEqual(request.full_url, "http://spring:8080/api/internal/channels/wechat/runtime-config?accountId=gh_demo")
+        self.assertEqual(request.headers["Authorization"], "Bearer internal-token")
+        self.assertTrue(config.enabled)
+        self.assertEqual(config.account_id, "gh_demo")
+        self.assertEqual(config.name, "demo-wechat")
+        self.assertEqual(config.require("token"), "wechat-token")
+        self.assertEqual(config.get_str("app_id"), "wx_app")
+
+    def test_load_channel_config_from_spring_backend_disabled(self) -> None:
+        payload = {"channel": "feishu", "enabled": False, "config": {}}
+        with patch.dict(
+            os.environ,
+            {
+                "OPENCLAW_CHANNEL_CONFIG_SOURCE": "spring",
+                "OPENCLAW_SPRING_BACKEND_BASE_URL": "http://spring:8080",
+                "PYCLAW_API_TOKEN": "internal-token",
+            },
+            clear=True,
+        ), patch("urllib.request.urlopen", return_value=_FakeUrlopenResponse(payload)):
+            config = load_channel_config("feishu")
+
+        self.assertFalse(config.enabled)
+        self.assertEqual(config.config["enabled"], False)
+
 class ChannelRegistryTests(unittest.TestCase):
     def test_register_and_get_plugin(self) -> None:
         registry = ChannelRegistry()

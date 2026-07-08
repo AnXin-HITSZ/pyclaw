@@ -37,6 +37,8 @@ jobs:
           tags: ${{ secrets.ACR_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
 
       - name: Deploy to ECS K3s
+        env:
+          IMAGE_REPOSITORY: ${{ secrets.ACR_REGISTRY }}/${{ env.IMAGE_NAME }}
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.ECS_SSH_KEY }}" > ~/.ssh/id_ed25519
@@ -50,6 +52,6 @@ jobs:
               -n pyclaw \
               --create-namespace \
               -f spring-values-k3s.yaml \
-              --set image.repository=${{ secrets.ACR_REGISTRY }}/${{ env.IMAGE_NAME }} \
-              --set image.tag=${{ env.IMAGE_TAG }}
+              --set-string image.repository=${IMAGE_REPOSITORY} \
+              --set-string image.tag=${{ env.IMAGE_TAG }}
           "

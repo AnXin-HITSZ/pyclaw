@@ -47,6 +47,7 @@ public class SecurityConfig {
                                 "/api/auth/login",
                                 "/api/webhooks/wechat",
                                 "/api/webhooks/feishu",
+                                "/api/internal/channels/**",
                                 "/actuator/health",
                                 "/healthz"
                         ).permitAll()

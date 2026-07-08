@@ -10,11 +10,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.anxin.pyclaw.backend.channel.ChannelConfigEntity;
+import com.anxin.pyclaw.backend.channel.ChannelConfigRepository;
 import com.anxin.pyclaw.backend.pyclaw.PyclawClient;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.time.OffsetDateTime;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,6 +44,9 @@ class SecuritySmokeTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private ChannelConfigRepository channelConfigs;
+
     @MockBean
     private PyclawClient pyclawClient;
 
@@ -55,6 +62,7 @@ class SecuritySmokeTest {
         });
         registry.add("pyclaw.security.jwt-signing-secret", () -> "test-secret-that-is-long-enough-for-hs256");
         registry.add("pyclaw.security.bootstrap-admin-password", () -> "ChangeMe123!");
+        registry.add("pyclaw.runtime.internal-token", () -> "internal-token");
     }
 
     @Test
@@ -72,6 +80,38 @@ class SecuritySmokeTest {
         mockMvc.perform(get("/api/webhooks/wechat").queryParam("echostr", "pong"))
                 .andExpect(status().isOk())
                 .andExpect(content().string("pong"));
+    }
+
+    @Test
+    void internalChannelRuntimeConfigRequiresToken() throws Exception {
+        mockMvc.perform(get("/api/internal/channels/wechat/runtime-config"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("Missing internal API token"));
+    }
+
+    @Test
+    void internalChannelRuntimeConfigReturnsEnabledDatabaseConfig() throws Exception {
+        OffsetDateTime now = OffsetDateTime.now();
+        ChannelConfigEntity entity = new ChannelConfigEntity();
+        entity.setId(UUID.randomUUID().toString());
+        entity.setChannelType("wechat");
+        entity.setName("demo-wechat");
+        entity.setConfigJson("{\"accountId\":\"gh_demo\",\"token\":\"wechat-token\",\"appId\":\"wx_app\"}");
+        entity.setEnabled(true);
+        entity.setCreatedAt(now);
+        entity.setUpdatedAt(now);
+        channelConfigs.save(entity);
+
+        mockMvc.perform(get("/api/internal/channels/wechat/runtime-config")
+                        .queryParam("accountId", "gh_demo")
+                        .header("Authorization", "Bearer internal-token"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.channel").value("wechat"))
+                .andExpect(jsonPath("$.accountId").value("gh_demo"))
+                .andExpect(jsonPath("$.name").value("demo-wechat"))
+                .andExpect(jsonPath("$.enabled").value(true))
+                .andExpect(jsonPath("$.config.token").value("wechat-token"))
+                .andExpect(jsonPath("$.config.appId").value("wx_app"));
     }
 
     @Test
