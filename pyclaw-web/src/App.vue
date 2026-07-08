@@ -304,6 +304,14 @@
               Secret Ref
               <input v-model="channelForm.secretRef" />
             </label>
+            <label>
+              Reply Mode
+              <select v-model="channelForm.replyMode" @change="syncChannelReplyMode">
+                <option v-for="mode in channelReplyModes" :key="mode.value" :value="mode.value">
+                  {{ mode.label }}
+                </option>
+              </select>
+            </label>
             <label class="checkline">
               <input v-model="channelForm.enabled" type="checkbox" />
               启用
@@ -364,7 +372,7 @@
 </template>
 
 <script setup>
-import { computed, h, onMounted, reactive, ref } from "vue";
+import { computed, h, onMounted, reactive, ref, watch } from "vue";
 
 const TOKEN_KEY = "pyclaw.console.token";
 const BASE_KEY = "pyclaw.console.baseUrl";
@@ -421,6 +429,13 @@ const usageRecords = ref([]);
 
 const visibleNav = computed(() => nav.filter((item) => !item.authority || has(item.authority)));
 const currentTitle = computed(() => nav.find((item) => item.key === state.view)?.label || "Console");
+const channelReplyModes = computed(() => {
+  const modes = [{ value: "async_worker", label: "Async Worker" }];
+  if (channelForm.channelType === "wechat") {
+    modes.unshift({ value: "passive_xml", label: "Passive XML" });
+  }
+  return modes;
+});
 const currentSubtitle = computed(() => {
   const map = {
     dashboard: "系统运行状态",
@@ -501,6 +516,13 @@ const usageStats = computed(() => {
   return { totalRuns, successRate, totalTokens, avgLatency };
 });
 
+watch(() => channelForm.channelType, () => {
+  if (!channelReplyModes.value.some((mode) => mode.value === channelForm.replyMode)) {
+    channelForm.replyMode = "async_worker";
+  }
+  syncChannelReplyMode();
+});
+
 onMounted(async () => {
   if (state.token) {
     await loadMe();
@@ -525,7 +547,8 @@ function defaultChannelForm() {
     id: "",
     channelType: "wechat",
     name: "",
-    configJson: '{\n  "callbackPath": "/api/webhooks/wechat"\n}',
+    configJson: '{\n  "callbackPath": "/api/webhooks/wechat",\n  "reply_mode": "passive_xml"\n}',
+    replyMode: "passive_xml",
     secretRef: "",
     enabled: true
   };
@@ -774,8 +797,15 @@ async function loadChannels() {
 }
 
 function editChannel(row) {
+  let config = {};
+  try {
+    config = parseConfig(row.configJson || "{}");
+  } catch {
+    config = {};
+  }
   Object.assign(channelForm, {
     ...row,
+    replyMode: normalizeReplyMode(config.reply_mode || config.replyMode, row.channelType),
     configJson: formatConfig(row.configJson)
   });
 }
@@ -784,12 +814,35 @@ function resetChannelForm() {
   Object.assign(channelForm, defaultChannelForm());
 }
 
+function normalizeReplyMode(value, channelType) {
+  const mode = String(value || (channelType === "wechat" ? "passive_xml" : "async_worker")).replace(/-/g, "_");
+  if (mode === "passive_xml" && channelType !== "wechat") return "async_worker";
+  return mode === "passive_xml" ? "passive_xml" : "async_worker";
+}
+
+function syncChannelReplyMode() {
+  let config = {};
+  try {
+    config = parseConfig(channelForm.configJson || "{}");
+  } catch {
+    return;
+  }
+  config.reply_mode = normalizeReplyMode(channelForm.replyMode, channelForm.channelType);
+  channelForm.configJson = JSON.stringify(config, null, 2);
+}
+
+function channelConfigPayload() {
+  const config = parseConfig(channelForm.configJson);
+  config.reply_mode = normalizeReplyMode(channelForm.replyMode, channelForm.channelType);
+  return config;
+}
+
 async function saveChannel() {
   await withLoading(async () => {
     const payload = {
       channelType: channelForm.channelType,
       name: channelForm.name,
-      config: parseConfig(channelForm.configJson),
+      config: channelConfigPayload(),
       secretRef: channelForm.secretRef || null,
       enabled: channelForm.enabled
     };

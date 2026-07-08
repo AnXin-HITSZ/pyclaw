@@ -183,6 +183,9 @@ def _load_channel_mapping(channel: str, prefix: str) -> dict[str, Any]:
             "app_secret": os.environ.get("OPENCLAW_WECHAT_APP_SECRET"),
             "access_token": os.environ.get("OPENCLAW_WECHAT_ACCESS_TOKEN"),
             "api_base_url": os.environ.get("OPENCLAW_WECHAT_API_BASE_URL"),
+            "reply_mode": os.environ.get("OPENCLAW_WECHAT_REPLY_MODE", "async_worker"),
+            "passive_reply_timeout_seconds": os.environ.get("OPENCLAW_WECHAT_PASSIVE_REPLY_TIMEOUT_SECONDS"),
+            "passive_reply_fallback_text": os.environ.get("OPENCLAW_WECHAT_PASSIVE_REPLY_FALLBACK_TEXT"),
             "enabled": os.environ.get("OPENCLAW_WECHAT_ENABLED", "true"),
         }
     if channel == "feishu":
@@ -196,6 +199,7 @@ def _load_channel_mapping(channel: str, prefix: str) -> dict[str, Any]:
             "sign_secret": os.environ.get("OPENCLAW_FEISHU_SIGN_SECRET"),
             "tenant_access_token": os.environ.get("OPENCLAW_FEISHU_TENANT_ACCESS_TOKEN"),
             "api_base_url": os.environ.get("OPENCLAW_FEISHU_API_BASE_URL"),
+            "reply_mode": os.environ.get("OPENCLAW_FEISHU_REPLY_MODE", "async_worker"),
             "enabled": os.environ.get("OPENCLAW_FEISHU_ENABLED", "true"),
         }
     raise ValueError(f"unknown channel config: {channel}")

@@ -26,6 +26,7 @@ from openclaw.plugins.feishu.signature import build_feishu_signature
 from openclaw.plugins.wechat.adapter import (
     WeChatReceiveAdapter,
     WeChatTextSendAdapter,
+    build_wechat_passive_text_response,
     build_wechat_webhook_event,
     parse_wechat_payload,
 )
@@ -169,6 +170,20 @@ class PlatformAdapterTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(prepared.id, "42")
         self.assertEqual(prepared.conversation_id, "openid_1")
         self.assertEqual(prepared.text, "hello")
+
+    async def test_wechat_passive_text_response_swaps_sender_and_recipient(self) -> None:
+        xml = build_wechat_passive_text_response(
+            inbound_payload={"FromUserName": "openid_1", "ToUserName": "gh_1"},
+            text="hello <pyclaw>",
+            now=1710000001,
+        )
+        payload = parse_wechat_payload(xml.encode())
+
+        self.assertEqual(payload["ToUserName"], "openid_1")
+        self.assertEqual(payload["FromUserName"], "gh_1")
+        self.assertEqual(payload["CreateTime"], "1710000001")
+        self.assertEqual(payload["MsgType"], "text")
+        self.assertEqual(payload["Content"], "hello <pyclaw>")
 
     async def test_wechat_text_send_records_receipt(self) -> None:
         client = FakeHttpClient()

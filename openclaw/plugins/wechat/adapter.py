@@ -192,6 +192,20 @@ def _wechat_text(payload: dict[str, Any]) -> str:
     return str(payload.get("Content") or payload.get("content") or f"[WeChat {msg_type} message]")
 
 
+def build_wechat_passive_text_response(*, inbound_payload: dict[str, Any], text: str, now: int | None = None) -> str:
+    recipient = str(inbound_payload.get("FromUserName") or inbound_payload.get("from_user_name") or "")
+    sender = str(inbound_payload.get("ToUserName") or inbound_payload.get("to_user_name") or "")
+    if not recipient or not sender:
+        raise WeChatWebhookError("WeChat passive reply requires FromUserName and ToUserName")
+    root = ET.Element("xml")
+    ET.SubElement(root, "ToUserName").text = recipient
+    ET.SubElement(root, "FromUserName").text = sender
+    ET.SubElement(root, "CreateTime").text = str(now if now is not None else int(time.time()))
+    ET.SubElement(root, "MsgType").text = "text"
+    ET.SubElement(root, "Content").text = text
+    return ET.tostring(root, encoding="unicode", short_empty_elements=False)
+
+
 def _require_query(query: dict[str, str], key: str) -> str:
     value = query.get(key)
     if not value:
