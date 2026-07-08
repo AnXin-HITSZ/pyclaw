@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 from collections.abc import Awaitable, Callable
 from typing import Any
@@ -86,6 +87,13 @@ def create_channel_router(*, session_factory: SessionFactory) -> APIRouter:
                 return JSONResponse({"code": 0, "msg": "success"})
             _enqueue_event(envelope, create_ingress_queue_from_env())
         except (ValueError, FeishuWebhookError) as exc:
+            LOGGER.warning(
+                "failed Feishu webhook: error=%s body_len=%d body_shape=%s header_keys=%s",
+                exc,
+                len(body),
+                _json_body_shape(body),
+                sorted(headers.keys()),
+            )
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         return JSONResponse({"code": 0, "msg": "success"})
 
@@ -128,6 +136,7 @@ def _passive_reply_text(turn: Any, fallback: str) -> str:
         return fallback
     return str(getattr(turn, "assistant_text", "")).strip() or fallback
 
+
 def _reply_mode(config: Any) -> str:
     mode = (config.get_str("reply_mode") or ASYNC_WORKER_REPLY_MODE).strip().lower().replace("-", "_")
     if mode not in SUPPORTED_REPLY_MODES:
@@ -148,3 +157,21 @@ def _positive_float(value: str | None, *, default: float) -> float:
 
 def _single_value_query(request: Request) -> dict[str, str]:
     return {key: value for key, value in request.query_params.multi_items()}
+
+
+def _json_body_shape(body: bytes) -> dict[str, Any]:
+    try:
+        payload = json.loads(body.decode("utf-8-sig") or "{}")
+    except json.JSONDecodeError:
+        return {"json": False}
+    if not isinstance(payload, dict):
+        return {"json": True, "type": type(payload).__name__}
+    event = payload.get("event")
+    header = payload.get("header")
+    return {
+        "json": True,
+        "keys": sorted(str(key) for key in payload.keys()),
+        "event_keys": sorted(str(key) for key in event.keys()) if isinstance(event, dict) else [],
+        "header_keys": sorted(str(key) for key in header.keys()) if isinstance(header, dict) else [],
+        "has_encrypt": bool(payload.get("encrypt")),
+    }
