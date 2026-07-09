@@ -89,8 +89,8 @@ public class AgentService {
 
     private ProviderConfigEntity resolveProviderConfig(String requestedProvider) {
         if (requestedProvider == null || requestedProvider.isBlank()) {
-            ProviderConfigEntity compatible = providerConfigs.findFirstByProviderTypeIgnoreCaseAndEnabledTrue("openai-compatible");
-            return compatible == null ? providerConfigs.findFirstByProviderTypeIgnoreCaseAndEnabledTrue("openai") : compatible;
+            ProviderConfigEntity compatible = providerConfigs.findFirstByProviderTypeIgnoreCaseAndEnabledTrueOrderByUpdatedAtDesc("openai-compatible");
+            return compatible == null ? providerConfigs.findFirstByProviderTypeIgnoreCaseAndEnabledTrueOrderByUpdatedAtDesc("openai") : compatible;
         }
         ProviderConfigEntity byName = providerConfigs.findFirstByNameIgnoreCaseAndEnabledTrue(requestedProvider);
         if (byName != null) {
@@ -101,7 +101,7 @@ public class AgentService {
             return byType;
         }
         if ("openai".equalsIgnoreCase(requestedProvider)) {
-            return providerConfigs.findFirstByProviderTypeIgnoreCaseAndEnabledTrue("openai-compatible");
+            return providerConfigs.findFirstByProviderTypeIgnoreCaseAndEnabledTrueOrderByUpdatedAtDesc("openai-compatible");
         }
         return null;
     }

@@ -11,6 +11,7 @@ public record ProviderConfigResponse(
         String apiMode,
         String secretRef,
         boolean apiKeyConfigured,
+        String apiKeyLast4,
         boolean enabled,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt
@@ -25,9 +26,18 @@ public record ProviderConfigResponse(
                 entity.getApiMode(),
                 entity.getSecretRef(),
                 entity.getApiKey() != null && !entity.getApiKey().isBlank(),
+                last4(entity.getApiKey()),
                 entity.isEnabled(),
                 entity.getCreatedAt(),
                 entity.getUpdatedAt()
         );
+    }
+
+    private static String last4(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.length() <= 4 ? trimmed : trimmed.substring(trimmed.length() - 4);
     }
 }

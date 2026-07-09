@@ -6,4 +6,6 @@ public interface ProviderConfigRepository extends JpaRepository<ProviderConfigEn
     ProviderConfigEntity findFirstByNameIgnoreCaseAndEnabledTrue(String name);
 
     ProviderConfigEntity findFirstByProviderTypeIgnoreCaseAndEnabledTrue(String providerType);
+
+    ProviderConfigEntity findFirstByProviderTypeIgnoreCaseAndEnabledTrueOrderByUpdatedAtDesc(String providerType);
 }

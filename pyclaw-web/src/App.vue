@@ -465,7 +465,7 @@ const currentSubtitle = computed(() => {
 
 const tokenColumns = ["name", "scopes", "expiresAt", "revokedAt", "createdAt", "lastUsedAt"];
 const userColumns = ["username", "displayName", "status", "authorities", "createdAt", "updatedAt"];
-const providerColumns = ["name", "providerType", "baseUrl", "model", "apiMode", "secretRef", "apiKeyConfigured", "enabled"];
+const providerColumns = ["name", "providerType", "baseUrl", "model", "apiMode", "secretRef", "apiKeyConfigured", "apiKeyLast4", "enabled"];
 const channelColumns = ["channelType", "name", "configJson", "secretRef", "enabled", "updatedAt"];
 const auditColumns = ["createdAt", "actorType", "actorId", "action", "resourceType", "resourceId", "success", "errorMessage"];
 const usageColumns = ["createdAt", "userId", "sessionId", "provider", "model", "totalTokens", "success", "latencyMs"];
