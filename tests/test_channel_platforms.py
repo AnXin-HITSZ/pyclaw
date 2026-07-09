@@ -146,7 +146,7 @@ class MemoryIngressQueue:
         return any(record.lane_key == lane_key and record.status == "claimed" for record in self.records.values())
 
 
-def encrypt_feishu_payload(payload: dict, encrypt_key: str) -> dict[str, str]:
+def encrypt_feishu_payload(payload: dict, encrypt_key: str, *, zero_iv: bool = False) -> dict[str, str]:
     assert padding is not None
     assert Cipher is not None
     assert algorithms is not None
@@ -155,7 +155,8 @@ def encrypt_feishu_payload(payload: dict, encrypt_key: str) -> dict[str, str]:
     padder = padding.PKCS7(algorithms.AES.block_size).padder()
     plain = json.dumps(payload).encode()
     padded = padder.update(plain) + padder.finalize()
-    encryptor = Cipher(algorithms.AES(aes_key), modes.CBC(aes_key[:16])).encryptor()
+    iv = bytes(16) if zero_iv else aes_key[:16]
+    encryptor = Cipher(algorithms.AES(aes_key), modes.CBC(iv)).encryptor()
     encrypted = encryptor.update(padded) + encryptor.finalize()
     return {"encrypt": base64.b64encode(encrypted).decode()}
 
@@ -290,6 +291,24 @@ class PlatformAdapterTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertIsNone(envelope.event)
         self.assertEqual(envelope.challenge, "encrypted-challenge")
+
+    @unittest.skipIf(padding is None, "cryptography extra is not installed")
+    async def test_feishu_encrypted_url_verification_accepts_zero_iv(self) -> None:
+        payload = {
+            "schema": "2.0",
+            "header": {"event_id": "evt-verify", "tenant_key": "tenant", "token": "verify-token"},
+            "event": {"challenge": "zero-iv-challenge"},
+        }
+        body = json.dumps(encrypt_feishu_payload(payload, "encrypt-key", zero_iv=True)).encode()
+        config = ChannelRuntimeConfig(
+            "feishu",
+            config={"verification_token": "verify-token", "encrypt_key": "encrypt-key"},
+        )
+
+        envelope = build_feishu_webhook_event(config=config, headers={}, body=body)
+
+        self.assertIsNone(envelope.event)
+        self.assertEqual(envelope.challenge, "zero-iv-challenge")
 
     async def test_feishu_encrypted_payload_requires_encrypt_key(self) -> None:
         body = json.dumps({"encrypt": "ciphertext"}).encode()

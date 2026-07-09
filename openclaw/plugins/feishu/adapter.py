@@ -251,18 +251,23 @@ def _decrypt_feishu_payload(config: ChannelRuntimeConfig, payload: dict[str, Any
     except ImportError as exc:  # pragma: no cover - depends on optional crypto dependency.
         raise FeishuWebhookError("cryptography is required to decrypt Feishu webhook payloads") from exc
     try:
-        aes_key = hashlib.sha256(encrypt_key.encode("utf-8")).digest()
         encrypted_bytes = base64.b64decode(encrypted)
-        decryptor = Cipher(algorithms.AES(aes_key), modes.CBC(aes_key[:16])).decryptor()
-        padded = decryptor.update(encrypted_bytes) + decryptor.finalize()
-        unpadder = padding.PKCS7(algorithms.AES.block_size).unpadder()
-        plain = unpadder.update(padded) + unpadder.finalize()
-    except (ValueError, binascii.Error) as exc:
+    except binascii.Error as exc:
         raise FeishuWebhookError("invalid encrypted Feishu webhook payload") from exc
-    try:
-        return _parse_json_object(plain)
-    except FeishuWebhookError as exc:
-        raise FeishuWebhookError("invalid encrypted Feishu webhook payload") from exc
+
+    aes_key = hashlib.sha256(encrypt_key.encode("utf-8")).digest()
+    last_error: Exception | None = None
+    for iv in (aes_key[:16], bytes(16)):
+        try:
+            decryptor = Cipher(algorithms.AES(aes_key), modes.CBC(iv)).decryptor()
+            padded = decryptor.update(encrypted_bytes) + decryptor.finalize()
+            unpadder = padding.PKCS7(algorithms.AES.block_size).unpadder()
+            plain = unpadder.update(padded) + unpadder.finalize()
+            return _parse_json_object(plain)
+        except (ValueError, FeishuWebhookError) as exc:
+            last_error = exc
+            continue
+    raise FeishuWebhookError("invalid encrypted Feishu webhook payload") from last_error
 
 
 def _feishu_challenge(payload: dict[str, Any], event_body: dict[str, Any]) -> str | None:
