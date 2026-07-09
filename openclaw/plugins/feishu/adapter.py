@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import base64
+import binascii
+import hashlib
 import json
 import time
 from dataclasses import dataclass
@@ -153,9 +156,7 @@ def build_feishu_webhook_event(
 ) -> FeishuWebhookEnvelope:
     _verify_feishu_headers(config, headers, body)
     payload = _parse_json_object(body)
-    encrypted = payload.get("encrypt")
-    if encrypted:
-        raise FeishuWebhookError("encrypted Feishu webhook payloads require decrypt support")
+    payload = _decrypt_feishu_payload(config, payload)
     header = _feishu_header(payload)
     expected_token = config.get_str("verification_token")
     actual_token = _optional_str(header.get("token") or payload.get("token"))
@@ -228,6 +229,32 @@ def _parse_json_object(body: bytes) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise FeishuWebhookError("Feishu webhook body must be a JSON object")
     return value
+
+
+
+
+def _decrypt_feishu_payload(config: ChannelRuntimeConfig, payload: dict[str, Any]) -> dict[str, Any]:
+    encrypted = _optional_str(payload.get("encrypt"))
+    if not encrypted:
+        return payload
+    encrypt_key = config.get_str("encrypt_key")
+    if not encrypt_key:
+        raise FeishuWebhookError("Feishu encrypted webhook requires encrypt_key")
+    try:
+        from cryptography.hazmat.primitives import padding
+        from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+    except ImportError as exc:  # pragma: no cover - depends on optional crypto dependency.
+        raise FeishuWebhookError("cryptography is required to decrypt Feishu webhook payloads") from exc
+    try:
+        aes_key = hashlib.sha256(encrypt_key.encode("utf-8")).digest()
+        encrypted_bytes = base64.b64decode(encrypted)
+        decryptor = Cipher(algorithms.AES(aes_key), modes.CBC(aes_key[:16])).decryptor()
+        padded = decryptor.update(encrypted_bytes) + decryptor.finalize()
+        unpadder = padding.PKCS7(algorithms.AES.block_size).unpadder()
+        plain = unpadder.update(padded) + unpadder.finalize()
+    except (ValueError, binascii.Error) as exc:
+        raise FeishuWebhookError("invalid encrypted Feishu webhook payload") from exc
+    return _parse_json_object(plain)
 
 
 def _feishu_challenge(payload: dict[str, Any], event_body: dict[str, Any]) -> str | None:

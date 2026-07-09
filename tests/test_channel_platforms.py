@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import base64
+import hashlib
 import json
 import time
 import unittest
@@ -21,6 +23,7 @@ from openclaw.llm.types import AssistantMessage, text_content
 from openclaw.plugins.feishu.adapter import (
     FeishuReceiveAdapter,
     FeishuTextSendAdapter,
+    FeishuWebhookError,
     build_feishu_webhook_event,
 )
 from openclaw.plugins.feishu.signature import build_feishu_signature
@@ -32,6 +35,16 @@ from openclaw.plugins.wechat.adapter import (
     parse_wechat_payload,
 )
 from openclaw.plugins.wechat.signature import build_wechat_signature
+
+try:
+    from cryptography.hazmat.primitives import padding
+    from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+except ModuleNotFoundError:  # pragma: no cover - depends on optional api extra.
+    padding = None
+    Cipher = None
+    algorithms = None
+    modes = None
+
 
 try:
     from fastapi import HTTPException
@@ -131,6 +144,21 @@ class MemoryIngressQueue:
 
     def _lane_has_active_claim(self, lane_key: str) -> bool:
         return any(record.lane_key == lane_key and record.status == "claimed" for record in self.records.values())
+
+
+def encrypt_feishu_payload(payload: dict, encrypt_key: str) -> dict[str, str]:
+    assert padding is not None
+    assert Cipher is not None
+    assert algorithms is not None
+    assert modes is not None
+    aes_key = hashlib.sha256(encrypt_key.encode("utf-8")).digest()
+    padder = padding.PKCS7(algorithms.AES.block_size).padder()
+    plain = json.dumps(payload).encode()
+    padded = padder.update(plain) + padder.finalize()
+    encryptor = Cipher(algorithms.AES(aes_key), modes.CBC(aes_key[:16])).encryptor()
+    encrypted = encryptor.update(padded) + encryptor.finalize()
+    return {"encrypt": base64.b64encode(encrypted).decode()}
+
 
 class FakeHttpClient:
     def __init__(self) -> None:
@@ -244,6 +272,31 @@ class PlatformAdapterTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertIsNone(envelope.event)
         self.assertEqual(envelope.challenge, "challenge-code")
+
+    @unittest.skipIf(padding is None, "cryptography extra is not installed")
+    async def test_feishu_encrypted_url_verification_returns_challenge(self) -> None:
+        payload = {
+            "schema": "2.0",
+            "header": {"event_id": "evt-verify", "tenant_key": "tenant", "token": "verify-token"},
+            "event": {"challenge": "encrypted-challenge"},
+        }
+        body = json.dumps(encrypt_feishu_payload(payload, "encrypt-key")).encode()
+        config = ChannelRuntimeConfig(
+            "feishu",
+            config={"verification_token": "verify-token", "encrypt_key": "encrypt-key"},
+        )
+
+        envelope = build_feishu_webhook_event(config=config, headers={}, body=body)
+
+        self.assertIsNone(envelope.event)
+        self.assertEqual(envelope.challenge, "encrypted-challenge")
+
+    async def test_feishu_encrypted_payload_requires_encrypt_key(self) -> None:
+        body = json.dumps({"encrypt": "ciphertext"}).encode()
+        config = ChannelRuntimeConfig("feishu", config={})
+
+        with self.assertRaisesRegex(FeishuWebhookError, "requires encrypt_key"):
+            build_feishu_webhook_event(config=config, headers={}, body=body)
 
     async def test_feishu_text_and_card_send(self) -> None:
         client = FakeHttpClient()
