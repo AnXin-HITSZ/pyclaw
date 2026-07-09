@@ -42,7 +42,7 @@ openclaw/plugins/feishu/adapter.py
    - 从 Channel 配置读取 `encrypt_key`。
    - 对 `encrypt` 字段做 Base64 decode。
    - 使用 `SHA256(encrypt_key)` 得到 32 字节 AES key。
-   - 使用 AES-CBC 解密。优先尝试 IV 为 AES key 的前 16 字节，同时兼容 16 字节零 IV。
+   - 使用 AES-CBC 解密。优先尝试 IV 为 AES key 的前 16 字节，同时兼容 16 字节零 IV和密文前缀 IV。
    - 使用 PKCS#7 去 padding。
    - 将明文重新解析为事件 JSON。
 5. 解密后的 JSON 继续执行 verification token 校验、challenge 提取、事件入队。
@@ -171,7 +171,7 @@ invalid encrypted Feishu webhook payload
 ```
 
 说明 `encrypt_key` 与飞书开放平台当前 Encrypt Key 不一致，或密文不是当前 key 生成。
-## 2026-07-09 追加修正：兼容零 IV
+## 2026-07-09 追加修正：兼容多种 IV
 
 线上使用正确 Encrypt Key 时曾出现：
 
@@ -179,7 +179,7 @@ invalid encrypted Feishu webhook payload
 'utf-8' codec can't decode byte ... body_shape={'keys': ['encrypt'], 'has_encrypt': True}
 ```
 
-这说明服务已进入解密流程，但解出的首段明文不是合法 UTF-8 JSON。此类现象通常不是 URL 或数据库问题，而是 AES-CBC 的 IV 取值与平台实际请求不一致。
+这说明服务已进入解密流程，但解出的首段明文不是合法 UTF-8 JSON。此类现象通常不是 URL 或数据库问题，而是 AES-CBC 的 IV 取值与平台实际请求不一致，或平台将随机 IV 拼接在密文前缀中。
 
 本次修正将飞书加密 payload 解密调整为：
 
@@ -188,6 +188,7 @@ invalid encrypted Feishu webhook payload
 3. 依次尝试：
    - `iv = aes_key[:16]`
    - `iv = bytes(16)`
+   - `iv = encrypted_bytes[:16]`，`ciphertext = encrypted_bytes[16:]`
 4. 任一方式能解出合法 JSON 即采用。
 5. 全部失败时统一抛出：
 
@@ -199,5 +200,6 @@ invalid encrypted Feishu webhook payload
 
 ```text
 test_feishu_encrypted_url_verification_accepts_zero_iv
+test_feishu_encrypted_url_verification_accepts_prefixed_iv
 test_feishu_encrypted_payload_rejects_wrong_encrypt_key
 ```

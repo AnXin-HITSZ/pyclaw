@@ -256,11 +256,18 @@ def _decrypt_feishu_payload(config: ChannelRuntimeConfig, payload: dict[str, Any
         raise FeishuWebhookError("invalid encrypted Feishu webhook payload") from exc
 
     aes_key = hashlib.sha256(encrypt_key.encode("utf-8")).digest()
+    candidates: list[tuple[bytes, bytes]] = [
+        (aes_key[:16], encrypted_bytes),
+        (bytes(16), encrypted_bytes),
+    ]
+    if len(encrypted_bytes) > algorithms.AES.block_size // 8:
+        candidates.append((encrypted_bytes[:16], encrypted_bytes[16:]))
+
     last_error: Exception | None = None
-    for iv in (aes_key[:16], bytes(16)):
+    for iv, ciphertext in candidates:
         try:
             decryptor = Cipher(algorithms.AES(aes_key), modes.CBC(iv)).decryptor()
-            padded = decryptor.update(encrypted_bytes) + decryptor.finalize()
+            padded = decryptor.update(ciphertext) + decryptor.finalize()
             unpadder = padding.PKCS7(algorithms.AES.block_size).unpadder()
             plain = unpadder.update(padded) + unpadder.finalize()
             return _parse_json_object(plain)
