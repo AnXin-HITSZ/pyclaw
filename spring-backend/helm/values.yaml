@@ -26,8 +26,8 @@ ingress:
   tls: []
 
 env:
-  SPRING_DATASOURCE_URL: jdbc:h2:file:/data/pyclaw-backend;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE
-  SPRING_DATASOURCE_USERNAME: sa
+  SPRING_DATASOURCE_URL: jdbc:mysql://pyclaw-mysql:3306/pyclaw_control?useUnicode=true&characterEncoding=utf8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai
+  SPRING_DATASOURCE_USERNAME: pyclaw
   SPRING_JPA_DDL_AUTO: update
   PYCLAW_BASE_URL: http://pyclaw.pyclaw.svc.cluster.local:8000
   BOOTSTRAP_ADMIN_USERNAME: admin
@@ -43,7 +43,7 @@ secret:
     PYCLAW_INTERNAL_API_TOKEN: ""
 
 persistence:
-  enabled: true
+  enabled: false
   storageClassName: ""
   size: 2Gi
   mountPath: /data

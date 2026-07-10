@@ -4,8 +4,15 @@ Release: {{ .Release.Name }}
 Namespace: {{ .Release.Namespace }}
 Service: {{ include "pyclaw-mysql.fullname" . }}:{{ .Values.service.port }}
 
+Databases managed by this release:
+  runtime: {{ .Values.mysql.databases.runtime }}
+  control: {{ .Values.mysql.databases.control }}
+
 Check pod status:
   kubectl -n {{ .Release.Namespace }} get pods -l app.kubernetes.io/instance={{ .Release.Name }}
 
 Check MySQL inside the pod:
   kubectl -n {{ .Release.Namespace }} exec statefulset/{{ include "pyclaw-mysql.fullname" . }} -- sh -c 'mysqladmin ping -h 127.0.0.1 -uroot -p"$MYSQL_ROOT_PASSWORD"'
+
+Check databases:
+  kubectl -n {{ .Release.Namespace }} exec statefulset/{{ include "pyclaw-mysql.fullname" . }} -- sh -c 'mysql -h 127.0.0.1 -upyclaw -p"$MYSQL_PASSWORD" -e "show databases;"'

@@ -8,7 +8,10 @@ service:
   port: 3306
 
 mysql:
-  database: pyclaw
+  database: pyclaw_runtime
+  databases:
+    runtime: pyclaw_runtime
+    control: pyclaw_control
   user: pyclaw
   auth:
     createSecret: false
@@ -17,6 +20,11 @@ mysql:
     databaseKey: MYSQL_DATABASE
     userKey: MYSQL_USER
     passwordKey: MYSQL_PASSWORD
+
+bootstrap:
+  enabled: true
+  backoffLimit: 6
+  annotations: {}
 
 config:
   characterSetServer: utf8mb4

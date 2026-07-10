@@ -15,7 +15,7 @@ secret:
   existingSecret: pyclaw-spring-backend-secret
 
 env:
-  SPRING_DATASOURCE_URL: jdbc:mysql://pyclaw-mysql:3306/pyclaw?useUnicode=true&characterEncoding=utf8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai
+  SPRING_DATASOURCE_URL: jdbc:mysql://pyclaw-mysql:3306/pyclaw_control?useUnicode=true&characterEncoding=utf8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai
   SPRING_DATASOURCE_USERNAME: pyclaw
   SPRING_JPA_DDL_AUTO: update
   PYCLAW_BASE_URL: http://pyclaw.pyclaw.svc.cluster.local:8000
@@ -35,5 +35,5 @@ ingress:
         - api.example.com
 
 persistence:
-  enabled: true
+  enabled: false
   size: 2Gi
