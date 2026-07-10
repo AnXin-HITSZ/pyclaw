@@ -210,3 +210,32 @@ jdbc:h2:file:/data/pyclaw-backend
 3. Bootstrap admin 会重新创建或补齐默认管理员权限。
 4. `pyclaw_runtime` 和 `pyclaw_control` 共用一个 MySQL 用户 `pyclaw`，后续生产化可以拆成 `pyclaw_runtime_user` 与 `pyclaw_control_user`。
 5. MySQL 密码如果要写入 DSN，建议避免 URL 特殊字符，或使用 URL encode 后的密码。
+## 5. 手动 MySQL 部署 Workflow
+
+新增 GitHub Actions：
+
+```text
+.github/workflows/deploy-pyclaw-mysql.yml
+```
+
+该 workflow 只支持手动触发：
+
+```yaml
+on:
+  workflow_dispatch:
+```
+
+设计目的：MySQL 属于有状态基础设施，不随每次 push 自动升级。需要升级 MySQL Helm chart 时，在 GitHub Actions 页面手动点击 `Run workflow`。
+
+执行内容：
+
+```text
+1. SSH 到 ECS。
+2. cd /opt/pyclaw。
+3. git fetch + git reset 到当前 workflow commit。
+4. 检查 ECS 本地 pyclaw-mysql-values-k3s.yaml 存在。
+5. 删除旧的 pyclaw-mysql-bootstrap-databases Job。
+6. 执行 helm upgrade --install pyclaw-mysql。
+```
+
+注意：`pyclaw-mysql-values-k3s.yaml` 是 ECS 本地部署参数文件，仍然需要在 ECS 上维护真实镜像 tag、Secret 名称和资源参数。

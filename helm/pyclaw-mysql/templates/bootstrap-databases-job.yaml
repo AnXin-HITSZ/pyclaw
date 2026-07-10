@@ -50,11 +50,11 @@ spec:
                 sleep 2
               done
               mysql -h "$host" -uroot -p"$MYSQL_ROOT_PASSWORD" <<SQL
-              CREATE DATABASE IF NOT EXISTS `{{ .Values.mysql.databases.runtime }}` CHARACTER SET {{ .Values.config.characterSetServer }} COLLATE {{ .Values.config.collationServer }};
-              CREATE DATABASE IF NOT EXISTS `{{ .Values.mysql.databases.control }}` CHARACTER SET {{ .Values.config.characterSetServer }} COLLATE {{ .Values.config.collationServer }};
+              CREATE DATABASE IF NOT EXISTS {{ .Values.mysql.databases.runtime }} CHARACTER SET {{ .Values.config.characterSetServer }} COLLATE {{ .Values.config.collationServer }};
+              CREATE DATABASE IF NOT EXISTS {{ .Values.mysql.databases.control }} CHARACTER SET {{ .Values.config.characterSetServer }} COLLATE {{ .Values.config.collationServer }};
               CREATE USER IF NOT EXISTS '{{ .Values.mysql.user }}'@'%' IDENTIFIED BY '${MYSQL_PASSWORD}';
-              GRANT ALL PRIVILEGES ON `{{ .Values.mysql.databases.runtime }}`.* TO '{{ .Values.mysql.user }}'@'%';
-              GRANT ALL PRIVILEGES ON `{{ .Values.mysql.databases.control }}`.* TO '{{ .Values.mysql.user }}'@'%';
+              GRANT ALL PRIVILEGES ON {{ .Values.mysql.databases.runtime }}.* TO '{{ .Values.mysql.user }}'@'%';
+              GRANT ALL PRIVILEGES ON {{ .Values.mysql.databases.control }}.* TO '{{ .Values.mysql.user }}'@'%';
               FLUSH PRIVILEGES;
               SQL
 {{- end }}

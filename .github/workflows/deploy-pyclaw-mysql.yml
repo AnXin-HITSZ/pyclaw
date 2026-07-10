@@ -1,0 +1,29 @@
+name: Deploy pyclaw MySQL
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy MySQL chart to ECS K3s
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.ECS_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_ed25519 ${{ secrets.ECS_USER }}@${{ secrets.ECS_HOST }} "
+            set -e
+            cd /opt/pyclaw
+            git fetch origin ${{ github.ref_name }}
+            git reset --hard ${{ github.sha }}
+            test -f pyclaw-mysql-values-k3s.yaml
+            sudo /usr/local/bin/k3s kubectl -n pyclaw delete job pyclaw-mysql-bootstrap-databases --ignore-not-found
+            sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml helm upgrade --install pyclaw-mysql ./helm/pyclaw-mysql \
+              -n pyclaw \
+              --create-namespace \
+              -f pyclaw-mysql-values-k3s.yaml \
+              --timeout 10m
+          "
