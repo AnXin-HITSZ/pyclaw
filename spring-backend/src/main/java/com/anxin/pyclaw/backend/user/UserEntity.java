@@ -23,7 +23,7 @@ public class UserEntity {
     @Column(nullable = false)
     private String status;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 2048)
     private String authorities;
 
     @Column(nullable = false)
