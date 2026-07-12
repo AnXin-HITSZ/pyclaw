@@ -262,7 +262,28 @@ async function saveChannel(){await load(async()=>{const cfg=parse(channelForm.co
 async function loadAgents(){await safe(async()=>{if(!providerOptions.value.length)await loadProviderOptions();if(!toolCatalog.value.length)await loadToolCatalogOnly();const rows=await api('/api/agents');agents.value=rows.map(enrichAgent)})} function enrichAgent(agent){return{...agent,providerConfigName:providerOptionName(agent.providerId)}} function providerOptionName(id){if(!id)return 'Environment';const p=providerOptions.value.find(x=>x.id===id);return p?p.name+' ('+p.model+')':'Unknown provider'} function resetAgentForm(){Object.assign(agentForm2,defAgent())}
 function editAgent(r){const p=r.toolPolicy||{};Object.assign(agentForm2,{...defAgent(),...r,toolProfile:p.profile||'messaging',toolsAllow:(p.toolsAllow||[]).join(','),toolsDeny:(p.toolsDeny||[]).join(','),toolsAlsoAllow:(p.toolsAlsoAllow||[]).join(','),workspaceOnly:p.workspaceOnly??true,readonly:p.readonly??false,shellApproval:p.shellApproval||'deny',webAccess:p.webAccess??false})}
 function agentPayload(){return{agentKey:agentForm2.agentKey,name:agentForm2.name,description:agentForm2.description||null,enabled:agentForm2.enabled,providerId:agentForm2.providerId||null,provider:agentForm2.provider||null,model:agentForm2.model||null,systemPrompt:agentForm2.systemPrompt||null,workspaceDir:agentForm2.workspaceDir||null,runtimeType:agentForm2.runtimeType,toolPolicy:{profile:agentForm2.toolProfile,toolsAllow:empty(agentForm2.toolsAllow),toolsDeny:csv(agentForm2.toolsDeny),toolsAlsoAllow:csv(agentForm2.toolsAlsoAllow),workspaceOnly:agentForm2.workspaceOnly,readonly:agentForm2.readonly,shellApproval:agentForm2.shellApproval,webAccess:agentForm2.webAccess}}}
-async function saveAgent(){await load(async()=>{await api(agentForm2.id?`/api/agents/${agentForm2.id}`:'/api/agents',{method:agentForm2.id?'PUT':'POST',body:JSON.stringify(agentPayload())});resetAgentForm();await loadAgents()})} async function deleteAgent(id){if(confirm('Delete agent?'))await load(async()=>{await api(`/api/agents/${id}`,{method:'DELETE'});await loadAgents()})}
+async function saveAgent(){await load(async()=>{await api(agentForm2.id?`/api/agents/${agentForm2.id}`:'/api/agents',{method:agentForm2.id?'PUT':'POST',body:JSON.stringify(agentPayload())});resetAgentForm();await loadAgents()})}
+async function deleteAgent(id){
+  await load(async()=>{
+    const agent=agents.value.find(item=>item.id===id);
+    const allRoutes=await api('/api/route-bindings');
+    const relatedRoutes=allRoutes.filter(route=>route.agentId===id);
+    const agentLabel=agent?`${agent.agentKey} - ${agent.name}`:id;
+    if(relatedRoutes.length){
+      const ok=confirm(`同时删除该 Agent 对应的 Route？\n\nAgent: ${agentLabel}\nRoute 数量: ${relatedRoutes.length}\n\n点击确认后将先删除这些 Route，再删除 Agent。`);
+      if(!ok)return;
+    }else if(!confirm(`Delete agent?\n\nAgent: ${agentLabel}`)){
+      return;
+    }
+    for(const route of relatedRoutes){
+      await api(`/api/route-bindings/${route.id}`,{method:'DELETE'});
+    }
+    await api(`/api/agents/${id}`,{method:'DELETE'});
+    await loadAgents();
+    routes.value=routes.value.filter(route=>route.agentId!==id);
+    notice(relatedRoutes.length?`Deleted agent and ${relatedRoutes.length} route(s).`:'Deleted agent.');
+  })
+}
 async function loadToolCatalogOnly(){toolCatalog.value=await api('/api/tools/catalog')} async function loadTools(){await safe(async()=>{toolProfiles.value=await api('/api/tools/profiles');await loadToolCatalogOnly();await previewTools()})} async function previewTools(){await safe(async()=>{const d=await api('/api/tools/effective',{method:'POST',body:JSON.stringify({profile:toolForm.profile,allow:empty(toolForm.allow),deny:csv(toolForm.deny),alsoAllow:csv(toolForm.alsoAllow),readonly:toolForm.readonly})});toolPreview.effectiveTools=d.effectiveTools||[];toolPreview.deniedTools=d.deniedTools||[]})}
 async function loadRoutes(){await safe(async()=>{if(!agents.value.length)await loadAgents();routes.value=await api('/api/route-bindings')})} function resetRouteForm(){Object.assign(routeForm,defRoute())} function editRoute(r){Object.assign(routeForm,{...defRoute(),...r,mentionAliases:(r.mentionAliases||[]).join(','),commandPrefixes:(r.commandPrefixes||[]).join(','),senderIds:(r.senderIds||[]).join(',')})}
 function routePayload(){return{enabled:routeForm.enabled,priority:routeForm.priority,agentId:routeForm.agentId,channel:routeForm.channel||null,accountId:routeForm.accountId||null,peerKind:routeForm.peerKind||null,peerId:routeForm.peerId||null,mentionAliases:csv(routeForm.mentionAliases),commandPrefixes:csv(routeForm.commandPrefixes),senderIds:csv(routeForm.senderIds),dmScope:routeForm.dmScope,comment:routeForm.comment||null}}

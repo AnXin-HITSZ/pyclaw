@@ -82,6 +82,12 @@ env:
   OPENCLAW_FEISHU_REPLY_MODE: async_worker
 
 extraEnv: []
+
+hostSsh:
+  enabled: false
+  existingSecret: pyclaw-host-ssh-secret
+  mountPath: /var/run/secrets/pyclaw-host-ssh
+
 ingressQueue:
   enabled: true
   staleAfterSeconds: 300

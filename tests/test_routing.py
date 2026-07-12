@@ -80,6 +80,66 @@ class RoutingResolverTests(unittest.TestCase):
         self.assertEqual(route.binding_id, "sender")
         self.assertEqual(route.matched_by, "peer+sender")
 
+    def test_attention_matches_when_mention_alias_matches_without_command_prefix(self):
+        context = RouteContext(
+            channel="feishu",
+            account_id="default",
+            peer=RoutePeer(kind="group", id="oc_group"),
+            text="你好",
+            mentions=["开发小助手"],
+        )
+
+        route = resolve_agent_route(
+            context,
+            [
+                AgentRouteBinding(
+                    id="dev",
+                    enabled=True,
+                    priority=10,
+                    agent_id="dev-id",
+                    agent_key="agent-dev",
+                    channel="feishu",
+                    peer=RoutePeer(kind="group", id="oc_group"),
+                    mention_aliases=["开发小助手"],
+                    command_prefixes=["开发小助手"],
+                )
+            ],
+        )
+
+        self.assertEqual(route.agent_key, "agent-dev")
+        self.assertEqual(route.binding_id, "dev")
+        self.assertEqual(route.matched_by, "peer+mention")
+
+    def test_attention_matches_when_command_prefix_matches_without_mention_alias(self):
+        context = RouteContext(
+            channel="feishu",
+            account_id="default",
+            peer=RoutePeer(kind="group", id="oc_group"),
+            text="开发小助手 你在吗？",
+            mentions=[],
+        )
+
+        route = resolve_agent_route(
+            context,
+            [
+                AgentRouteBinding(
+                    id="dev",
+                    enabled=True,
+                    priority=10,
+                    agent_id="dev-id",
+                    agent_key="agent-dev",
+                    channel="feishu",
+                    peer=RoutePeer(kind="group", id="oc_group"),
+                    mention_aliases=["开发小助手"],
+                    command_prefixes=["开发小助手"],
+                )
+            ],
+        )
+
+        self.assertEqual(route.agent_key, "agent-dev")
+        self.assertEqual(route.binding_id, "dev")
+        self.assertEqual(route.matched_by, "peer+command")
+
     def test_default_agent_is_used_without_matching_binding(self):
         route = resolve_agent_route(
             RouteContext(channel="wechat", account_id="gh_x", peer=RoutePeer(kind="direct", id="openid")),

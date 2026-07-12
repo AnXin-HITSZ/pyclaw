@@ -64,18 +64,16 @@ def _scope_matches(context: RouteContext, binding: AgentRouteBinding) -> bool:
         return False
     if binding.sender_ids and (context.sender_id not in binding.sender_ids):
         return False
-    if binding.mention_aliases and not set(binding.mention_aliases).intersection(_normalized_mentions(context)):
-        return False
-    if binding.command_prefixes and not _command_matches(context.command, context.text, binding.command_prefixes):
+    if not _attention_matches(context, binding):
         return False
     return True
 
 
 def _specificity_score(context: RouteContext, binding: AgentRouteBinding) -> int:
     score = 0
-    if binding.peer and binding.mention_aliases and set(binding.mention_aliases).intersection(_normalized_mentions(context)):
+    if _mention_matches(context, binding):
         score += 1000
-    if binding.peer and binding.command_prefixes and _command_matches(context.command, context.text, binding.command_prefixes):
+    if _binding_command_matches(context, binding):
         score += 900
     if binding.peer and binding.sender_ids and context.sender_id in binding.sender_ids:
         score += 800
@@ -95,10 +93,10 @@ def _specificity_score(context: RouteContext, binding: AgentRouteBinding) -> int
 
 
 def _matched_by(context: RouteContext, binding: AgentRouteBinding) -> str:
-    if binding.peer and binding.mention_aliases and set(binding.mention_aliases).intersection(_normalized_mentions(context)):
-        return "peer+mention"
-    if binding.peer and binding.command_prefixes and _command_matches(context.command, context.text, binding.command_prefixes):
-        return "peer+command"
+    if _mention_matches(context, binding):
+        return "peer+mention" if binding.peer else "mention"
+    if _binding_command_matches(context, binding):
+        return "peer+command" if binding.peer else "command"
     if binding.peer and binding.sender_ids and context.sender_id in binding.sender_ids:
         return "peer+sender"
     if binding.peer:
@@ -112,6 +110,22 @@ def _matched_by(context: RouteContext, binding: AgentRouteBinding) -> str:
     if binding.channel:
         return "channel"
     return "default-binding"
+
+
+def _attention_matches(context: RouteContext, binding: AgentRouteBinding) -> bool:
+    has_mention_aliases = bool(binding.mention_aliases)
+    has_command_prefixes = bool(binding.command_prefixes)
+    if not has_mention_aliases and not has_command_prefixes:
+        return True
+    return _mention_matches(context, binding) or _binding_command_matches(context, binding)
+
+
+def _mention_matches(context: RouteContext, binding: AgentRouteBinding) -> bool:
+    return bool(binding.mention_aliases and set(binding.mention_aliases).intersection(_normalized_mentions(context)))
+
+
+def _binding_command_matches(context: RouteContext, binding: AgentRouteBinding) -> bool:
+    return bool(binding.command_prefixes and _command_matches(context.command, context.text, binding.command_prefixes))
 
 
 def _normalized_mentions(context: RouteContext) -> set[str]:
