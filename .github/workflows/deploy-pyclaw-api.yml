@@ -57,5 +57,8 @@ jobs:
               -f pyclaw-values-k3s.yaml \
               -f pyclaw-api-ingressqueue-mysql-values-k3s.yaml \
               --set-string image.repository=${{ secrets.ACR_REGISTRY }}/${{ env.IMAGE_NAME }} \
-              --set-string image.tag=${{ env.IMAGE_TAG }}
+              --set-string image.tag=${{ env.IMAGE_TAG }} \
+              --set hostSsh.enabled=true \
+              --set hostSsh.existingSecret=pyclaw-host-ssh-secret \
+              --set hostSsh.mountPath=/var/run/secrets/pyclaw-host-ssh
           "
