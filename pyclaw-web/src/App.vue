@@ -1,35 +1,207 @@
 <template>
-  <div class="app">
+  <div :class="['app-shell', { 'auth-shell': !state.me }]">
     <aside v-if="state.me" class="sidebar">
-      <div class="brand"><b>P</b><span>pyclaw</span></div>
-      <button v-for="item in visibleNav" :key="item.key" :class="{active:state.view===item.key}" @click="setView(item.key)">{{ item.icon }} {{ item.label }}</button>
+      <div class="brand">
+        <b>P</b>
+        <span>pyclaw</span>
+      </div>
+      <nav class="nav-list" aria-label="Console navigation">
+        <button
+          v-for="item in visibleNav"
+          :key="item.key"
+          :class="['nav-link', { active: state.view === item.key }]"
+          @click="setView(item.key)"
+        >
+          <span class="nav-icon">{{ item.icon }}</span>
+          <span>{{ item.label }}</span>
+        </button>
+      </nav>
     </aside>
-    <main :class="['main',{centered:!state.me}]">
-      <form v-if="!state.me" class="panel login" @submit.prevent="login">
-        <h1>pyclaw Console</h1><p>Control plane for providers, channels, agents, tools, and routes.</p>
-        <label>Backend URL<input v-model="state.apiBase" placeholder="empty for same-origin" /></label>
-        <label>Username<input v-model="loginForm.username" /></label>
-        <label>Password<input v-model="loginForm.password" type="password" /></label>
-        <button class="primary">Sign in</button><p class="error">{{ state.error }}</p>
+
+    <main :class="['main', { centered: !state.me }]">
+      <form v-if="!state.me" class="auth-card" @submit.prevent="login">
+        <div class="brand auth-brand">
+          <b>P</b>
+          <span>pyclaw</span>
+        </div>
+        <h1>Console Sign In</h1>
+        <label>Backend URL<input v-model="state.apiBase" placeholder="Same origin" /></label>
+        <label>Username<input v-model="loginForm.username" autocomplete="username" /></label>
+        <label>Password<input v-model="loginForm.password" type="password" autocomplete="current-password" /></label>
+        <button class="btn btn-primary">Sign in</button>
+        <p v-if="state.error" class="form-error">{{ state.error }}</p>
       </form>
+
       <template v-else>
-        <header class="topbar"><div><p>{{ currentTitle }}</p><h1>{{ currentSubtitle }}</h1></div><div><b>{{ state.me.username }}</b><button @click="logout">Logout</button></div></header>
-        <div v-if="state.error" class="toast error">{{ state.error }}<button @click="state.error=''">Close</button></div>
-        <div v-if="state.notice" class="toast ok">{{ state.notice }}<button @click="state.notice=''">Close</button></div>
-        <section v-if="state.view==='dashboard'" class="stack"><div class="metrics"><article><span>Backend</span><b>{{ dashboard.health }}</b></article><article><span>User</span><b>{{ state.me.username }}</b></article><article><span>Runs</span><b>{{ usageStats.totalRuns }}</b></article><article><span>Tokens</span><b>{{ usageStats.totalTokens }}</b></article></div><Panel title="Authorities"><div class="chips"><span v-for="a in state.me.authorities" :key="a">{{ a }}</span></div></Panel></section>
-        <section v-if="state.view==='agent'" class="grid"><form class="panel" @submit.prevent="runAgent"><h2>Agent Playground</h2><label>Prompt<textarea v-model="agentForm.prompt" /></label><label>Provider<input v-model="agentForm.provider" /></label><label>Model<input v-model="agentForm.model" /></label><label>Session<input v-model="agentForm.sessionId" /></label><label>Tool Profile<select v-model="agentForm.toolProfile"><option v-for="p in toolProfiles" :key="p">{{ p }}</option></select></label><button class="primary">Run</button></form><Panel title="Response"><pre>{{ agentResult.text || 'Waiting for result' }}</pre><details><summary>Raw JSON</summary><pre>{{ pretty(agentResult.raw) }}</pre></details></Panel></section>
-        <section v-if="state.view==='tokens'" class="stack"><form class="panel form" @submit.prevent="createToken"><h2>Create Token</h2><label>Name<input v-model="tokenForm.name" /></label><label>Expires<input v-model="tokenForm.expiresAt" /></label><label>Scopes<input v-model="tokenForm.scopes" /></label><button class="primary">Create</button></form><DataTable title="Tokens" :rows="tokens" :columns="tokenColumns"><template #actions="{row}"><button class="danger" @click="revokeToken(row.id)">Revoke</button></template></DataTable></section>
-        <section v-if="state.view==='users'" class="stack"><form class="panel form" @submit.prevent="createUser"><h2>Create User</h2><label>Username<input v-model="userForm.username" /></label><label>Password<input v-model="userForm.password" type="password" /></label><label>Display<input v-model="userForm.displayName" /></label><label>Authorities<input v-model="userForm.authorities" /></label><button class="primary">Create</button></form><DataTable title="Users" :rows="users" :columns="userColumns"><template #actions="{row}"><button class="danger" @click="disableUser(row.id)">Disable</button></template></DataTable></section>
-        <section v-if="state.view==='providers'" class="stack"><form class="panel form" @submit.prevent="saveProvider"><h2>{{ providerForm.id?'Edit':'Create' }} Provider</h2><label>Name<input v-model="providerForm.name" /></label><label>Type<input v-model="providerForm.providerType" /></label><label>Base URL<input v-model="providerForm.baseUrl" /></label><label>Model<input v-model="providerForm.model" /></label><label>API Mode<select v-model="providerForm.apiMode"><option>chat_completions</option><option>responses</option><option>auto</option></select></label><label>Secret Ref<input v-model="providerForm.secretRef" /></label><label>API Key<input v-model="providerForm.apiKey" type="password" /></label><label><input v-model="providerForm.enabled" type="checkbox" /> Enabled</label><label v-if="providerForm.id&&providerForm.apiKeyConfigured"><input v-model="providerForm.clearApiKey" type="checkbox" /> Clear key</label><button class="primary">Save</button><button type="button" @click="resetProviderForm">Reset</button></form><DataTable title="Providers" :rows="providers" :columns="providerColumns"><template #actions="{row}"><button @click="editProvider(row)">Edit</button><button class="danger" @click="deleteProvider(row.id)">Delete</button></template></DataTable></section>
-        <section v-if="state.view==='channels'" class="stack"><form class="panel form" @submit.prevent="saveChannel"><h2>{{ channelForm.id?'Edit':'Create' }} Channel</h2><label>Type<select v-model="channelForm.channelType"><option>wechat</option><option>feishu</option></select></label><label>Name<input v-model="channelForm.name" /></label><label>Secret Ref<input v-model="channelForm.secretRef" /></label><label>Reply Mode<select v-model="channelForm.replyMode"><option v-for="m in channelReplyModes" :key="m.value" :value="m.value">{{ m.label }}</option></select></label><label><input v-model="channelForm.enabled" type="checkbox" /> Enabled</label><label>Config JSON<textarea v-model="channelForm.configJson" /></label><button class="primary">Save</button><button type="button" @click="resetChannelForm">Reset</button></form><DataTable title="Channels" :rows="channels" :columns="channelColumns"><template #actions="{row}"><button @click="editChannel(row)">Edit</button><button class="danger" @click="deleteChannel(row.id)">Delete</button></template></DataTable></section>
-        <section v-if="state.view==='agents'" class="stack"><form class="panel form" @submit.prevent="saveAgent"><h2>{{ agentForm2.id?'Edit':'Create' }} Agent</h2><label>Key<input v-model="agentForm2.agentKey" /></label><label>Name<input v-model="agentForm2.name" /></label><label>Provider<input v-model="agentForm2.provider" /></label><label>Provider Config<select v-model="agentForm2.providerId"><option value="">Environment</option><option v-for="p in providerOptions" :key="p.id" :value="p.id">{{ p.name }} - {{ p.model }}</option></select></label><label>Model<input v-model="agentForm2.model" /></label><label>Workspace<input v-model="agentForm2.workspaceDir" /></label><label>Profile<select v-model="agentForm2.toolProfile"><option v-for="p in toolProfiles" :key="p">{{ p }}</option></select></label><label>Shell Approval<select v-model="agentForm2.shellApproval"><option>deny</option><option>require</option><option>auto</option></select></label><label><input v-model="agentForm2.enabled" type="checkbox" /> Enabled</label><label><input v-model="agentForm2.readonly" type="checkbox" /> Readonly</label><label><input v-model="agentForm2.workspaceOnly" type="checkbox" /> Workspace only</label><label><input v-model="agentForm2.webAccess" type="checkbox" /> Web access</label><label>Description<input v-model="agentForm2.description" /></label><label>System<textarea v-model="agentForm2.systemPrompt" /></label><label>Allow<input v-model="agentForm2.toolsAllow" /></label><label>Deny<input v-model="agentForm2.toolsDeny" /></label><label>Also Allow<input v-model="agentForm2.toolsAlsoAllow" /></label><button class="primary">Save</button><button type="button" @click="resetAgentForm">Reset</button></form><DataTable title="Agents" :rows="agents" :columns="agentColumns"><template #actions="{row}"><button @click="editAgent(row)">Edit</button><button class="danger" @click="deleteAgent(row.id)">Delete</button></template></DataTable></section>
-        <section v-if="state.view==='tools'" class="stack"><form class="panel form" @submit.prevent="previewTools"><h2>Effective Tools</h2><label>Profile<select v-model="toolForm.profile"><option v-for="p in toolProfiles" :key="p">{{ p }}</option></select></label><label>Allow<input v-model="toolForm.allow" /></label><label>Deny<input v-model="toolForm.deny" /></label><label>Also Allow<input v-model="toolForm.alsoAllow" /></label><label><input v-model="toolForm.readonly" type="checkbox" /> Readonly</label><button class="primary">Preview</button><textarea :value="toolPreview.effectiveTools.join(', ')" readonly /></form><DataTable title="Tool Catalog" :rows="toolCatalog" :columns="toolColumns" /></section>
-        <section v-if="state.view==='routes'" class="stack"><form class="panel form" @submit.prevent="saveRoute"><h2>{{ routeForm.id?'Edit':'Create' }} Route</h2><label>Agent<select v-model="routeForm.agentId"><option value="">Select</option><option v-for="a in agents" :key="a.id" :value="a.id">{{ a.agentKey }} - {{ a.name }}</option></select></label><label>Priority<input v-model.number="routeForm.priority" type="number" /></label><label>Channel<input v-model="routeForm.channel" /></label><label>Account<input v-model="routeForm.accountId" /></label><label>Peer Kind<select v-model="routeForm.peerKind"><option value="">Any</option><option>direct</option><option>group</option><option>channel</option><option>thread</option></select></label><label>Peer ID<input v-model="routeForm.peerId" /></label><label>Mention Aliases<input v-model="routeForm.mentionAliases" /></label><label>Command Prefixes<input v-model="routeForm.commandPrefixes" /></label><label>Sender IDs<input v-model="routeForm.senderIds" /></label><label>DM Scope<select v-model="routeForm.dmScope"><option>main</option><option>per-peer</option><option>per-channel-peer</option><option>per-account-channel-peer</option></select></label><label><input v-model="routeForm.enabled" type="checkbox" /> Enabled</label><label>Comment<input v-model="routeForm.comment" /></label><button class="primary">Save</button><button type="button" @click="resetRouteForm">Reset</button></form><DataTable title="Routes" :rows="routes" :columns="routeColumns"><template #actions="{row}"><button @click="editRoute(row)">Edit</button><button class="danger" @click="deleteRoute(row.id)">Delete</button></template></DataTable></section>
+        <header class="topbar">
+          <div>
+            <p>{{ currentTitle }}</p>
+            <h1>{{ currentSubtitle }}</h1>
+          </div>
+          <div class="user-menu">
+            <span class="status-dot"></span>
+            <b>{{ state.me.username }}</b>
+            <button class="btn btn-outline" @click="logout">Logout</button>
+          </div>
+        </header>
+
+        <div v-if="state.loading" class="loading-bar"></div>
+        <div v-if="state.error" class="toast toast-error">{{ state.error }}<button @click="state.error=''">Close</button></div>
+        <div v-if="state.notice" class="toast toast-ok">{{ state.notice }}<button @click="state.notice=''">Close</button></div>
+
+        <section v-if="state.view==='dashboard'" class="stack">
+          <div class="metrics">
+            <article><span>Backend</span><b>{{ dashboard.health }}</b></article>
+            <article><span>User</span><b>{{ state.me.username }}</b></article>
+            <article><span>Runs</span><b>{{ usageStats.totalRuns }}</b></article>
+            <article><span>Tokens</span><b>{{ usageStats.totalTokens }}</b></article>
+          </div>
+          <Panel title="Authorities">
+            <div class="chips"><span v-for="a in state.me.authorities" :key="a">{{ a }}</span></div>
+          </Panel>
+        </section>
+
+        <section v-if="state.view==='agent'" class="content-grid">
+          <form class="panel form-grid" @submit.prevent="runAgent">
+            <h2>Agent Playground</h2>
+            <label class="span-2">Prompt<textarea v-model="agentForm.prompt" rows="7" /></label>
+            <label>Provider<input v-model="agentForm.provider" /></label>
+            <label>Model<input v-model="agentForm.model" /></label>
+            <label>Session<input v-model="agentForm.sessionId" /></label>
+            <label>Tool Profile<select v-model="agentForm.toolProfile"><option v-for="p in toolProfiles" :key="p">{{ p }}</option></select></label>
+            <div class="form-actions"><button class="btn btn-primary">Run</button></div>
+          </form>
+          <Panel title="Response">
+            <pre>{{ agentResult.text || 'Waiting for result' }}</pre>
+            <details><summary>Raw JSON</summary><pre>{{ pretty(agentResult.raw) }}</pre></details>
+          </Panel>
+        </section>
+
+        <section v-if="state.view==='tokens'" class="stack">
+          <form class="panel form-grid compact-form" @submit.prevent="createToken">
+            <h2>Create Token</h2>
+            <label>Name<input v-model="tokenForm.name" /></label>
+            <label>Expires<input v-model="tokenForm.expiresAt" /></label>
+            <label class="span-2">Scopes<input v-model="tokenForm.scopes" /></label>
+            <div class="form-actions"><button class="btn btn-primary">Create</button></div>
+          </form>
+          <DataTable title="Tokens" :rows="tokens" :columns="tokenColumns"><template #actions="{row}"><button class="btn btn-danger" @click="revokeToken(row.id)">Revoke</button></template></DataTable>
+        </section>
+
+        <section v-if="state.view==='users'" class="stack">
+          <form class="panel form-grid compact-form" @submit.prevent="createUser">
+            <h2>Create User</h2>
+            <label>Username<input v-model="userForm.username" /></label>
+            <label>Password<input v-model="userForm.password" type="password" /></label>
+            <label>Display<input v-model="userForm.displayName" /></label>
+            <label>Authorities<input v-model="userForm.authorities" /></label>
+            <div class="form-actions"><button class="btn btn-primary">Create</button></div>
+          </form>
+          <DataTable title="Users" :rows="users" :columns="userColumns"><template #actions="{row}"><button class="btn btn-danger" @click="disableUser(row.id)">Disable</button></template></DataTable>
+        </section>
+
+        <section v-if="state.view==='providers'" class="stack">
+          <form class="panel form-grid" @submit.prevent="saveProvider">
+            <h2>{{ providerForm.id?'Edit':'Create' }} Provider</h2>
+            <label>Name<input v-model="providerForm.name" /></label>
+            <label>Type<input v-model="providerForm.providerType" /></label>
+            <label class="span-2">Base URL<input v-model="providerForm.baseUrl" /></label>
+            <label>Model<input v-model="providerForm.model" /></label>
+            <label>API Mode<select v-model="providerForm.apiMode"><option>chat_completions</option><option>responses</option><option>auto</option></select></label>
+            <label>Secret Ref<input v-model="providerForm.secretRef" /></label>
+            <label>API Key<input v-model="providerForm.apiKey" type="password" /></label>
+            <label class="check-field"><input v-model="providerForm.enabled" type="checkbox" /> Enabled</label>
+            <label v-if="providerForm.id&&providerForm.apiKeyConfigured" class="check-field"><input v-model="providerForm.clearApiKey" type="checkbox" /> Clear key</label>
+            <div class="form-actions"><button class="btn btn-primary">Save</button><button class="btn btn-outline" type="button" @click="resetProviderForm">Reset</button></div>
+          </form>
+          <DataTable title="Providers" :rows="providers" :columns="providerColumns"><template #actions="{row}"><button class="btn btn-outline" @click="editProvider(row)">Edit</button><button class="btn btn-danger" @click="deleteProvider(row.id)">Delete</button></template></DataTable>
+        </section>
+
+        <section v-if="state.view==='channels'" class="stack">
+          <form class="panel form-grid" @submit.prevent="saveChannel">
+            <h2>{{ channelForm.id?'Edit':'Create' }} Channel</h2>
+            <label>Type<select v-model="channelForm.channelType"><option>wechat</option><option>feishu</option></select></label>
+            <label>Name<input v-model="channelForm.name" /></label>
+            <label>Secret Ref<input v-model="channelForm.secretRef" /></label>
+            <label>Reply Mode<select v-model="channelForm.replyMode"><option v-for="m in channelReplyModes" :key="m.value" :value="m.value">{{ m.label }}</option></select></label>
+            <label class="check-field"><input v-model="channelForm.enabled" type="checkbox" /> Enabled</label>
+            <label class="span-2">Config JSON<textarea v-model="channelForm.configJson" rows="7" /></label>
+            <div class="form-actions"><button class="btn btn-primary">Save</button><button class="btn btn-outline" type="button" @click="resetChannelForm">Reset</button></div>
+          </form>
+          <DataTable title="Channels" :rows="channels" :columns="channelColumns"><template #actions="{row}"><button class="btn btn-outline" @click="editChannel(row)">Edit</button><button class="btn btn-danger" @click="deleteChannel(row.id)">Delete</button></template></DataTable>
+        </section>
+
+        <section v-if="state.view==='agents'" class="stack">
+          <form class="panel form-grid" @submit.prevent="saveAgent">
+            <h2>{{ agentForm2.id?'Edit':'Create' }} Agent</h2>
+            <label>Key<input v-model="agentForm2.agentKey" /></label>
+            <label>Name<input v-model="agentForm2.name" /></label>
+            <label>Provider<input v-model="agentForm2.provider" /></label>
+            <label>Provider Config<select v-model="agentForm2.providerId"><option value="">Environment</option><option v-for="p in providerOptions" :key="p.id" :value="p.id">{{ p.name }} - {{ p.model }}</option></select></label>
+            <label>Model<input v-model="agentForm2.model" /></label>
+            <label>Workspace<input v-model="agentForm2.workspaceDir" /></label>
+            <label>Profile<select v-model="agentForm2.toolProfile"><option v-for="p in toolProfiles" :key="p">{{ p }}</option></select></label>
+            <label>Shell Approval<select v-model="agentForm2.shellApproval"><option>deny</option><option>require</option><option>auto</option></select></label>
+            <label class="check-field"><input v-model="agentForm2.enabled" type="checkbox" /> Enabled</label>
+            <label class="check-field"><input v-model="agentForm2.readonly" type="checkbox" /> Readonly</label>
+            <label class="check-field"><input v-model="agentForm2.workspaceOnly" type="checkbox" /> Workspace only</label>
+            <label class="check-field"><input v-model="agentForm2.webAccess" type="checkbox" /> Web access</label>
+            <label class="span-2">Description<input v-model="agentForm2.description" /></label>
+            <label class="span-2">System<textarea v-model="agentForm2.systemPrompt" rows="5" /></label>
+            <label>Allow<input v-model="agentForm2.toolsAllow" /></label>
+            <label>Deny<input v-model="agentForm2.toolsDeny" /></label>
+            <label class="span-2">Also Allow<input v-model="agentForm2.toolsAlsoAllow" /></label>
+            <div class="form-actions"><button class="btn btn-primary">Save</button><button class="btn btn-outline" type="button" @click="resetAgentForm">Reset</button></div>
+          </form>
+          <DataTable title="Agents" :rows="agents" :columns="agentColumns"><template #actions="{row}"><button class="btn btn-outline" @click="editAgent(row)">Edit</button><button class="btn btn-danger" @click="deleteAgent(row.id)">Delete</button></template></DataTable>
+        </section>
+
+        <section v-if="state.view==='tools'" class="stack">
+          <form class="panel form-grid" @submit.prevent="previewTools">
+            <h2>Effective Tools</h2>
+            <label>Profile<select v-model="toolForm.profile"><option v-for="p in toolProfiles" :key="p">{{ p }}</option></select></label>
+            <label>Allow<input v-model="toolForm.allow" /></label>
+            <label>Deny<input v-model="toolForm.deny" /></label>
+            <label>Also Allow<input v-model="toolForm.alsoAllow" /></label>
+            <label class="check-field"><input v-model="toolForm.readonly" type="checkbox" /> Readonly</label>
+            <label class="span-2">Effective<textarea :value="toolPreview.effectiveTools.join(', ')" rows="4" readonly /></label>
+            <div class="form-actions"><button class="btn btn-primary">Preview</button></div>
+          </form>
+          <DataTable title="Tool Catalog" :rows="toolCatalog" :columns="toolColumns" />
+        </section>
+
+        <section v-if="state.view==='routes'" class="stack">
+          <form class="panel form-grid" @submit.prevent="saveRoute">
+            <h2>{{ routeForm.id?'Edit':'Create' }} Route</h2>
+            <label class="span-2">Agent<select v-model="routeForm.agentId"><option value="">Select</option><option v-for="a in agents" :key="a.id" :value="a.id">{{ a.agentKey }} - {{ a.name }}</option></select></label>
+            <label>Priority<input v-model.number="routeForm.priority" type="number" /></label>
+            <label>Channel<input v-model="routeForm.channel" /></label>
+            <label>Account<input v-model="routeForm.accountId" /></label>
+            <label>Peer Kind<select v-model="routeForm.peerKind"><option value="">Any</option><option>direct</option><option>group</option><option>channel</option><option>thread</option></select></label>
+            <label>Peer ID<input v-model="routeForm.peerId" /></label>
+            <label>Mention Aliases<input v-model="routeForm.mentionAliases" /></label>
+            <label>Command Prefixes<input v-model="routeForm.commandPrefixes" /></label>
+            <label>Sender IDs<input v-model="routeForm.senderIds" /></label>
+            <label>DM Scope<select v-model="routeForm.dmScope"><option>main</option><option>per-peer</option><option>per-channel-peer</option><option>per-account-channel-peer</option></select></label>
+            <label class="check-field"><input v-model="routeForm.enabled" type="checkbox" /> Enabled</label>
+            <label class="span-2">Comment<input v-model="routeForm.comment" /></label>
+            <div class="form-actions"><button class="btn btn-primary">Save</button><button class="btn btn-outline" type="button" @click="resetRouteForm">Reset</button></div>
+          </form>
+          <DataTable title="Routes" :rows="routes" :columns="routeColumns"><template #actions="{row}"><button class="btn btn-outline" @click="editRoute(row)">Edit</button><button class="btn btn-danger" @click="deleteRoute(row.id)">Delete</button></template></DataTable>
+        </section>
+
         <section v-if="state.view==='audit'" class="stack"><DataTable title="Audit" :rows="auditLogs" :columns="auditColumns" /></section>
         <section v-if="state.view==='usage'" class="stack"><DataTable title="Usage" :rows="usageRecords" :columns="usageColumns" /></section>
       </template>
     </main>
-    <div v-if="createdToken.token" class="modal"><section><h2>{{ createdToken.tokenId }}</h2><pre>{{ createdToken.token }}</pre><button @click="copy(createdToken.token)">Copy</button><button class="primary" @click="createdToken.token=''">Saved</button></section></div>
+
+    <div v-if="createdToken.token" class="modal">
+      <section>
+        <h2>{{ createdToken.tokenId }}</h2>
+        <pre>{{ createdToken.token }}</pre>
+        <div class="form-actions"><button class="btn btn-outline" @click="copy(createdToken.token)">Copy</button><button class="btn btn-primary" @click="createdToken.token=''">Saved</button></div>
+      </section>
+    </div>
   </div>
 </template>
 
@@ -85,5 +257,121 @@ function csv(v){return String(v||'').split(',').map(x=>x.trim()).filter(Boolean)
 async function load(fn){state.loading=true;await safe(fn);state.loading=false} async function safe(fn){state.error='';try{await fn()}catch(e){state.error=e.message||String(e)}finally{state.loading=false}} function notice(m){state.notice=m;setTimeout(()=>{if(state.notice===m)state.notice=''},2500)}
 </script>
 <style>
-body{margin:0;background:#f3f5f7;color:#17202d;font-family:Inter,system-ui,Segoe UI,sans-serif}*{box-sizing:border-box}button,input,select,textarea{font:inherit}button{border:1px solid #c8d0da;border-radius:6px;background:white;padding:.5rem .75rem;cursor:pointer}.primary{background:#0f766e;border-color:#0f766e;color:white;font-weight:700}.danger{color:#9f1d20}.app{min-height:100vh;display:grid;grid-template-columns:230px 1fr}.sidebar{background:#152130;color:#e6edf5;padding:1rem;display:flex;flex-direction:column;gap:.35rem}.brand{display:flex;gap:.6rem;align-items:center;margin-bottom:1rem}.brand b{background:#2bb19f;color:white;border-radius:8px;width:36px;height:36px;display:grid;place-items:center}.sidebar button{background:transparent;color:#cbd5e1;border-color:transparent;text-align:left}.sidebar button.active,.sidebar button:hover{background:#25354a;color:white}.main{padding:1.25rem;min-width:0}.centered{grid-column:1/-1;display:grid;place-items:center}.login{width:min(460px,100%)}.topbar{display:flex;justify-content:space-between;align-items:center;margin:0 auto 1rem;max-width:1440px}.topbar h1{margin:.1rem 0 0}.topbar p{margin:0;color:#66778c;text-transform:uppercase;font-size:.8rem}.stack,.grid{max-width:1440px;margin:0 auto}.stack{display:grid;gap:1rem}.grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem}.panel,.metrics article{background:white;border:1px solid #dce2ea;border-radius:8px;padding:1rem}.form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem}.form h2,.form button,.form textarea{grid-column:1/-1}label{display:grid;gap:.3rem;font-weight:650;color:#405066}input,select,textarea{width:100%;border:1px solid #c8d0da;border-radius:6px;padding:.55rem}.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem}.metrics span{display:block;color:#66778c}.metrics b{font-size:1.5rem}.chips{display:flex;flex-wrap:wrap;gap:.4rem}.chips span{border:1px solid #c8d0da;border-radius:999px;padding:.25rem .55rem}.toast{max-width:1440px;margin:0 auto 1rem;padding:.75rem;border-radius:8px;display:flex;justify-content:space-between}.error{color:#9f1d20}.ok{background:#edf8f4;color:#116a5b}.scroll{overflow:auto}table{width:100%;border-collapse:collapse;min-width:820px}th,td{border-bottom:1px solid #e4e9ef;padding:.65rem;text-align:left;vertical-align:top;max-width:300px;overflow-wrap:anywhere}th{background:#f8fafc;color:#66778c}pre{background:#111827;color:#e5e7eb;border-radius:8px;padding:1rem;white-space:pre-wrap;overflow:auto}.modal{position:fixed;inset:0;background:rgba(15,23,42,.45);display:grid;place-items:center}.modal section{width:min(640px,90vw);background:white;border-radius:8px;padding:1rem}@media(max-width:900px){.app{grid-template-columns:1fr}.sidebar{position:sticky;top:0;z-index:1}.grid,.form,.metrics{grid-template-columns:1fr}}
+:root{
+  --bs-blue:#0d6efd;
+  --bs-indigo:#6610f2;
+  --bs-cyan:#0dcaf0;
+  --bs-green:#198754;
+  --bs-red:#dc3545;
+  --bs-dark:#212529;
+  --bs-body:#f8f9fa;
+  --surface:#ffffff;
+  --border:#dee2e6;
+  --muted:#6c757d;
+  --text:#212529;
+  --sidebar:#111827;
+  --sidebar-active:#1f6feb;
+  --shadow:0 12px 30px rgba(15,23,42,.08);
+}
+
+*{box-sizing:border-box}
+body{margin:0;background:var(--bs-body);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,"Segoe UI",Arial,sans-serif}
+button,input,select,textarea{font:inherit}
+button{cursor:pointer}
+
+.app-shell{min-height:100vh;display:grid;grid-template-columns:264px minmax(0,1fr)}
+.auth-shell{grid-template-columns:1fr;background:linear-gradient(135deg,#f8f9fa 0%,#edf5ff 50%,#f6f8fb 100%)}
+.main{min-width:0;padding:24px}
+.centered{display:grid;place-items:center}
+
+.sidebar{position:sticky;top:0;height:100vh;background:var(--sidebar);color:#e9ecef;padding:18px 14px;display:flex;flex-direction:column;border-right:1px solid rgba(255,255,255,.08)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:1.12rem;letter-spacing:.2px}
+.brand b{width:38px;height:38px;display:grid;place-items:center;border-radius:8px;background:linear-gradient(135deg,var(--bs-blue),var(--bs-cyan));color:#fff;box-shadow:0 8px 20px rgba(13,110,253,.28)}
+.auth-brand{margin-bottom:20px;color:var(--text)}
+.nav-list{margin-top:22px;display:grid;gap:4px}
+.nav-link{width:100%;height:42px;display:flex;align-items:center;gap:10px;border:0;border-radius:6px;background:transparent;color:#cbd5e1;text-align:left;padding:0 12px}
+.nav-link:hover{background:rgba(255,255,255,.08);color:#fff}
+.nav-link.active{background:var(--sidebar-active);color:#fff;box-shadow:0 10px 22px rgba(31,111,235,.24)}
+.nav-icon{width:26px;height:26px;display:grid;place-items:center;border-radius:6px;background:rgba(255,255,255,.08);font-size:.76rem;font-weight:800}
+.nav-link.active .nav-icon{background:rgba(255,255,255,.18)}
+
+.topbar{max-width:1480px;margin:0 auto 20px;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 20px;background:var(--surface);border:1px solid var(--border);border-radius:8px;box-shadow:var(--shadow)}
+.topbar p{margin:0 0 4px;color:var(--muted);font-size:.78rem;text-transform:uppercase;font-weight:800}
+.topbar h1{margin:0;font-size:clamp(1.35rem,2vw,1.9rem);line-height:1.15}
+.user-menu{display:flex;align-items:center;gap:10px;min-width:max-content}
+.status-dot{width:9px;height:9px;border-radius:50%;background:var(--bs-green);box-shadow:0 0 0 4px rgba(25,135,84,.14)}
+
+.auth-card{width:min(440px,calc(100vw - 32px));display:grid;gap:16px;background:rgba(255,255,255,.92);border:1px solid var(--border);border-radius:8px;padding:28px;box-shadow:0 24px 60px rgba(15,23,42,.14)}
+.auth-card h1{margin:0;font-size:1.7rem}
+.form-error{margin:0;color:#b02a37;font-weight:700}
+
+.stack,.content-grid{max-width:1480px;margin:0 auto}
+.stack{display:grid;gap:18px}
+.content-grid{display:grid;grid-template-columns:minmax(360px,.9fr) minmax(0,1.1fr);gap:18px;align-items:start}
+.panel,.metrics article{background:var(--surface);border:1px solid var(--border);border-radius:8px;box-shadow:var(--shadow)}
+.panel{padding:20px}
+.panel h2{margin:0 0 16px;font-size:1.05rem}
+
+.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
+.metrics article{padding:18px;min-height:112px;display:grid;align-content:space-between}
+.metrics span{color:var(--muted);font-size:.82rem;font-weight:800;text-transform:uppercase}
+.metrics b{font-size:1.75rem;line-height:1.1;overflow-wrap:anywhere}
+
+.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.compact-form{grid-template-columns:repeat(4,minmax(0,1fr));align-items:end}
+.form-grid h2,.form-actions,.span-2{grid-column:1/-1}
+label{display:grid;gap:7px;color:#495057;font-size:.86rem;font-weight:750}
+input,select,textarea{width:100%;min-width:0;border:1px solid #ced4da;border-radius:6px;background:#fff;color:var(--text);padding:10px 12px;outline:none;transition:border-color .15s,box-shadow .15s}
+textarea{resize:vertical;line-height:1.45}
+input:focus,select:focus,textarea:focus{border-color:#86b7fe;box-shadow:0 0 0 .22rem rgba(13,110,253,.15)}
+.check-field{display:flex;align-items:center;gap:10px;min-height:42px;padding:10px 12px;border:1px solid var(--border);border-radius:6px;background:#f8f9fa}
+.check-field input{width:1rem;height:1rem}
+.form-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:2px}
+
+.btn{border:1px solid var(--border);border-radius:6px;background:#fff;color:var(--text);padding:9px 13px;font-weight:750;line-height:1.2;min-height:38px}
+.btn:hover{filter:brightness(.98)}
+.btn-primary{background:var(--bs-blue);border-color:var(--bs-blue);color:#fff}
+.btn-outline{background:#fff;color:#495057}
+.btn-danger{background:#fff;border-color:#f1aeb5;color:#b02a37}
+.btn-danger:hover{background:#fff5f5}
+
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chips span{display:inline-flex;align-items:center;min-height:30px;border:1px solid #b6d4fe;background:#eef6ff;color:#084298;border-radius:999px;padding:4px 10px;font-size:.84rem;font-weight:750}
+.toast{max-width:1480px;margin:0 auto 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;border-radius:8px;padding:12px 14px;font-weight:700}
+.toast button{border:0;background:transparent;color:inherit;font-weight:800}
+.toast-error{background:#f8d7da;color:#842029;border:1px solid #f5c2c7}
+.toast-ok{background:#d1e7dd;color:#0f5132;border:1px solid #badbcc}
+.loading-bar{max-width:1480px;height:3px;margin:0 auto 16px;border-radius:999px;background:linear-gradient(90deg,var(--bs-blue),var(--bs-cyan));animation:pulse 1.2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:.35}50%{opacity:1}}
+
+.scroll{overflow:auto;border:1px solid var(--border);border-radius:8px}
+table{width:100%;border-collapse:separate;border-spacing:0;min-width:900px;background:#fff}
+th,td{border-bottom:1px solid #e9ecef;padding:12px 14px;text-align:left;vertical-align:top;max-width:340px;overflow-wrap:anywhere}
+th{position:sticky;top:0;background:#f1f3f5;color:#495057;font-size:.78rem;text-transform:uppercase;z-index:1}
+tbody tr:hover{background:#f8fbff}
+tbody tr:last-child td{border-bottom:0}
+td:last-child{white-space:nowrap}
+
+pre{margin:0;background:#0f172a;color:#e2e8f0;border-radius:8px;padding:14px;white-space:pre-wrap;overflow:auto;line-height:1.5}
+details{margin-top:14px}
+summary{cursor:pointer;color:#495057;font-weight:800}
+.modal{position:fixed;inset:0;background:rgba(15,23,42,.48);display:grid;place-items:center;padding:24px;z-index:20}
+.modal section{width:min(680px,100%);background:#fff;border-radius:8px;border:1px solid var(--border);box-shadow:0 24px 70px rgba(15,23,42,.3);padding:20px}
+
+@media(max-width:1100px){
+  .app-shell{grid-template-columns:220px minmax(0,1fr)}
+  .metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .content-grid{grid-template-columns:1fr}
+  .compact-form{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:760px){
+  .app-shell{grid-template-columns:1fr}
+  .main{padding:14px}
+  .sidebar{position:relative;height:auto}
+  .nav-list{grid-template-columns:repeat(2,minmax(0,1fr));margin-top:14px}
+  .topbar{align-items:flex-start;flex-direction:column}
+  .user-menu{width:100%;justify-content:space-between}
+  .metrics,.form-grid,.compact-form{grid-template-columns:1fr}
+  .panel{padding:16px}
+}
 </style>
