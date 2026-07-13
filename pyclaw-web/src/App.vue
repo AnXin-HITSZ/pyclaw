@@ -80,19 +80,55 @@
         <div v-if="state.error" class="toast toast-error">{{ state.error }}<button @click="state.error=''">Close</button></div>
         <div v-if="state.notice" class="toast toast-ok">{{ state.notice }}<button @click="state.notice=''">Close</button></div>
 
-        <section v-if="state.view==='dashboard'" class="stack">
-          <div class="metrics">
-            <article><span>Backend</span><b>{{ dashboard.health }}</b></article>
-            <article><span>User</span><b>{{ state.me.username }}</b></article>
-            <article><span>Claws</span><b>{{ claws.length }}</b></article>
-            <article><span>Runs</span><b>{{ usageStats.totalRuns }}</b></article>
-          </div>
-          <div class="action-grid">
-            <button v-if="has('claw:read')" class="action-card" @click="setView('claws')"><b>开启我的 Claw</b><span>创建 Claw，绑定飞书群，并选择多个角色 Agent。</span></button>
-            <button v-if="has('agent:run')" class="action-card" @click="setView('agent')"><b>进入 Web 对话</b><span>直接在网页中发起一次 Agent 会话。</span></button>
-            <button v-if="has('channel:manage')" class="action-card" @click="setView('channels')"><b>部署到飞书</b><span>检查飞书 Channel 配置和回调模式。</span></button>
-            <button v-if="has('provider:manage')" class="action-card" @click="setView('providers')"><b>Provider 配置</b><span>维护 DeepSeek 或其他模型服务配置。</span></button>
-          </div>
+        <section v-if="state.view==='dashboard'" class="product-home">
+          <section class="product-hero">
+            <div class="product-hero-copy">
+              <p class="product-kicker">pyclaw workspace</p>
+              <h2>把你的 Claw 部署到网页和飞书。</h2>
+              <p>创建一个 Claw，绑定一个飞书群，再把前端、后端、运维、产品、算法等角色 Agent 放进同一个协作入口。</p>
+              <div class="product-actions">
+                <button v-if="has('claw:read')" class="btn btn-light" @click="setView('claws')">管理 Claw</button>
+                <button v-if="has('agent:run')" class="btn btn-ghost" @click="setView('agent')">打开 Web 对话</button>
+              </div>
+            </div>
+            <div class="device-preview" aria-hidden="true">
+              <div class="device-toolbar"><span></span><span></span><span></span></div>
+              <div class="device-content">
+                <article><small>Backend</small><b>{{ dashboard.health }}</b></article>
+                <article><small>Claws</small><b>{{ claws.length }}</b></article>
+                <article><small>Runs</small><b>{{ usageStats.totalRuns }}</b></article>
+                <article><small>User</small><b>{{ state.me.username }}</b></article>
+              </div>
+            </div>
+          </section>
+
+          <section class="product-showcase">
+            <button v-if="has('claw:read')" class="product-tile tile-dark" @click="setView('claws')">
+              <span>Claw Builder</span>
+              <b>开启我的 Claw</b>
+              <small>创建 Claw，绑定飞书群，并选择多个角色 Agent。</small>
+              <i></i>
+            </button>
+            <button v-if="has('agent:run')" class="product-tile tile-light" @click="setView('agent')">
+              <span>Web Chat</span>
+              <b>进入 Web 对话</b>
+              <small>直接在网页中发起一次 Agent 会话。</small>
+              <i></i>
+            </button>
+            <button v-if="has('channel:manage')" class="product-tile tile-light" @click="setView('channels')">
+              <span>Feishu</span>
+              <b>部署到飞书</b>
+              <small>检查飞书 Channel 配置和回调模式。</small>
+              <i></i>
+            </button>
+            <button v-if="has('provider:manage')" class="product-tile tile-dark" @click="setView('providers')">
+              <span>Providers</span>
+              <b>Provider 配置</b>
+              <small>维护 DeepSeek 或其他模型服务配置。</small>
+              <i></i>
+            </button>
+          </section>
+
           <Panel title="Authorities">
             <div class="chips"><span v-for="a in state.me.authorities" :key="a">{{ a }}</span></div>
           </Panel>
@@ -440,6 +476,33 @@ button{cursor:pointer}
 .stack,.content-grid{max-width:1480px;margin:0 auto}
 .stack{display:grid;gap:18px}
 .content-grid{display:grid;grid-template-columns:minmax(360px,.9fr) minmax(0,1.1fr);gap:18px;align-items:start}
+.product-home{max-width:1480px;margin:0 auto;display:grid;gap:20px}
+.product-hero{position:relative;min-height:430px;display:grid;grid-template-columns:minmax(0,1fr) minmax(330px,440px);align-items:center;gap:40px;overflow:hidden;border-radius:8px;background:#212529;color:#fff;padding:54px;box-shadow:var(--shadow)}
+.product-hero::before{content:"";position:absolute;inset:auto -8% -36% 42%;height:360px;background:#f8f9fa;border-radius:999px 999px 0 0;transform:rotate(-10deg);opacity:.1}
+.product-hero-copy{position:relative;z-index:1;display:grid;gap:18px;max-width:720px}
+.product-kicker{margin:0;color:#9ec5fe;text-transform:uppercase;font-size:.78rem;font-weight:900;letter-spacing:.08em}
+.product-hero h2{margin:0;font-size:clamp(2.4rem,5vw,4.4rem);line-height:1.02;letter-spacing:0}
+.product-hero-copy>p:not(.product-kicker){margin:0;max-width:640px;color:rgba(255,255,255,.76);font-size:1.16rem;line-height:1.7}
+.product-actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:10px}
+.btn-light{background:#f8f9fa;border-color:#f8f9fa;color:#212529}
+.btn-ghost{background:transparent;border-color:rgba(255,255,255,.5);color:#fff}
+.btn-ghost:hover{background:rgba(255,255,255,.1)}
+.device-preview{position:relative;z-index:1;align-self:stretch;min-height:320px;border-radius:26px;background:#f8f9fa;color:#212529;padding:16px;box-shadow:0 28px 70px rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.28);transform:rotate(2deg)}
+.device-toolbar{height:34px;display:flex;align-items:center;gap:7px;padding:0 8px;border-bottom:1px solid #dee2e6}
+.device-toolbar span{width:10px;height:10px;border-radius:50%;background:#adb5bd}
+.device-content{height:calc(100% - 34px);display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding:16px 4px 4px}
+.device-content article{display:grid;align-content:space-between;min-height:110px;border-radius:8px;background:#fff;border:1px solid #e9ecef;padding:14px;box-shadow:0 8px 20px rgba(33,37,41,.06)}
+.device-content small{color:#6c757d;font-weight:850;text-transform:uppercase}
+.device-content b{font-size:1.45rem;line-height:1.1;overflow-wrap:anywhere}
+.product-showcase{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
+.product-tile{position:relative;min-height:430px;overflow:hidden;text-align:center;border:0;border-radius:8px;padding:42px 32px;color:#212529;display:grid;justify-items:center;align-content:start;gap:10px;box-shadow:var(--shadow)}
+.product-tile span{font-size:.78rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:inherit;opacity:.68}
+.product-tile b{font-size:clamp(1.8rem,3vw,2.8rem);line-height:1.08;letter-spacing:0}
+.product-tile small{max-width:460px;color:inherit;opacity:.72;font-size:1rem;line-height:1.55}
+.product-tile i{position:absolute;left:50%;bottom:-78px;width:min(420px,76%);aspect-ratio:1.55;border-radius:22px 22px 0 0;background:currentColor;opacity:.14;transform:translateX(-50%);box-shadow:0 -16px 0 rgba(255,255,255,.28) inset}
+.product-tile:hover{filter:brightness(.99);transform:translateY(-1px)}
+.tile-dark{background:#212529;color:#fff}
+.tile-light{background:#f8f9fa;color:#212529;border:1px solid #dee2e6}
 .panel,.metrics article{background:var(--surface);border:1px solid var(--border);border-radius:8px;box-shadow:var(--shadow)}
 .panel{padding:20px}
 .panel h2{margin:0 0 16px;font-size:1.05rem}
@@ -525,6 +588,9 @@ summary{cursor:pointer;color:#495057;font-weight:800}
   .cover-copy{max-width:none}
   .cover-card{max-width:520px}
   .metrics,.action-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .product-hero{grid-template-columns:1fr;padding:42px}
+  .device-preview{min-height:260px;transform:none}
+  .product-showcase{grid-template-columns:1fr}
   .content-grid{grid-template-columns:1fr}
   .compact-form{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
@@ -541,6 +607,10 @@ summary{cursor:pointer;color:#495057;font-weight:800}
   .topbar{align-items:flex-start;flex-direction:column}
   .user-menu{width:100%;justify-content:space-between}
   .metrics,.action-grid,.form-grid,.compact-form,.role-card{grid-template-columns:1fr}
+  .product-hero{min-height:auto;padding:28px 20px}
+  .product-actions{display:grid;grid-template-columns:1fr}
+  .device-content{grid-template-columns:1fr}
+  .product-tile{min-height:340px;padding:32px 20px}
   .picker-groups,.picker-options{grid-template-columns:1fr}
   .panel{padding:16px}
 }
