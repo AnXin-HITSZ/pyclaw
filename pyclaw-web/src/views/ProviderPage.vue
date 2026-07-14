@@ -7,7 +7,7 @@
 
     <div v-if="loading" class="loading">加载中...</div>
     <div v-else class="provider-grid">
-      <div v-for="p in providers" :key="p.id" class="provider-card">
+      <div v-for="p in providers" :key="p.id" class="card provider-card">
         <div class="provider-header">
           <h3>{{ p.name }}</h3>
           <span class="provider-status" :class="p.enabled ? 'enabled' : 'disabled'">
@@ -28,7 +28,12 @@
           <button class="btn-sm btn-danger" @click="handleDelete(p)">删除</button>
         </div>
       </div>
-      <div v-if="providers.length === 0" class="empty">还没有 Provider 配置</div>
+      <div v-if="providers.length === 0" class="empty-state">
+        <div class="empty-state-icon">⚡</div>
+        <h3>还没有 Provider 配置</h3>
+        <p>Provider 是 AI 模型的接入点，配置后可被 Agent 和 Claw 使用。</p>
+        <button class="btn-primary" @click="showCreate = true">+ 添加第一个 Provider</button>
+      </div>
     </div>
 
     <!-- Create/Edit Modal -->

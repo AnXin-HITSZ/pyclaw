@@ -5,28 +5,16 @@
     </div>
 
     <!-- Summary Cards -->
-    <div class="summary-grid">
-      <div class="summary-card">
-        <span class="summary-value">{{ summary.totalCalls }}</span>
-        <span class="summary-label">总调用次数</span>
-      </div>
-      <div class="summary-card">
-        <span class="summary-value">{{ summary.successRate }}%</span>
-        <span class="summary-label">成功率</span>
-      </div>
-      <div class="summary-card">
-        <span class="summary-value">{{ formatTokens(summary.totalTokens) }}</span>
-        <span class="summary-label">总 Token 消耗</span>
-      </div>
-      <div class="summary-card">
-        <span class="summary-value">{{ summary.avgLatency }}ms</span>
-        <span class="summary-label">平均延迟</span>
-      </div>
+    <div class="stat-row">
+      <div class="stat-card accent"><div class="stat-value">{{ summary.totalCalls }}</div><div class="stat-label">总调用次数</div></div>
+      <div class="stat-card success"><div class="stat-value">{{ summary.successRate }}%</div><div class="stat-label">成功率</div></div>
+      <div class="stat-card"><div class="stat-value">{{ formatTokens(summary.totalTokens) }}</div><div class="stat-label">总 Token 消耗</div></div>
+      <div class="stat-card"><div class="stat-value">{{ summary.avgLatency }}ms</div><div class="stat-label">平均延迟</div></div>
     </div>
 
     <div v-if="loading" class="loading">加载中...</div>
     <div v-else class="table-wrap">
-      <table class="usage-table">
+      <table class="data-table">
         <thead>
           <tr>
             <th>时间</th>
@@ -107,21 +95,9 @@ onMounted(load);
 .page { max-width: 1200px; }
 .page-header { margin-bottom: 24px; }
 .page-header h1 { font-size: 24px; }
-.summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
-.summary-card { background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 10px; padding: 20px; text-align: center; }
-.summary-value { display: block; font-size: 28px; font-weight: 700; color: var(--accent); }
-.summary-label { display: block; font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
 .table-wrap { overflow-x: auto; }
-.usage-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-.usage-table th { text-align: left; padding: 10px 12px; background: var(--bg-secondary); color: var(--text-secondary); font-weight: 600; border-bottom: 1px solid var(--border-color); white-space: nowrap; }
-.usage-table td { padding: 10px 12px; border-bottom: 1px solid var(--border-color); }
-.time-cell { white-space: nowrap; font-size: 12px; font-family: monospace; }
-.mono { font-family: monospace; font-size: 12px; }
-.num { text-align: right; font-family: monospace; }
+.time-cell { white-space: nowrap; font-size: 12px; font-family: "JetBrains Mono", monospace; }
+.mono { font-family: "JetBrains Mono", monospace; font-size: 12px; }
+.num { text-align: right; font-family: "JetBrains Mono", monospace; }
 .fw { font-weight: 600; }
-.status-tag { font-size: 11px; padding: 2px 8px; border-radius: 10px; }
-.status-tag.success { background: rgba(63,185,80,0.15); color: var(--success); }
-.status-tag.fail { background: rgba(248,81,73,0.15); color: var(--danger); }
-.empty { text-align: center; color: var(--text-secondary); }
-.loading { text-align: center; padding: 48px; color: var(--text-secondary); }
 </style>

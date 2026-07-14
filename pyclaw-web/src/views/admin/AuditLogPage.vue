@@ -6,7 +6,7 @@
 
     <div v-if="loading" class="loading">加载中...</div>
     <div v-else class="table-wrap">
-      <table class="log-table">
+      <table class="data-table">
         <thead>
           <tr>
             <th>时间</th>
@@ -58,19 +58,12 @@ onMounted(load);
 
 <style scoped>
 .page { max-width: 1200px; }
-.page-header { margin-bottom: 24px; }
-.page-header h1 { font-size: 24px; }
 .table-wrap { overflow-x: auto; }
-.log-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-.log-table th { text-align: left; padding: 10px 12px; background: var(--bg-secondary); color: var(--text-secondary); font-weight: 600; border-bottom: 1px solid var(--border-color); white-space: nowrap; }
-.log-table td { padding: 10px 12px; border-bottom: 1px solid var(--border-color); }
-.log-time { white-space: nowrap; font-family: monospace; font-size: 12px; }
-.action-tag { font-size: 11px; padding: 1px 8px; background: rgba(88,166,255,0.1); color: var(--accent); border-radius: 10px; font-family: monospace; }
-.mono { font-family: monospace; font-size: 12px; max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
+.log-time { white-space: nowrap; font-family: "JetBrains Mono", monospace; font-size: 12px; }
+.action-tag { font-size: 11px; padding: 1px 8px; background: var(--accent-glow); color: var(--accent); border-radius: 10px; font-family: monospace; }
+.mono { font-family: "JetBrains Mono", monospace; font-size: 12px; max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
 .status-tag { font-size: 11px; padding: 2px 8px; border-radius: 10px; }
-.status-tag.success { background: rgba(63,185,80,0.15); color: var(--success); }
-.status-tag.fail { background: rgba(248,81,73,0.15); color: var(--danger); }
+.status-tag.success { background: rgba(63,185,80,0.12); color: var(--success); }
+.status-tag.fail { background: rgba(248,81,73,0.1); color: var(--danger); }
 .err-msg { max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-muted); }
-.empty { text-align: center; color: var(--text-secondary); }
-.loading { text-align: center; padding: 48px; color: var(--text-secondary); }
 </style>

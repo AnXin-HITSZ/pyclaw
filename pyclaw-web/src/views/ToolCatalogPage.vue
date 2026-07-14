@@ -18,7 +18,7 @@
     <div v-if="loading" class="loading">加载中...</div>
     <div v-else-if="error" class="error-msg">{{ error }}</div>
     <div v-else class="tool-table-wrap">
-      <table class="tool-table">
+      <table class="data-table">
         <thead>
           <tr>
             <th>工具名称</th>

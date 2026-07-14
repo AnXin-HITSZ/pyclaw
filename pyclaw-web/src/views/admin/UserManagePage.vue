@@ -7,7 +7,7 @@
 
     <div v-if="loading" class="loading">加载中...</div>
     <div v-else class="table-wrap">
-      <table class="user-table">
+      <table class="data-table">
         <thead>
           <tr>
             <th>用户名</th>

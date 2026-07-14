@@ -39,7 +39,9 @@
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
   --topbar-height: 56px;
   --content-max-width: 1100px;
-  --content-gutter: 32px;
+  --content-gutter: 48px;
+  --card-padding: 24px;
+  --section-gap: 24px;
   /* Backward-compatible aliases */
   --bg-primary: var(--bg-deep);
   --bg-secondary: var(--bg-surface);
@@ -117,8 +119,8 @@ input, textarea, select { font-family: inherit; }
 
 .card {
   background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius);
-  padding: 20px; transition: all 0.25s var(--ease-out);
-  position: relative;
+  padding: var(--card-padding); transition: all 0.25s var(--ease-out);
+  position: relative; box-shadow: var(--shadow-sm);
 }
 .card::before {
   content: ""; position: absolute; top: 0; left: 12px; right: 12px; height: 1px;
@@ -172,6 +174,51 @@ input, textarea, select { font-family: inherit; }
   50% { opacity: 0.4; }
 }
 .skeleton { animation: pulse 1.5s var(--ease-in-out) infinite; background: var(--bg-raised); border-radius: var(--radius-sm); }
+
+/* ── Table base ── */
+.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.data-table th {
+  text-align: left; padding: 10px 14px; background: var(--bg-surface);
+  color: var(--text-muted); font-weight: 600; font-size: 11px;
+  text-transform: uppercase; letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--border);
+}
+.data-table td {
+  padding: 10px 14px; border-bottom: 1px solid var(--border);
+  color: var(--text-primary);
+}
+.data-table tbody tr { transition: background 0.15s var(--ease-out); }
+.data-table tbody tr:hover { background: var(--bg-hover); }
+.data-table tbody tr:nth-child(even) { background: rgba(255,255,255,0.015); }
+.data-table tbody tr:nth-child(even):hover { background: var(--bg-hover); }
+
+/* ── Empty state ── */
+.empty-state { text-align: center; padding: 64px 24px; }
+.empty-state-icon { font-size: 44px; margin-bottom: 16px; opacity: 0.5; }
+.empty-state h3 { font-size: 17px; font-weight: 600; margin-bottom: 6px; color: var(--text-secondary); }
+.empty-state p { font-size: 14px; color: var(--text-muted); max-width: 420px; margin: 0 auto 20px; line-height: 1.6; }
+
+/* ── Stat cards row ── */
+.stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: var(--section-gap); }
+.stat-card {
+  background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 20px 24px; box-shadow: var(--shadow-sm);
+  transition: all 0.2s var(--ease-out);
+}
+.stat-card:hover { border-color: var(--border-light); box-shadow: var(--shadow); }
+.stat-value { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; line-height: 1.1; }
+.stat-label { font-size: 12px; color: var(--text-muted); margin-top: 4px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.4px; }
+.stat-card.accent .stat-value { color: var(--accent); }
+.stat-card.success .stat-value { color: var(--success); }
+.stat-card.danger .stat-value { color: var(--danger); }
+
+/* ── Section divider ── */
+.section-title {
+  font-size: 13px; font-weight: 700; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: 0.6px;
+  margin-bottom: 16px; padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
 
 /* ── Reduced motion ── */
 @media (prefers-reduced-motion: reduce) {

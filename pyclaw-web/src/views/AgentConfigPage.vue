@@ -7,7 +7,7 @@
 
     <div v-if="loading" class="loading">加载中...</div>
     <div v-else class="agent-grid">
-      <div v-for="agent in agents" :key="agent.id" class="agent-card">
+      <div v-for="agent in agents" :key="agent.id" class="card agent-card">
         <div class="agent-header">
           <h3>{{ agent.name }}</h3>
           <span class="agent-status" :class="agent.enabled ? 'enabled' : 'disabled'">
@@ -27,7 +27,12 @@
           <button class="btn-sm btn-danger" @click="handleDelete(agent)">删除</button>
         </div>
       </div>
-      <div v-if="agents.length === 0" class="empty">还没有 Agent 配置</div>
+      <div v-if="agents.length === 0" class="empty-state">
+        <div class="empty-state-icon">🤖</div>
+        <h3>还没有 Agent 配置</h3>
+        <p>Agent 定义了 Claw 的行为方式——模型、系统提示词、工具策略和审批模式。</p>
+        <button class="btn-primary" @click="openCreate">+ 创建第一个 Agent</button>
+      </div>
     </div>
 
     <!-- Create/Edit Modal -->
@@ -215,7 +220,7 @@ onMounted(load);
 .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
 .page-header h1 { font-size: 24px; }
 .agent-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 20px; }
-.agent-card { background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 10px; padding: 20px; }
+.agent-card { cursor: default; }
 .agent-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
 .agent-header h3 { font-size: 16px; }
 .agent-status { font-size: 11px; padding: 2px 8px; border-radius: 10px; }
@@ -233,7 +238,7 @@ onMounted(load);
 .loading, .empty { text-align: center; padding: 48px; color: var(--text-secondary); }
 
 .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 100; }
-.modal { background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 12px; padding: 32px; width: 560px; max-width: 90vw; max-height: 90vh; overflow-y: auto; }
+.modal { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 32px; width: 640px; max-width: 90vw; max-height: 90vh; overflow-y: auto; }
 .modal h2 { margin-bottom: 20px; }
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .form-group { margin-bottom: 16px; }

@@ -8,7 +8,28 @@
     <div v-if="loading" class="loading">加载中...</div>
     <div v-else-if="error" class="error-msg">{{ error }}</div>
 
-    <div v-else class="claw-grid">
+    <div v-else>
+      <!-- Stat Summary -->
+      <div class="stat-row">
+        <div class="stat-card accent">
+          <div class="stat-value">{{ claws.length }}</div>
+          <div class="stat-label">Claw 总数</div>
+        </div>
+        <div class="stat-card success">
+          <div class="stat-value">{{ claws.filter(c => c.status === 'active').length }}</div>
+          <div class="stat-label">运行中</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">{{ claws.reduce((sum, c) => sum + (c.roles?.length || 0), 0) }}</div>
+          <div class="stat-label">Agent 角色</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">{{ claws.filter(c => c.feishuEnabled).length }}</div>
+          <div class="stat-label">飞书已绑定</div>
+        </div>
+      </div>
+
+      <div class="claw-grid">
       <TransitionGroup name="stagger">
         <div v-for="(claw, i) in claws" :key="claw.id" class="card claw-card"
              :style="{ transitionDelay: `${i * 60}ms` }"
@@ -34,8 +55,11 @@
       </TransitionGroup>
 
       <div v-if="claws.length === 0 && !loading" class="empty-state">
-        <div class="empty-icon">&#x1F980;</div>
-        <p>还没有 Claw，创建一个开始吧</p>
+        <div class="empty-state-icon">🦀</div>
+        <h3>还没有任何 Claw</h3>
+        <p>Claw 是你专属的 AI 工作空间，每个 Claw 拥有独立的沙箱环境、Agent 角色和会话历史。</p>
+        <button class="btn-primary" @click="showCreate = true">+ 创建第一个 Claw</button>
+      </div>
       </div>
     </div>
 

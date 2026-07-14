@@ -7,7 +7,7 @@
 
     <div v-if="loading" class="loading">加载中...</div>
     <div v-else>
-      <table v-if="tokens.length" class="token-table">
+      <table v-if="tokens.length" class="data-table">
         <thead>
           <tr>
             <th>名称</th>
@@ -37,7 +37,12 @@
           </tr>
         </tbody>
       </table>
-      <p v-else class="empty">还没有 API Token</p>
+      <div v-else class="empty-state">
+        <div class="empty-state-icon">🔑</div>
+        <h3>还没有 API Token</h3>
+        <p>创建 API Token 后可用于程序化调用 Agent API。</p>
+        <button class="btn-primary" @click="openCreate">+ 新建 Token</button>
+      </div>
     </div>
 
     <!-- Create Modal -->
@@ -136,34 +141,19 @@ onMounted(load);
 
 <style scoped>
 .page { max-width: 1000px; }
-.page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
-.page-header h1 { font-size: 24px; }
-.token-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-.token-table th { text-align: left; padding: 10px 12px; background: var(--bg-secondary); color: var(--text-secondary); font-weight: 600; border-bottom: 1px solid var(--border-color); }
-.token-table td { padding: 10px 12px; border-bottom: 1px solid var(--border-color); }
 .token-name { font-weight: 600; }
-.scope-tag { font-size: 11px; padding: 1px 8px; background: rgba(88,166,255,0.1); color: var(--accent); border-radius: 10px; }
+.scope-tag { font-size: 11px; padding: 1px 8px; background: var(--accent-glow); color: var(--accent); border-radius: 10px; }
 .status-tag { font-size: 11px; padding: 1px 8px; border-radius: 10px; }
-.status-tag.active { background: rgba(63,185,80,0.15); color: var(--success); }
-.status-tag.revoked { background: rgba(248,81,73,0.15); color: var(--danger); }
-.btn-sm { padding: 4px 12px; font-size: 12px; border-radius: 4px; border: 1px solid var(--border-color); background: transparent; }
+.status-tag.active { background: rgba(63,185,80,0.12); color: var(--success); }
+.status-tag.revoked { background: rgba(248,81,73,0.1); color: var(--danger); }
+.btn-sm { padding: 4px 12px; font-size: 12px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: transparent; color: var(--text-secondary); transition: all 0.15s var(--ease-out); }
+.btn-sm:hover { color: var(--text-primary); border-color: var(--border-light); }
 .btn-danger { color: var(--danger); border-color: var(--danger); }
-.btn-primary { padding: 8px 20px; font-size: 14px; font-weight: 600; color: #fff; background: var(--accent); border: none; border-radius: 6px; }
-.btn-secondary { padding: 8px 20px; font-size: 14px; color: var(--text-secondary); background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 6px; }
-.loading, .empty { text-align: center; padding: 48px; color: var(--text-secondary); }
-
-.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 100; }
-.modal { background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 12px; padding: 32px; width: 480px; max-width: 90vw; }
-.modal h2 { margin-bottom: 20px; }
-.form-group { margin-bottom: 16px; }
-.form-group label { display: block; margin-bottom: 4px; font-size: 13px; color: var(--text-secondary); }
-.form-group input { width: 100%; padding: 8px 12px; background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary); font-size: 14px; }
-.form-group input:focus { outline: none; border-color: var(--accent); }
+.btn-danger:hover { background: rgba(248,81,73,0.08); }
+.token-reveal { background: var(--bg-deep); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 16px; margin-bottom: 20px; word-break: break-all; }
+.token-reveal code { color: var(--success); font-size: 13px; }
+.warning-text { color: var(--warning); font-size: 14px; margin-bottom: 12px; }
+.scope-select { display: flex; flex-direction: column; gap: 8px; }
 .checkbox-label { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--text-primary); }
 .checkbox-label input { width: auto; }
-.scope-select { display: flex; flex-direction: column; gap: 8px; }
-.warning-text { color: var(--warning); font-size: 14px; margin-bottom: 12px; }
-.token-reveal { background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 6px; padding: 16px; margin-bottom: 20px; word-break: break-all; }
-.token-reveal code { color: var(--success); font-size: 13px; }
-.modal-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px; }
 </style>

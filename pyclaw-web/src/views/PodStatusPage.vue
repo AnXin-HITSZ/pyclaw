@@ -5,8 +5,15 @@
       <span class="subtitle">资源使用概览（数据为示例占位）</span>
     </div>
 
+    <div class="stat-row">
+      <div class="stat-card success"><div class="stat-value">3</div><div class="stat-label">Running Pods</div></div>
+      <div class="stat-card"><div class="stat-value">0.45 / 2.0</div><div class="stat-label">CPU Cores</div></div>
+      <div class="stat-card"><div class="stat-value">384 / 768</div><div class="stat-label">Memory MiB</div></div>
+      <div class="stat-card accent"><div class="stat-value">2.4 / 5.0</div><div class="stat-label">Storage GiB</div></div>
+    </div>
+
     <div class="pod-grid">
-      <div class="pod-card">
+      <div class="card pod-card">
         <div class="pod-card-header">
           <h3>pyclaw-api</h3>
           <span class="pod-status running">Running</span>
@@ -104,7 +111,7 @@
 .page-header h1 { font-size: 24px; }
 .subtitle { color: var(--text-muted); font-size: 13px; margin-left: 12px; }
 .pod-grid { display: grid; gap: 20px; }
-.pod-card { background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 10px; padding: 20px; }
+.pod-card { cursor: default; }
 .pod-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 .pod-card-header h3 { font-size: 16px; font-family: monospace; }
 .pod-status { font-size: 11px; padding: 2px 8px; border-radius: 10px; }
