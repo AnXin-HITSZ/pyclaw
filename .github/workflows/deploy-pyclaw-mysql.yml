@@ -27,6 +27,7 @@ jobs:
             ${{ secrets.ECS_USER }}@${{ secrets.ECS_HOST }} \
             "REF_NAME='${REF_NAME}' COMMIT_SHA='${COMMIT_SHA}' bash -se" <<'REMOTE_SCRIPT'
           cd /opt/pyclaw
+          rm -f .git/index.lock
           git fetch origin "${REF_NAME}"
           git reset --hard "${COMMIT_SHA}"
           test -f pyclaw-mysql-values-k3s.yaml

@@ -45,6 +45,7 @@ jobs:
 
           ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_ed25519 ${{ secrets.ECS_USER }}@${{ secrets.ECS_HOST }} "
             cd /opt/pyclaw &&
+            rm -f .git/index.lock &&
             git fetch origin ${{ github.ref_name }} &&
             git reset --hard ${{ github.sha }} &&
             sudo helm upgrade --install pyclaw-web ./pyclaw-web/helm \
