@@ -3,6 +3,7 @@ package com.anxin.pyclaw.backend.sandbox;
 import com.anxin.pyclaw.backend.config.PyclawRuntimeProperties;
 import com.anxin.pyclaw.backend.config.PyclawSandboxProperties;
 import java.util.Locale;
+import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatusCode;
@@ -39,24 +40,24 @@ public class SandboxClient {
 
     public String healthz(String userId, String clawId) {
         String url = serviceUrl(userId, clawId) + "/healthz";
-        log.debug("sandbox healthz: url={}", url);
-        return restClient.get().uri(url).retrieve()
-                .onStatus(HttpStatusCode::isError, (req, res) -> {
-                    throw new SandboxClientException("runner healthz failed: status=" + res.getStatusCode());
-                })
-                .body(String.class);
+        return sandboxCall("healthz", url, () ->
+                restClient.get().uri(url).retrieve()
+                        .onStatus(HttpStatusCode::isError, (req, res) -> {
+                            throw new SandboxClientException("runner healthz failed: status=" + res.getStatusCode());
+                        })
+                        .body(String.class));
     }
 
     // ---- Workspace ----
 
     public String getWorkspace(String userId, String clawId) {
         String url = serviceUrl(userId, clawId) + "/v1/workspace";
-        log.debug("sandbox workspace: url={}", url);
-        return restClient.get().uri(url).retrieve()
-                .onStatus(HttpStatusCode::isError, (req, res) -> {
-                    throw new SandboxClientException("runner workspace failed: status=" + res.getStatusCode());
-                })
-                .body(String.class);
+        return sandboxCall("workspace", url, () ->
+                restClient.get().uri(url).retrieve()
+                        .onStatus(HttpStatusCode::isError, (req, res) -> {
+                            throw new SandboxClientException("runner workspace failed: status=" + res.getStatusCode());
+                        })
+                        .body(String.class));
     }
 
     // ---- Files ----
@@ -64,32 +65,45 @@ public class SandboxClient {
     public String listFiles(String userId, String clawId, String path) {
         String safePath = path == null || path.isBlank() ? "." : path;
         String url = serviceUrl(userId, clawId) + "/v1/workspace/files?path=" + safePath;
-        log.debug("sandbox list files: url={}", url);
-        return restClient.get().uri(url).retrieve()
-                .onStatus(HttpStatusCode::isError, (req, res) -> {
-                    throw new SandboxClientException("runner list files failed: status=" + res.getStatusCode());
-                })
-                .body(String.class);
+        return sandboxCall("listFiles", url, () ->
+                restClient.get().uri(url).retrieve()
+                        .onStatus(HttpStatusCode::isError, (req, res) -> {
+                            throw new SandboxClientException("runner list files failed: status=" + res.getStatusCode());
+                        })
+                        .body(String.class));
     }
 
     public String getFile(String userId, String clawId, String filePath) {
         String url = serviceUrl(userId, clawId) + "/v1/workspace/files/" + filePath;
-        log.debug("sandbox get file: url={}", url);
-        return restClient.get().uri(url).retrieve()
-                .onStatus(HttpStatusCode::isError, (req, res) -> {
-                    throw new SandboxClientException("runner get file failed: status=" + res.getStatusCode());
-                })
-                .body(String.class);
+        return sandboxCall("getFile", url, () ->
+                restClient.get().uri(url).retrieve()
+                        .onStatus(HttpStatusCode::isError, (req, res) -> {
+                            throw new SandboxClientException("runner get file failed: status=" + res.getStatusCode());
+                        })
+                        .body(String.class));
     }
 
     public String putFile(String userId, String clawId, String filePath, String content) {
         String url = serviceUrl(userId, clawId) + "/v1/workspace/files/" + filePath;
-        log.debug("sandbox put file: url={}", url);
-        return restClient.put().uri(url).body(content).retrieve()
-                .onStatus(HttpStatusCode::isError, (req, res) -> {
-                    throw new SandboxClientException("runner put file failed: status=" + res.getStatusCode());
-                })
-                .body(String.class);
+        return sandboxCall("putFile", url, () ->
+                restClient.put().uri(url).body(content).retrieve()
+                        .onStatus(HttpStatusCode::isError, (req, res) -> {
+                            throw new SandboxClientException("runner put file failed: status=" + res.getStatusCode());
+                        })
+                        .body(String.class));
+    }
+
+    // ---- Safe call wrapper ----
+
+    private String sandboxCall(String op, String url, Supplier<String> call) {
+        try {
+            return call.get();
+        } catch (SandboxClientException e) {
+            throw e;
+        } catch (Exception e) {
+            log.warn("sandbox {} failed: url={} error={}", op, url, e.toString());
+            throw new SandboxClientException("runner " + op + " unreachable: " + e.getMessage());
+        }
     }
 
     private String dnsName(String value) {
