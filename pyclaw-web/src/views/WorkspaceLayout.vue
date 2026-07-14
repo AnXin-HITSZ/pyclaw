@@ -20,41 +20,41 @@
 
         <nav class="topbar-nav">
           <!-- 工作台 -->
-          <div class="nav-group" @mouseenter="openMenu = 'workspace'" @mouseleave="openMenu = null">
+          <div class="nav-group" @mouseenter="enterMenu('workspace')" @mouseleave="leaveMenu">
             <button class="nav-trigger" :class="{ active: isActive('/workspace/claws') || isActive('/workspace/playground') || isActive('/workspace/tools') || isActive('/workspace/pods') }">
               工作台
             </button>
             <div class="nav-dropdown" v-show="openMenu === 'workspace'">
-              <router-link to="/workspace/claws" class="dropdown-item">🦀 Claw 管理</router-link>
-              <router-link to="/workspace/playground" class="dropdown-item">💬 Agent 对话</router-link>
-              <router-link to="/workspace/tools" class="dropdown-item">🔧 工具目录</router-link>
-              <router-link to="/workspace/pods" class="dropdown-item">📦 Pod 状态</router-link>
+              <router-link to="/workspace/claws" class="dropdown-item" @click="openMenu = null">🦀 Claw 管理</router-link>
+              <router-link to="/workspace/playground" class="dropdown-item" @click="openMenu = null">💬 Agent 对话</router-link>
+              <router-link to="/workspace/tools" class="dropdown-item" @click="openMenu = null">🔧 工具目录</router-link>
+              <router-link to="/workspace/pods" class="dropdown-item" @click="openMenu = null">📦 Pod 状态</router-link>
             </div>
           </div>
 
           <!-- 配置 -->
-          <div class="nav-group" @mouseenter="openMenu = 'config'" @mouseleave="openMenu = null">
+          <div class="nav-group" @mouseenter="enterMenu('config')" @mouseleave="leaveMenu">
             <button class="nav-trigger" :class="{ active: isActive('/workspace/agents') || isActive('/workspace/providers') || isActive('/workspace/secrets') || isActive('/workspace/tokens') }">
               配置
             </button>
             <div class="nav-dropdown" v-show="openMenu === 'config'">
-              <router-link to="/workspace/agents" class="dropdown-item">🤖 Agent 配置</router-link>
-              <router-link to="/workspace/providers" class="dropdown-item">⚡ Provider 管理</router-link>
-              <router-link to="/workspace/secrets" class="dropdown-item">🔒 Secret 管理</router-link>
-              <router-link to="/workspace/tokens" class="dropdown-item">🔑 API Token</router-link>
+              <router-link to="/workspace/agents" class="dropdown-item" @click="openMenu = null">🤖 Agent 配置</router-link>
+              <router-link to="/workspace/providers" class="dropdown-item" @click="openMenu = null">⚡ Provider 管理</router-link>
+              <router-link to="/workspace/secrets" class="dropdown-item" @click="openMenu = null">🔒 Secret 管理</router-link>
+              <router-link to="/workspace/tokens" class="dropdown-item" @click="openMenu = null">🔑 API Token</router-link>
             </div>
           </div>
 
           <!-- 管理后台 (admin only) -->
-          <div v-if="isAdmin" class="nav-group" @mouseenter="openMenu = 'admin'" @mouseleave="openMenu = null">
+          <div v-if="isAdmin" class="nav-group" @mouseenter="enterMenu('admin')" @mouseleave="leaveMenu">
             <button class="nav-trigger" :class="{ active: isActive('/workspace/admin/') }">
               管理后台
             </button>
             <div class="nav-dropdown" v-show="openMenu === 'admin'">
-              <router-link to="/workspace/admin/users" class="dropdown-item">👥 用户管理</router-link>
-              <router-link to="/workspace/admin/channels" class="dropdown-item">📡 渠道管理</router-link>
-              <router-link to="/workspace/admin/audit" class="dropdown-item">📋 审计日志</router-link>
-              <router-link to="/workspace/admin/usage" class="dropdown-item">📊 用量统计</router-link>
+              <router-link to="/workspace/admin/users" class="dropdown-item" @click="openMenu = null">👥 用户管理</router-link>
+              <router-link to="/workspace/admin/channels" class="dropdown-item" @click="openMenu = null">📡 渠道管理</router-link>
+              <router-link to="/workspace/admin/audit" class="dropdown-item" @click="openMenu = null">📋 审计日志</router-link>
+              <router-link to="/workspace/admin/usage" class="dropdown-item" @click="openMenu = null">📊 用量统计</router-link>
             </div>
           </div>
         </nav>
@@ -86,6 +86,18 @@ const router = useRouter();
 const route = useRoute();
 const { user, isAdmin, logout } = useAuth();
 const openMenu = ref(null);
+let hideTimer = null;
+
+function enterMenu(key) {
+  clearTimeout(hideTimer);
+  openMenu.value = key;
+}
+
+function leaveMenu() {
+  hideTimer = setTimeout(() => {
+    openMenu.value = null;
+  }, 150);
+}
 
 function isActive(prefix) {
   return route.path.startsWith(prefix);
@@ -148,12 +160,16 @@ function handleLogout() {
 .nav-trigger.active { color: var(--accent); background: var(--accent-glow); }
 
 .nav-dropdown {
-  position: absolute; top: calc(100% + 6px); left: 0;
-  min-width: 180px; padding: 6px;
-  background: var(--bg-surface); border: 1px solid var(--border);
-  border-radius: var(--radius); box-shadow: var(--shadow);
+  position: absolute; top: 100%; left: 0;
+  padding-top: 10px;  /* invisible bridge — eliminates gap between trigger and menu */
+  min-width: 180px;
   animation: dropdown-enter 0.2s var(--ease-spring);
   transform-origin: top left;
+}
+.nav-dropdown::before {
+  content: ""; position: absolute; top: 10px; left: 0; right: 0; bottom: 0;
+  background: var(--bg-surface); border: 1px solid var(--border);
+  border-radius: var(--radius); box-shadow: var(--shadow); z-index: -1;
 }
 @keyframes dropdown-enter {
   from { opacity: 0; transform: scale(0.95) translateY(-4px); }
