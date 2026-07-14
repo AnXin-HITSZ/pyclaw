@@ -1,0 +1,37 @@
+name: Build sandbox runner
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "sandbox-runner/**"
+      - ".github/workflows/build-sandbox-runner.yml"
+  workflow_dispatch:
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    env:
+      IMAGE_NAME: pyclaw/sandbox-runner
+      IMAGE_TAG: ${{ github.sha }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Login to ACR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.ACR_REGISTRY }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+
+      - name: Build and push sandbox-runner image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./sandbox-runner
+          file: ./sandbox-runner/Dockerfile
+          push: true
+          tags: ${{ secrets.ACR_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}

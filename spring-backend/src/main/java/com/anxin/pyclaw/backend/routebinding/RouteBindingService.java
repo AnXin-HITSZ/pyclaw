@@ -6,6 +6,8 @@ import com.anxin.pyclaw.backend.agentconfig.AgentConfigService;
 import com.anxin.pyclaw.backend.agentconfig.ToolPolicyGrantValidator;
 import com.anxin.pyclaw.backend.audit.AuditLogService;
 import com.anxin.pyclaw.backend.auth.AuthenticatedPrincipal;
+import com.anxin.pyclaw.backend.claw.ClawEntity;
+import com.anxin.pyclaw.backend.claw.ClawRepository;
 import com.anxin.pyclaw.backend.common.ApiException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -13,6 +15,7 @@ import jakarta.transaction.Transactional;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
@@ -27,6 +30,7 @@ public class RouteBindingService {
 
     private final RouteBindingRepository bindings;
     private final AgentConfigRepository agents;
+    private final ClawRepository claws;
     private final AgentConfigService agentConfigService;
     private final ToolPolicyGrantValidator grantValidator;
     private final ObjectMapper objectMapper;
@@ -35,6 +39,7 @@ public class RouteBindingService {
     public RouteBindingService(
             RouteBindingRepository bindings,
             AgentConfigRepository agents,
+            ClawRepository claws,
             AgentConfigService agentConfigService,
             ToolPolicyGrantValidator grantValidator,
             ObjectMapper objectMapper,
@@ -42,14 +47,20 @@ public class RouteBindingService {
     ) {
         this.bindings = bindings;
         this.agents = agents;
+        this.claws = claws;
         this.agentConfigService = agentConfigService;
         this.grantValidator = grantValidator;
         this.objectMapper = objectMapper;
         this.auditLogService = auditLogService;
     }
 
-    public List<RouteBindingResponse> list() {
-        return bindings.findAll().stream().map(this::toResponse).toList();
+    public List<RouteBindingResponse> list(Authentication authentication) {
+        List<RouteBindingEntity> rows = bindings.findAll();
+        if (!isAdmin(authentication)) {
+            String userId = actorId(authentication);
+            rows = rows.stream().filter(r -> isOwnedByUser(r, userId)).toList();
+        }
+        return rows.stream().map(this::toResponse).toList();
     }
 
     public List<RouteBindingResponse> runtimeList() {
@@ -73,8 +84,7 @@ public class RouteBindingService {
 
     @Transactional
     public RouteBindingResponse update(String id, RouteBindingRequest request, Authentication authentication) {
-        RouteBindingEntity entity = bindings.findById(id)
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Route binding not found"));
+        RouteBindingEntity entity = requireOwned(id, authentication);
         AgentConfigEntity agent = requireAgent(request.agentId());
         validateRouteGrant(agent, request, authentication);
         apply(entity, request);
@@ -86,7 +96,8 @@ public class RouteBindingService {
 
     @Transactional
     public void delete(String id, Authentication authentication) {
-        bindings.deleteById(id);
+        RouteBindingEntity entity = requireOwned(id, authentication);
+        bindings.delete(entity);
         audit(authentication, "route_binding.delete", id, true, null);
     }
 
@@ -219,5 +230,37 @@ public class RouteBindingService {
 
     private void audit(Authentication authentication, String action, String resourceId, boolean success, String error) {
         auditLogService.record(actorType(authentication), actorId(authentication), action, "route_binding", resourceId, success, error);
+    }
+
+    private RouteBindingEntity requireOwned(String id, Authentication authentication) {
+        RouteBindingEntity entity = bindings.findById(id)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Route binding not found"));
+        if (!isAdmin(authentication) && !isOwnedByUser(entity, actorId(authentication))) {
+            throw new ApiException(HttpStatus.NOT_FOUND, "Route binding not found");
+        }
+        return entity;
+    }
+
+    private boolean isOwnedByUser(RouteBindingEntity entity, String userId) {
+        // A route binding is owned by the user if they own the associated agent
+        AgentConfigEntity agent = agents.findById(entity.getAgentId()).orElse(null);
+        if (agent != null && Objects.equals(agent.getCreatedBy(), userId)) {
+            return true;
+        }
+        // Or if they own the associated claw
+        if (entity.getClawId() != null) {
+            ClawEntity claw = claws.findById(entity.getClawId()).orElse(null);
+            if (claw != null && Objects.equals(claw.getOwnerUserId(), userId)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean isAdmin(Authentication authentication) {
+        Set<String> authorities = authentication == null ? Set.of() : authentication.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .collect(java.util.stream.Collectors.toSet());
+        return authorities.contains("user:manage");
     }
 }

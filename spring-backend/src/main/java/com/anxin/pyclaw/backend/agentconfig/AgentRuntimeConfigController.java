@@ -4,6 +4,7 @@ import com.anxin.pyclaw.backend.common.ApiException;
 import com.anxin.pyclaw.backend.config.PyclawRuntimeProperties;
 import com.anxin.pyclaw.backend.provider.ProviderConfigEntity;
 import com.anxin.pyclaw.backend.provider.ProviderConfigRepository;
+import com.anxin.pyclaw.backend.provider.ProviderConfigService;
 import java.util.Locale;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -18,15 +19,18 @@ import org.springframework.web.bind.annotation.RestController;
 public class AgentRuntimeConfigController {
     private final AgentConfigService agents;
     private final ProviderConfigRepository providers;
+    private final ProviderConfigService providerConfigService;
     private final PyclawRuntimeProperties properties;
 
     public AgentRuntimeConfigController(
             AgentConfigService agents,
             ProviderConfigRepository providers,
+            ProviderConfigService providerConfigService,
             PyclawRuntimeProperties properties
     ) {
         this.agents = agents;
         this.providers = providers;
+        this.providerConfigService = providerConfigService;
         this.properties = properties;
     }
 
@@ -43,6 +47,7 @@ public class AgentRuntimeConfigController {
         if (providerType.toLowerCase(Locale.ROOT).contains("openai")) {
             providerType = "openai";
         }
+        String apiKey = providerConfig == null ? null : providerConfigService.getDecryptedApiKey(providerConfig);
         return new AgentRuntimeConfigResponse(
                 agent.getId(),
                 agent.getAgentKey(),
@@ -52,7 +57,7 @@ public class AgentRuntimeConfigController {
                 firstNonBlank(agent.getModel(), providerConfig == null ? null : providerConfig.getModel()),
                 firstNonBlank(providerConfig == null ? null : providerConfig.getApiMode(), "auto"),
                 providerConfig == null ? null : providerConfig.getBaseUrl(),
-                providerConfig == null ? null : providerConfig.getApiKey(),
+                apiKey,
                 agent.getSystemPrompt(),
                 agent.getWorkspaceDir(),
                 agent.getRuntimeType(),

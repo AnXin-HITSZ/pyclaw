@@ -7,6 +7,7 @@ public record PyclawSecurityProperties(
         String jwtSecret,
         long jwtTtlSeconds,
         String bootstrapAdminUsername,
-        String bootstrapAdminPassword
+        String bootstrapAdminPassword,
+        String encryptionSecret
 ) {
 }

@@ -71,21 +71,25 @@ const routes = [
         path: "admin/channels",
         name: "admin-channels",
         component: () => import("../views/admin/ChannelPage.vue"),
+        meta: { authority: "channel:manage" },
       },
       {
         path: "admin/users",
         name: "admin-users",
         component: () => import("../views/admin/UserManagePage.vue"),
+        meta: { authority: "user:manage" },
       },
       {
         path: "admin/audit",
         name: "admin-audit",
         component: () => import("../views/admin/AuditLogPage.vue"),
+        meta: { authority: "audit:read" },
       },
       {
         path: "admin/usage",
         name: "admin-usage",
         component: () => import("../views/admin/UsagePage.vue"),
+        meta: { authority: "audit:read" },
       },
     ],
   },
@@ -96,8 +100,21 @@ const router = createRouter({
   routes,
 });
 
+function getStoredAuthorities() {
+  try {
+    const user = JSON.parse(localStorage.getItem("pyclaw.user") || "null");
+    if (user && user.authorities) {
+      if (Array.isArray(user.authorities)) return user.authorities;
+      if (typeof user.authorities === "string") return user.authorities.split(",").map(s => s.trim());
+    }
+  } catch {
+    // ignore parse errors
+  }
+  return [];
+}
+
 router.beforeEach(async (to, from, next) => {
-  if (to.meta.requiresAuth) {
+  if (to.meta.requiresAuth || to.meta.authority) {
     const token = localStorage.getItem("pyclaw.token");
     if (!token) {
       return next("/login");
@@ -110,6 +127,14 @@ router.beforeEach(async (to, from, next) => {
       } catch {
         localStorage.removeItem("pyclaw.token");
         return next("/login");
+      }
+    }
+    // Check route-level authority
+    const requiredAuthority = to.meta.authority;
+    if (requiredAuthority) {
+      const authorities = getStoredAuthorities();
+      if (!authorities.includes(requiredAuthority)) {
+        return next("/workspace");
       }
     }
   }

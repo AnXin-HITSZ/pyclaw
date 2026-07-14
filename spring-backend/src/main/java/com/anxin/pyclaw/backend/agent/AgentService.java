@@ -2,16 +2,21 @@ package com.anxin.pyclaw.backend.agent;
 
 import com.anxin.pyclaw.backend.audit.AuditLogService;
 import com.anxin.pyclaw.backend.auth.AuthenticatedPrincipal;
+import com.anxin.pyclaw.backend.common.ApiException;
+import com.anxin.pyclaw.backend.provider.ProviderConfigEntity;
+import com.anxin.pyclaw.backend.provider.ProviderConfigRepository;
+import com.anxin.pyclaw.backend.provider.ProviderConfigService;
+import com.anxin.pyclaw.backend.session.SessionService;
 import com.anxin.pyclaw.backend.pyclaw.PyclawAgentRunRequest;
 import com.anxin.pyclaw.backend.pyclaw.PyclawAgentRunResponse;
 import com.anxin.pyclaw.backend.pyclaw.PyclawClient;
-import com.anxin.pyclaw.backend.provider.ProviderConfigEntity;
-import com.anxin.pyclaw.backend.provider.ProviderConfigRepository;
 import com.anxin.pyclaw.backend.usage.UsageRecordEntity;
 import com.anxin.pyclaw.backend.usage.UsageRecordRepository;
 import java.time.OffsetDateTime;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -20,27 +25,45 @@ public class AgentService {
     private final AuditLogService auditLogService;
     private final UsageRecordRepository usageRecords;
     private final ProviderConfigRepository providerConfigs;
+    private final ProviderConfigService providerConfigService;
+    private final SessionService sessionService;
 
     public AgentService(
             PyclawClient pyclawClient,
             AuditLogService auditLogService,
             UsageRecordRepository usageRecords,
-            ProviderConfigRepository providerConfigs
+            ProviderConfigRepository providerConfigs,
+            ProviderConfigService providerConfigService,
+            SessionService sessionService
     ) {
         this.pyclawClient = pyclawClient;
         this.auditLogService = auditLogService;
         this.usageRecords = usageRecords;
         this.providerConfigs = providerConfigs;
+        this.providerConfigService = providerConfigService;
+        this.sessionService = sessionService;
     }
 
     public AgentRunResponse run(AuthenticatedPrincipal principal, AgentRunRequest request) {
         long started = System.nanoTime();
         boolean success = false;
+
+        // Validate session ownership if sessionId is provided
+        if (request.sessionId() != null && !request.sessionId().isBlank()) {
+            sessionService.requireOwned(request.sessionId(), principal);
+        }
+
         ProviderConfigEntity providerConfig = resolveProviderConfig(request.provider());
+        // Validate provider ownership: user must own the provider or it must be shared
+        if (providerConfig != null) {
+            requireProviderAccess(providerConfig, principal);
+        }
+
         String provider = providerConfig == null ? defaultProvider(request.provider()) : pyclawProvider(providerConfig.getProviderType());
         String model = request.model() != null && !request.model().isBlank()
                 ? request.model()
                 : providerConfig == null ? null : providerConfig.getModel();
+        String apiKey = providerConfig == null ? null : providerConfigService.getDecryptedApiKey(providerConfig);
         try {
             PyclawAgentRunResponse response = pyclawClient.runAgent(new PyclawAgentRunRequest(
                     request.prompt(),
@@ -50,7 +73,7 @@ public class AgentService {
                     model,
                     providerConfig == null ? "auto" : providerConfig.getApiMode(),
                     providerConfig == null ? null : providerConfig.getBaseUrl(),
-                    providerConfig == null ? null : providerConfig.getApiKey()
+                    apiKey
             ));
             long latencyMs = (System.nanoTime() - started) / 1_000_000;
             success = true;
@@ -58,6 +81,20 @@ public class AgentService {
             return new AgentRunResponse(response.sessionId(), response.message(), response.text(), latencyMs);
         } finally {
             auditLogService.record(principal.actorType(), principal.userId(), "agent:run", "session", request.sessionId(), success, success ? null : "agent call failed");
+        }
+    }
+
+    private void requireProviderAccess(ProviderConfigEntity providerConfig, AuthenticatedPrincipal principal) {
+        boolean isAdmin = principal.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("user:manage"));
+        if (isAdmin) {
+            return;
+        }
+        if (providerConfig.isShared()) {
+            return;
+        }
+        if (!Objects.equals(providerConfig.getOwnerUserId(), principal.userId())) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "Provider not accessible");
         }
     }
 

@@ -1,5 +1,6 @@
 package com.anxin.pyclaw.backend.provider;
 
+import com.anxin.pyclaw.backend.config.SecretEncryptionService;
 import java.time.OffsetDateTime;
 
 public record ProviderConfigResponse(
@@ -18,7 +19,9 @@ public record ProviderConfigResponse(
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt
 ) {
-    public static ProviderConfigResponse from(ProviderConfigEntity entity) {
+    public static ProviderConfigResponse from(ProviderConfigEntity entity, SecretEncryptionService encryption) {
+        boolean hasKey = entity.getApiKey() != null && !entity.getApiKey().isBlank();
+        String decrypted = hasKey ? encryption.decrypt(entity.getApiKey()) : null;
         return new ProviderConfigResponse(
                 entity.getId(),
                 entity.getName(),
@@ -27,8 +30,8 @@ public record ProviderConfigResponse(
                 entity.getModel(),
                 entity.getApiMode(),
                 entity.getSecretRef(),
-                entity.getApiKey() != null && !entity.getApiKey().isBlank(),
-                last4(entity.getApiKey()),
+                hasKey,
+                last4(decrypted),
                 entity.getOwnerUserId(),
                 entity.isShared(),
                 entity.isEnabled(),

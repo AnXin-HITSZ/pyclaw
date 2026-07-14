@@ -26,8 +26,11 @@ public class ApiTokenController {
 
     @GetMapping
     @PreAuthorize("hasAuthority('token:manage_self') or hasAuthority('user:manage')")
-    public List<ApiTokenEntity> list() {
-        return repository.findAll();
+    public List<ApiTokenEntity> list(@AuthenticationPrincipal AuthenticatedPrincipal principal) {
+        if (principal.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("user:manage"))) {
+            return repository.findAll();
+        }
+        return repository.findByUserIdOrderByCreatedAtDesc(principal.userId());
     }
 
     @PostMapping

@@ -1,6 +1,7 @@
 package com.anxin.pyclaw.backend.user;
 
 import com.anxin.pyclaw.backend.common.ApiException;
+import com.anxin.pyclaw.backend.sandbox.SandboxOrchestratorService;
 import jakarta.validation.Valid;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -19,12 +20,15 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/users")
 public class UserController {
+    private static final String DEFAULT_USER_AUTHORITIES = "claw:read,claw:create,claw:update,claw:delete,agent:run,agent:read,agent:create,agent:update,tool:catalog:read,token:manage_self,provider:manage_self";
     private final UserRepository repository;
     private final PasswordEncoder passwordEncoder;
+    private final SandboxOrchestratorService sandboxOrchestrator;
 
-    public UserController(UserRepository repository, PasswordEncoder passwordEncoder) {
+    public UserController(UserRepository repository, PasswordEncoder passwordEncoder, SandboxOrchestratorService sandboxOrchestrator) {
         this.repository = repository;
         this.passwordEncoder = passwordEncoder;
+        this.sandboxOrchestrator = sandboxOrchestrator;
     }
 
     @GetMapping
@@ -46,10 +50,12 @@ public class UserController {
         entity.setPasswordHash(passwordEncoder.encode(request.password()));
         entity.setDisplayName(request.displayName());
         entity.setStatus("ACTIVE");
-        entity.setAuthorities(request.authorities() == null || request.authorities().isBlank() ? "agent:run,agent:read,token:manage_self" : request.authorities());
+        entity.setAuthorities(request.authorities() == null || request.authorities().isBlank() ? DEFAULT_USER_AUTHORITIES : request.authorities());
         entity.setCreatedAt(now);
         entity.setUpdatedAt(now);
-        return repository.save(entity);
+        UserEntity saved = repository.save(entity);
+        sandboxOrchestrator.ensureUserNamespace(saved.getId(), saved.getUsername());
+        return saved;
     }
 
     @PutMapping("/{id}/disable")

@@ -1,6 +1,7 @@
 package com.anxin.pyclaw.backend;
 
 import com.anxin.pyclaw.backend.config.PyclawRuntimeProperties;
+import com.anxin.pyclaw.backend.config.PyclawSandboxProperties;
 import com.anxin.pyclaw.backend.config.PyclawSecurityProperties;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -11,7 +12,7 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 @SpringBootApplication
 @EnableJpaAuditing
 @EnableMethodSecurity
-@EnableConfigurationProperties({PyclawSecurityProperties.class, PyclawRuntimeProperties.class})
+@EnableConfigurationProperties({PyclawSecurityProperties.class, PyclawRuntimeProperties.class, PyclawSandboxProperties.class})
 public class PyclawBackendApplication {
     public static void main(String[] args) {
         SpringApplication.run(PyclawBackendApplication.class, args);

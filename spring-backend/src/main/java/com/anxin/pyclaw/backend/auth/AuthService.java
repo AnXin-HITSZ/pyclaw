@@ -1,6 +1,7 @@
 package com.anxin.pyclaw.backend.auth;
 
 import com.anxin.pyclaw.backend.common.ApiException;
+import com.anxin.pyclaw.backend.sandbox.SandboxOrchestratorService;
 import com.anxin.pyclaw.backend.user.UserEntity;
 import com.anxin.pyclaw.backend.user.UserRepository;
 import java.time.OffsetDateTime;
@@ -16,11 +17,13 @@ public class AuthService {
     private final UserRepository users;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final SandboxOrchestratorService sandboxOrchestrator;
 
-    public AuthService(UserRepository users, PasswordEncoder passwordEncoder, JwtService jwtService) {
+    public AuthService(UserRepository users, PasswordEncoder passwordEncoder, JwtService jwtService, SandboxOrchestratorService sandboxOrchestrator) {
         this.users = users;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
+        this.sandboxOrchestrator = sandboxOrchestrator;
     }
 
     public LoginResponse login(LoginRequest request) {
@@ -48,6 +51,7 @@ public class AuthService {
         user.setCreatedAt(now);
         user.setUpdatedAt(now);
         UserEntity saved = users.save(user);
+        sandboxOrchestrator.ensureUserNamespace(saved.getId(), saved.getUsername());
         return new LoginResponse(jwtService.issue(saved.getId(), saved.getUsername(), saved.getAuthorities()), 3600);
     }
 

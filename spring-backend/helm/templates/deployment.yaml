@@ -18,6 +18,7 @@ spec:
         app.kubernetes.io/name: {{ include "spring-backend.name" . }}
         app.kubernetes.io/instance: {{ .Release.Name }}
     spec:
+      serviceAccountName: {{ include "spring-backend.serviceAccountName" . }}
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
@@ -29,6 +30,11 @@ spec:
           ports:
             - name: http
               containerPort: 8080
+          env:
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
           envFrom:
             - configMapRef:
                 name: {{ include "spring-backend.fullname" . }}-config

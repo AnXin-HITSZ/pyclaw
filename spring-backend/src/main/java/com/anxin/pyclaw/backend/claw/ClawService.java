@@ -7,6 +7,7 @@ import com.anxin.pyclaw.backend.auth.AuthenticatedPrincipal;
 import com.anxin.pyclaw.backend.common.ApiException;
 import com.anxin.pyclaw.backend.routebinding.RouteBindingEntity;
 import com.anxin.pyclaw.backend.routebinding.RouteBindingRepository;
+import com.anxin.pyclaw.backend.sandbox.SandboxOrchestratorService;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.transaction.Transactional;
@@ -30,6 +31,7 @@ public class ClawService {
     private final RouteBindingRepository routeBindings;
     private final ObjectMapper objectMapper;
     private final AuditLogService auditLogService;
+    private final SandboxOrchestratorService sandboxOrchestrator;
 
     public ClawService(
             ClawRepository claws,
@@ -37,7 +39,8 @@ public class ClawService {
             AgentConfigRepository agents,
             RouteBindingRepository routeBindings,
             ObjectMapper objectMapper,
-            AuditLogService auditLogService
+            AuditLogService auditLogService,
+            SandboxOrchestratorService sandboxOrchestrator
     ) {
         this.claws = claws;
         this.clawAgents = clawAgents;
@@ -45,6 +48,7 @@ public class ClawService {
         this.routeBindings = routeBindings;
         this.objectMapper = objectMapper;
         this.auditLogService = auditLogService;
+        this.sandboxOrchestrator = sandboxOrchestrator;
     }
 
     public List<ClawResponse> list(Authentication authentication) {
@@ -68,6 +72,7 @@ public class ClawService {
         entity.setUpdatedAt(now);
         ClawEntity saved = claws.save(entity);
         replaceRoles(saved, request.roles(), now);
+        sandboxOrchestrator.ensureClawSandbox(saved.getOwnerUserId(), actorName(authentication), saved.getId(), saved.getName());
         audit(authentication, "claw.create", saved.getId(), true, null);
         return toResponse(saved);
     }
@@ -79,6 +84,7 @@ public class ClawService {
         entity.setUpdatedAt(OffsetDateTime.now());
         ClawEntity saved = claws.save(entity);
         replaceRoles(saved, request.roles(), OffsetDateTime.now());
+        sandboxOrchestrator.ensureClawSandbox(saved.getOwnerUserId(), actorName(authentication), saved.getId(), saved.getName());
         audit(authentication, "claw.update", saved.getId(), true, null);
         return toResponse(saved);
     }
@@ -99,6 +105,7 @@ public class ClawService {
             deleteRoleRoute(role);
         }
         clawAgents.deleteByClawId(id);
+        sandboxOrchestrator.deleteClawSandbox(entity.getOwnerUserId(), id);
         claws.delete(entity);
         audit(authentication, "claw.delete", id, true, null);
     }
@@ -323,6 +330,13 @@ public class ClawService {
             return principal.userId();
         }
         return null;
+    }
+
+    private String actorName(Authentication authentication) {
+        if (authentication != null && authentication.getPrincipal() instanceof AuthenticatedPrincipal principal) {
+            return principal.getUsername();
+        }
+        return actorId(authentication);
     }
 
     private String actorType(Authentication authentication) {

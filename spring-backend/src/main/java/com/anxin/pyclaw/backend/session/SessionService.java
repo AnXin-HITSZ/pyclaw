@@ -74,13 +74,8 @@ public class SessionService {
     }
 
     public SessionDetailResponse getDetail(String sessionId, Authentication authentication) {
+        requireOwnedAuthentication(sessionId, authentication);
         Map<String, String> meta = getMeta(sessionId);
-        if (meta.isEmpty()) {
-            throw new ApiException(HttpStatus.NOT_FOUND, "Session not found");
-        }
-        if (!isAdmin(authentication) && !Objects.equals(meta.get("userId"), actorId(authentication))) {
-            throw new ApiException(HttpStatus.NOT_FOUND, "Session not found");
-        }
         List<String> rawMessages = redis.opsForList().range(sessionMessagesKey(sessionId), 0, -1);
         List<SessionMessageResponse> messages = new ArrayList<>();
         if (rawMessages != null) {
@@ -93,6 +88,27 @@ public class SessionService {
             }
         }
         return new SessionDetailResponse(toSummary(sessionId, meta), messages);
+    }
+
+    /** Validate that the given session is owned by the principal. Throws ApiException(NOT_FOUND) if not. */
+    public void requireOwned(String sessionId, AuthenticatedPrincipal principal) {
+        boolean isAdmin = principal.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("user:manage"));
+        requireOwnedByUser(sessionId, principal.userId(), isAdmin);
+    }
+
+    private void requireOwnedAuthentication(String sessionId, Authentication authentication) {
+        requireOwnedByUser(sessionId, actorId(authentication), isAdmin(authentication));
+    }
+
+    private void requireOwnedByUser(String sessionId, String userId, boolean isAdmin) {
+        Map<String, String> meta = getMeta(sessionId);
+        if (meta.isEmpty()) {
+            throw new ApiException(HttpStatus.NOT_FOUND, "Session not found");
+        }
+        if (!isAdmin && !Objects.equals(meta.get("userId"), userId)) {
+            throw new ApiException(HttpStatus.NOT_FOUND, "Session not found");
+        }
     }
 
     public void saveMessage(String sessionId, String userId, String clawId, String clawName,

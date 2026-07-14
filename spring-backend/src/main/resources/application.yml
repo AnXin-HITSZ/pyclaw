@@ -31,9 +31,27 @@ pyclaw:
     jwt-ttl-seconds: ${JWT_TTL_SECONDS:3600}
     bootstrap-admin-username: ${BOOTSTRAP_ADMIN_USERNAME:admin}
     bootstrap-admin-password: ${BOOTSTRAP_ADMIN_PASSWORD:ChangeMe123!}
+    encryption-secret: ${ENCRYPTION_SECRET:}
   runtime:
     base-url: ${PYCLAW_BASE_URL:http://localhost:8000}
     api-token: ${PYCLAW_API_TOKEN:}
     internal-token: ${PYCLAW_INTERNAL_API_TOKEN:${PYCLAW_API_TOKEN:}}
     connect-timeout-seconds: ${PYCLAW_CONNECT_TIMEOUT_SECONDS:3}
     read-timeout-seconds: ${PYCLAW_READ_TIMEOUT_SECONDS:90}
+  sandbox:
+    enabled: ${PYCLAW_SANDBOX_ENABLED:false}
+    namespace-prefix: ${PYCLAW_SANDBOX_NAMESPACE_PREFIX:pyclaw-user}
+    namespace-label-key: ${PYCLAW_SANDBOX_NAMESPACE_LABEL_KEY:pyclaw.io/owner-user-id}
+    runner-image: ${PYCLAW_SANDBOX_RUNNER_IMAGE:}
+    runner-image-pull-policy: ${PYCLAW_SANDBOX_RUNNER_IMAGE_PULL_POLICY:IfNotPresent}
+    runner-port: ${PYCLAW_SANDBOX_RUNNER_PORT:8000}
+    workspace-mount-path: ${PYCLAW_SANDBOX_WORKSPACE_MOUNT_PATH:/workspace}
+    pvc-storage-size: ${PYCLAW_SANDBOX_PVC_STORAGE_SIZE:1Gi}
+    pvc-storage-class-name: ${PYCLAW_SANDBOX_PVC_STORAGE_CLASS_NAME:}
+    cpu-request: ${PYCLAW_SANDBOX_CPU_REQUEST:100m}
+    memory-request: ${PYCLAW_SANDBOX_MEMORY_REQUEST:256Mi}
+    cpu-limit: ${PYCLAW_SANDBOX_CPU_LIMIT:500m}
+    memory-limit: ${PYCLAW_SANDBOX_MEMORY_LIMIT:768Mi}
+    service-account-name: ${PYCLAW_SANDBOX_SERVICE_ACCOUNT_NAME:default}
+    image-pull-secret-name: ${PYCLAW_SANDBOX_IMAGE_PULL_SECRET_NAME:}
+    image-pull-secret-source-namespace: ${PYCLAW_SANDBOX_IMAGE_PULL_SECRET_SOURCE_NAMESPACE:${POD_NAMESPACE:}}

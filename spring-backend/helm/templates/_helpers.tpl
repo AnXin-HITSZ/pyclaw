@@ -20,3 +20,11 @@ helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version }}
 {{- include "spring-backend.fullname" . }}-secret
 {{- end -}}
 {{- end -}}
+
+{{- define "spring-backend.serviceAccountName" -}}
+{{- if .Values.serviceAccount.create -}}
+{{- default (include "spring-backend.fullname" .) .Values.serviceAccount.name -}}
+{{- else -}}
+{{- default "default" .Values.serviceAccount.name -}}
+{{- end -}}
+{{- end -}}

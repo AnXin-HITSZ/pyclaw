@@ -24,8 +24,8 @@ public class RouteBindingController {
 
     @GetMapping
     @PreAuthorize("hasAuthority('agent:read')")
-    public List<RouteBindingResponse> list() {
-        return service.list();
+    public List<RouteBindingResponse> list(Authentication authentication) {
+        return service.list(authentication);
     }
 
     @PostMapping

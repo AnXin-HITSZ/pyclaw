@@ -3,6 +3,7 @@ package com.anxin.pyclaw.backend.provider;
 import com.anxin.pyclaw.backend.audit.AuditLogService;
 import com.anxin.pyclaw.backend.auth.AuthenticatedPrincipal;
 import com.anxin.pyclaw.backend.common.ApiException;
+import com.anxin.pyclaw.backend.config.SecretEncryptionService;
 import jakarta.transaction.Transactional;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -19,17 +20,24 @@ import org.springframework.stereotype.Service;
 public class ProviderConfigService {
     private final ProviderConfigRepository repository;
     private final AuditLogService auditLogService;
+    private final SecretEncryptionService encryption;
 
-    public ProviderConfigService(ProviderConfigRepository repository, AuditLogService auditLogService) {
+    public ProviderConfigService(ProviderConfigRepository repository, AuditLogService auditLogService, SecretEncryptionService encryption) {
         this.repository = repository;
         this.auditLogService = auditLogService;
+        this.encryption = encryption;
+    }
+
+    /** Returns the decrypted API key for a provider, or null if not configured. */
+    public String getDecryptedApiKey(ProviderConfigEntity entity) {
+        return encryption.decrypt(entity.getApiKey());
     }
 
     public List<ProviderConfigResponse> list(Authentication authentication) {
         List<ProviderConfigEntity> rows = isAdmin(authentication)
                 ? repository.findAll()
                 : repository.findByOwnerUserIdOrSharedTrueOrderByUpdatedAtDesc(actorId(authentication));
-        return rows.stream().map(ProviderConfigResponse::from).toList();
+        return rows.stream().map(e -> ProviderConfigResponse.from(e, encryption)).toList();
     }
 
     public List<ProviderOptionResponse> options(Authentication authentication) {
@@ -40,7 +48,7 @@ public class ProviderConfigService {
     }
 
     public ProviderConfigResponse get(String id, Authentication authentication) {
-        return ProviderConfigResponse.from(requireOwned(id, authentication));
+        return ProviderConfigResponse.from(requireOwned(id, authentication), encryption);
     }
 
     @Transactional
@@ -55,7 +63,7 @@ public class ProviderConfigService {
         entity.setUpdatedAt(now);
         ProviderConfigEntity saved = repository.save(entity);
         audit(authentication, "provider.create", saved.getId(), true, null);
-        return ProviderConfigResponse.from(saved);
+        return ProviderConfigResponse.from(saved, encryption);
     }
 
     @Transactional
@@ -68,7 +76,7 @@ public class ProviderConfigService {
         entity.setUpdatedAt(OffsetDateTime.now());
         ProviderConfigEntity saved = repository.save(entity);
         audit(authentication, "provider.update", saved.getId(), true, null);
-        return ProviderConfigResponse.from(saved);
+        return ProviderConfigResponse.from(saved, encryption);
     }
 
     @Transactional
@@ -98,7 +106,7 @@ public class ProviderConfigService {
             entity.setApiKey(null);
         }
         if (request.apiKey() != null && !request.apiKey().isBlank()) {
-            entity.setApiKey(request.apiKey().trim());
+            entity.setApiKey(encryption.encrypt(request.apiKey().trim()));
         }
         entity.setEnabled(request.enabled());
     }
