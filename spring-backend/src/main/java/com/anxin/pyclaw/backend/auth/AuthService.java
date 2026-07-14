@@ -11,7 +11,7 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class AuthService {
-    private static final String DEFAULT_REGISTER_AUTHORITIES = "claw:read,claw:create,claw:update,claw:delete,agent:run,agent:read,token:manage_self";
+    private static final String DEFAULT_REGISTER_AUTHORITIES = "claw:read,claw:create,claw:update,claw:delete,agent:run,agent:read,agent:create,agent:update,tool:catalog:read,token:manage_self,provider:manage_self";
 
     private final UserRepository users;
     private final PasswordEncoder passwordEncoder;

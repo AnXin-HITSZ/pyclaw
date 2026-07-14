@@ -8,9 +8,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.transaction.Transactional;
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -37,12 +41,15 @@ public class AgentConfigService {
         this.auditLogService = auditLogService;
     }
 
-    public List<AgentConfigResponse> list() {
-        return agents.findAll().stream().map(this::toResponse).toList();
+    public List<AgentConfigResponse> list(Authentication authentication) {
+        List<AgentConfigEntity> rows = isAdmin(authentication)
+                ? agents.findAll()
+                : agents.findByCreatedByOrderByUpdatedAtDesc(actorId(authentication));
+        return rows.stream().map(this::toResponse).toList();
     }
 
-    public AgentConfigResponse get(String id) {
-        return toResponse(requireAgent(id));
+    public AgentConfigResponse get(String id, Authentication authentication) {
+        return toResponse(requireOwned(id, authentication));
     }
 
     @Transactional
@@ -67,7 +74,7 @@ public class AgentConfigService {
     @Transactional
     public AgentConfigResponse update(String id, AgentConfigRequest request, Authentication authentication) {
         grantValidator.validate(request.toolPolicy(), authentication);
-        AgentConfigEntity entity = requireAgent(id);
+        AgentConfigEntity entity = requireOwned(id, authentication);
         String nextKey = normalizeAgentKey(request.agentKey());
         agents.findByAgentKey(nextKey).ifPresent(existing -> {
             if (!existing.getId().equals(id)) {
@@ -86,7 +93,7 @@ public class AgentConfigService {
 
     @Transactional
     public void delete(String id, Authentication authentication) {
-        requireAgent(id);
+        requireOwned(id, authentication);
         policies.deleteByAgentId(id);
         agents.deleteById(id);
         audit(authentication, "agent.delete", id, true, null);
@@ -156,6 +163,21 @@ public class AgentConfigService {
 
     private AgentConfigEntity requireAgent(String id) {
         return agents.findById(id).orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Agent not found"));
+    }
+
+    private AgentConfigEntity requireOwned(String id, Authentication authentication) {
+        AgentConfigEntity entity = requireAgent(id);
+        if (!isAdmin(authentication) && !Objects.equals(entity.getCreatedBy(), actorId(authentication))) {
+            throw new ApiException(HttpStatus.NOT_FOUND, "Agent not found");
+        }
+        return entity;
+    }
+
+    private boolean isAdmin(Authentication authentication) {
+        Set<String> authorities = authentication == null ? Set.of() : authentication.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .collect(Collectors.toSet());
+        return authorities.contains("user:manage");
     }
 
     private void apply(AgentConfigEntity entity, AgentConfigRequest request) {

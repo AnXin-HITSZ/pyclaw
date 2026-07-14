@@ -1,5 +1,6 @@
 package com.anxin.pyclaw.backend.provider;
 
+import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface ProviderConfigRepository extends JpaRepository<ProviderConfigEntity, String> {
@@ -8,4 +9,6 @@ public interface ProviderConfigRepository extends JpaRepository<ProviderConfigEn
     ProviderConfigEntity findFirstByProviderTypeIgnoreCaseAndEnabledTrue(String providerType);
 
     ProviderConfigEntity findFirstByProviderTypeIgnoreCaseAndEnabledTrueOrderByUpdatedAtDesc(String providerType);
+
+    List<ProviderConfigEntity> findByOwnerUserIdOrSharedTrueOrderByUpdatedAtDesc(String ownerUserId);
 }

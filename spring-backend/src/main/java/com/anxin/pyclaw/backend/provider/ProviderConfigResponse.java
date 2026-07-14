@@ -12,6 +12,8 @@ public record ProviderConfigResponse(
         String secretRef,
         boolean apiKeyConfigured,
         String apiKeyLast4,
+        String ownerUserId,
+        boolean shared,
         boolean enabled,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt
@@ -27,6 +29,8 @@ public record ProviderConfigResponse(
                 entity.getSecretRef(),
                 entity.getApiKey() != null && !entity.getApiKey().isBlank(),
                 last4(entity.getApiKey()),
+                entity.getOwnerUserId(),
+                entity.isShared(),
                 entity.isEnabled(),
                 entity.getCreatedAt(),
                 entity.getUpdatedAt()

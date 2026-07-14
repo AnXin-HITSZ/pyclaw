@@ -24,14 +24,14 @@ public class AgentConfigController {
 
     @GetMapping
     @PreAuthorize("hasAuthority('agent:read')")
-    public List<AgentConfigResponse> list() {
-        return service.list();
+    public List<AgentConfigResponse> list(Authentication authentication) {
+        return service.list(authentication);
     }
 
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('agent:read')")
-    public AgentConfigResponse get(@PathVariable String id) {
-        return service.get(id);
+    public AgentConfigResponse get(@PathVariable String id, Authentication authentication) {
+        return service.get(id, authentication);
     }
 
     @PostMapping

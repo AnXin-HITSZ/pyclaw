@@ -23,6 +23,9 @@ public class ProviderConfigEntity {
     private String secretRef;
     @Column(length = 4096)
     private String apiKey;
+    private String ownerUserId;
+    @Column(nullable = false)
+    private boolean shared;
     @Column(nullable = false)
     private boolean enabled;
     @Column(nullable = false)
@@ -46,6 +49,10 @@ public class ProviderConfigEntity {
     public void setSecretRef(String secretRef) { this.secretRef = secretRef; }
     public String getApiKey() { return apiKey; }
     public void setApiKey(String apiKey) { this.apiKey = apiKey; }
+    public String getOwnerUserId() { return ownerUserId; }
+    public void setOwnerUserId(String ownerUserId) { this.ownerUserId = ownerUserId; }
+    public boolean isShared() { return shared; }
+    public void setShared(boolean shared) { this.shared = shared; }
     public boolean isEnabled() { return enabled; }
     public void setEnabled(boolean enabled) { this.enabled = enabled; }
     public OffsetDateTime getCreatedAt() { return createdAt; }

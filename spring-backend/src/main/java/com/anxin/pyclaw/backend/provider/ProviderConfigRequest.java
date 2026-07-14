@@ -11,6 +11,7 @@ public record ProviderConfigRequest(
         String secretRef,
         String apiKey,
         boolean clearApiKey,
+        boolean shared,
         boolean enabled
 ) {
 }
