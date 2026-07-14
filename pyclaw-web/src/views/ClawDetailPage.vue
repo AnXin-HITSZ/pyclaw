@@ -23,6 +23,20 @@
         </dl>
       </div>
 
+      <!-- Sandbox Card -->
+      <div class="card">
+        <h3>Sandbox 状态</h3>
+        <div v-if="sandboxLoading" class="no-data">查询中...</div>
+        <div v-else-if="sandboxError" class="no-data" style="color:var(--danger)">{{ sandboxError }}</div>
+        <dl v-else>
+          <dt>Health</dt><dd><span class="status-tag" :class="sandboxHealthy ? 'active' : ''">{{ sandboxHealthy ? 'Healthy' : 'Down' }}</span></dd>
+          <dt>Workspace</dt><dd class="mono">{{ sandboxWorkspace || "—" }}</dd>
+        </dl>
+        <div style="margin-top: 14px;">
+          <router-link :to="`/workspace/claws/${claw.id}/files`" class="btn-secondary" style="text-decoration:none;font-size:12px">📁 Workspace 文件</router-link>
+        </div>
+      </div>
+
       <!-- Agent Roles Card -->
       <div class="card">
         <h3>Agent 角色 ({{ claw.roles?.length || 0 }})</h3>
@@ -32,26 +46,12 @@
               <span class="role-name">{{ role.displayName }}</span>
               <span class="role-key">{{ role.roleKey }}</span>
               <span class="role-agent">{{ role.agentName || role.agentId }}</span>
-              <span v-if="role.defaultRole" class="role-default">默认</span>
-              <span v-if="!role.enabled" class="role-disabled">已禁用</span>
+              <span v-if="role.defaultRole" class="badge badge-accent">默认</span>
+              <span v-if="!role.enabled" class="badge badge-danger">已禁用</span>
             </div>
           </div>
         </div>
         <p v-else class="no-data">无 Agent 角色</p>
-      </div>
-
-      <!-- Sandbox Status Card -->
-      <div class="card">
-        <h3>Sandbox 状态</h3>
-        <div v-if="sandboxLoading" class="no-data">查询中...</div>
-        <div v-else-if="sandboxError" class="no-data" style="color:var(--danger)">{{ sandboxError }}</div>
-        <dl v-else>
-          <dt>Health</dt><dd><span class="status-tag" :class="sandboxHealthy ? 'active' : ''">{{ sandboxHealthy ? 'Healthy' : 'Down' }}</span></dd>
-          <dt>Workspace</dt><dd>{{ sandboxWorkspace || "—" }}</dd>
-        </dl>
-        <div style="margin-top: 12px;">
-          <router-link :to="`/workspace/claws/${claw.id}/files`" class="btn-secondary" style="text-decoration:none;font-size:12px">📁 Workspace 文件</router-link>
-        </div>
       </div>
 
       <!-- Sessions Card -->
@@ -146,20 +146,9 @@ async function load() {
     allAgents.value = a;
     sessions.value = s || [];
 
-    // Fetch sandbox status
     sandboxLoading.value = true;
-    try {
-      const h = await api.get(`/api/claws/${route.params.id}/sandbox/healthz`);
-      sandboxHealthy.value = true;
-    } catch {
-      sandboxHealthy.value = false;
-    }
-    try {
-      const w = await api.get(`/api/claws/${route.params.id}/sandbox/workspace`);
-      sandboxWorkspace.value = typeof w === "string" ? w : JSON.stringify(w);
-    } catch {
-      sandboxWorkspace.value = "";
-    }
+    try { await api.get(`/api/claws/${route.params.id}/sandbox/healthz`); sandboxHealthy.value = true; } catch { sandboxHealthy.value = false; }
+    try { const w = await api.get(`/api/claws/${route.params.id}/sandbox/workspace`); sandboxWorkspace.value = typeof w === "string" ? w : JSON.stringify(w); } catch { sandboxWorkspace.value = ""; }
     sandboxLoading.value = false;
   } catch (e) {
     error.value = e.message;
@@ -171,10 +160,8 @@ async function load() {
 function openEdit() {
   showEdit.value = true;
   editForm.value = {
-    name: claw.value.name,
-    description: claw.value.description || "",
-    defaultAgentId: claw.value.defaultAgentId || "",
-    feishuEnabled: claw.value.feishuEnabled,
+    name: claw.value.name, description: claw.value.description || "",
+    defaultAgentId: claw.value.defaultAgentId || "", feishuEnabled: claw.value.feishuEnabled,
     feishuPeerId: claw.value.feishuPeerId || "",
   };
 }
@@ -182,17 +169,13 @@ function openEdit() {
 async function handleUpdate() {
   try {
     await api.put(`/api/claws/${route.params.id}`, {
-      name: editForm.value.name,
-      description: editForm.value.description || undefined,
+      name: editForm.value.name, description: editForm.value.description || undefined,
       defaultAgentId: editForm.value.defaultAgentId || undefined,
-      feishuEnabled: editForm.value.feishuEnabled,
-      feishuPeerId: editForm.value.feishuPeerId || undefined,
+      feishuEnabled: editForm.value.feishuEnabled, feishuPeerId: editForm.value.feishuPeerId || undefined,
     });
     showEdit.value = false;
     await load();
-  } catch (e) {
-    alert("更新失败: " + e.message);
-  }
+  } catch (e) { alert("更新失败: " + e.message); }
 }
 
 function formatDate(s) {
@@ -205,48 +188,32 @@ onMounted(load);
 
 <style scoped>
 .page { max-width: 1000px; }
-.page-header { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; }
-.page-header h1 { font-size: 22px; flex: 1; }
-.btn-back { padding: 6px 12px; font-size: 13px; color: var(--text-secondary); background: transparent; border: 1px solid var(--border-color); border-radius: 6px; }
-.btn-primary { padding: 8px 20px; font-size: 14px; font-weight: 600; color: #fff; background: var(--accent); border: none; border-radius: 6px; }
-.btn-chat { padding: 8px 20px; font-size: 14px; font-weight: 600; color: #fff; background: var(--success); border: none; border-radius: 6px; }
-.btn-secondary { padding: 8px 20px; font-size: 14px; color: var(--text-secondary); background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 6px; }
 .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-.card { background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 10px; padding: 20px; }
-.card h3 { font-size: 15px; margin-bottom: 16px; }
+
 dl { display: grid; grid-template-columns: auto 1fr; gap: 8px 16px; font-size: 13px; }
-dt { color: var(--text-muted); }
-.status-tag { font-size: 11px; padding: 1px 8px; border-radius: 10px; }
-.status-tag.active { background: rgba(63,185,80,0.15); color: var(--success); }
-.role-list { display: flex; flex-direction: column; gap: 8px; }
-.role-item { padding: 8px 12px; background: var(--bg-primary); border-radius: 6px; font-size: 13px; }
+dt { color: var(--text-muted); font-weight: 500; }
+.mono { font-family: "JetBrains Mono", "Fira Code", monospace; font-size: 12px; color: var(--text-muted); }
+
+.role-list { display: flex; flex-direction: column; gap: 6px; }
+.role-item { padding: 10px 14px; background: var(--bg-deep); border-radius: var(--radius-sm); font-size: 13px; transition: background 0.2s var(--ease-out); }
+.role-item:hover { background: var(--bg-raised); }
 .role-info { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .role-name { font-weight: 600; }
-.role-key { color: var(--text-muted); font-family: monospace; }
+.role-key { color: var(--text-muted); font-family: monospace; font-size: 12px; }
 .role-agent { color: var(--text-secondary); }
-.role-default { font-size: 10px; padding: 1px 6px; background: rgba(88,166,255,0.15); color: var(--accent); border-radius: 8px; }
-.role-disabled { font-size: 10px; padding: 1px 6px; background: rgba(248,81,73,0.15); color: var(--danger); border-radius: 8px; }
-.session-list { display: flex; flex-direction: column; gap: 8px; }
-.session-item { padding: 8px 12px; background: var(--bg-primary); border-radius: 6px; font-size: 13px; }
+
+.badge { font-size: 10px; padding: 1px 8px; border-radius: 8px; font-weight: 600; letter-spacing: 0.2px; }
+.badge-accent { background: var(--accent-glow); color: var(--accent); }
+.badge-danger { background: rgba(248,81,73,0.1); color: var(--danger); }
+
+.session-list { display: flex; flex-direction: column; gap: 6px; }
+.session-item { padding: 10px 14px; background: var(--bg-deep); border-radius: var(--radius-sm); font-size: 13px; transition: background 0.2s var(--ease-out); }
+.session-item:hover { background: var(--bg-raised); }
 .session-info { display: flex; gap: 16px; }
 .session-agent { font-weight: 600; }
 .session-model, .session-count { color: var(--text-secondary); }
-.session-time { color: var(--text-muted); margin-left: auto; }
-.no-data { color: var(--text-muted); font-size: 13px; }
-.loading, .error-msg { text-align: center; padding: 48px; color: var(--text-secondary); }
-.error-msg { color: var(--danger); }
+.session-time { color: var(--text-muted); margin-left: auto; font-size: 12px; }
 
-.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 100; }
-.modal { background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 12px; padding: 32px; width: 480px; max-width: 90vw; }
-.modal h2 { margin-bottom: 20px; }
-.form-group { margin-bottom: 16px; }
-.form-group label { display: block; margin-bottom: 4px; font-size: 13px; color: var(--text-secondary); }
-.form-group input, .form-group textarea, .form-group select {
-  width: 100%; padding: 8px 12px; background: var(--bg-primary); border: 1px solid var(--border-color);
-  border-radius: 6px; color: var(--text-primary); font-size: 14px;
-}
-.form-group input:focus, .form-group textarea:focus, .form-group select:focus { outline: none; border-color: var(--accent); }
-.checkbox-label { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--text-primary); }
-.checkbox-label input { width: auto; }
-.modal-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px; }
+.btn-chat { padding: 8px 20px; font-size: 14px; font-weight: 600; color: #0a0e14; background: var(--success); border: none; border-radius: var(--radius-sm); transition: all 0.2s var(--ease-out); }
+.btn-chat:hover { filter: brightness(1.1); transform: translateY(-1px); box-shadow: 0 4px 16px rgba(63,185,80,0.25); }
 </style>

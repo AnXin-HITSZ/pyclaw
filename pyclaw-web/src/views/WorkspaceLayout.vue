@@ -3,10 +3,16 @@
     <aside class="sidebar">
       <div class="sidebar-header">
         <router-link to="/workspace" class="logo-link">
-          <svg width="28" height="28" viewBox="0 0 64 64" fill="none">
-            <rect width="64" height="64" rx="16" fill="#58a6ff" />
-            <path d="M20 44V20l12 8-12 8z" fill="#0d1117" />
-            <path d="M32 36l12-8-12-8v16z" fill="#0d1117" opacity="0.7" />
+          <svg width="30" height="30" viewBox="0 0 64 64" fill="none" class="logo-mark">
+            <rect width="64" height="64" rx="16" fill="url(#claw-grad)" />
+            <path d="M18 46V18l14 10-14 10z" fill="#0a0e14" />
+            <path d="M32 38l14-10-14-10v20z" fill="#0a0e14" opacity="0.7" />
+            <defs>
+              <linearGradient id="claw-grad" x1="0" y1="0" x2="64" y2="64">
+                <stop offset="0%" stop-color="#f0a33a" />
+                <stop offset="100%" stop-color="#c78a2e" />
+              </linearGradient>
+            </defs>
           </svg>
           <span class="logo-text">PyClaw</span>
         </router-link>
@@ -69,7 +75,11 @@
     </aside>
 
     <main class="main-content">
-      <router-view />
+      <router-view v-slot="{ Component }">
+        <transition name="page" mode="out-in">
+          <component :is="Component" />
+        </transition>
+      </router-view>
     </main>
   </div>
 </template>
@@ -88,121 +98,89 @@ function handleLogout() {
 </script>
 
 <style scoped>
-.workspace-layout {
-  display: flex;
-  min-height: 100vh;
-}
+.workspace-layout { display: flex; min-height: 100vh; }
 
 .sidebar {
   width: var(--sidebar-width);
-  background: var(--bg-secondary);
-  border-right: 1px solid var(--border-color);
-  display: flex;
-  flex-direction: column;
-  position: fixed;
-  top: 0;
-  left: 0;
-  bottom: 0;
-  z-index: 10;
+  background: var(--bg-surface);
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  position: fixed; top: 0; left: 0; bottom: 0; z-index: 10;
 }
 
-.sidebar-header {
-  padding: 20px;
-  border-bottom: 1px solid var(--border-color);
-}
+.sidebar-header { padding: 20px; border-bottom: 1px solid var(--border); }
 
 .logo-link {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  color: var(--text-primary);
-  text-decoration: none;
+  display: flex; align-items: center; gap: 10px;
+  color: var(--text-primary); text-decoration: none;
 }
+.logo-mark { transition: transform 0.3s var(--ease-spring); }
+.logo-link:hover .logo-mark { transform: rotate(-8deg) scale(1.05); }
 
 .logo-text {
-  font-size: 18px;
-  font-weight: 700;
+  font-size: 18px; font-weight: 800;
+  background: linear-gradient(135deg, var(--accent), var(--accent-soft));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: -0.5px;
 }
 
-.sidebar-nav {
-  flex: 1;
-  overflow-y: auto;
-  padding: 12px 0;
-}
+.sidebar-nav { flex: 1; overflow-y: auto; padding: 12px 0; }
 
-.nav-section {
-  margin-bottom: 8px;
-}
+.nav-section { margin-bottom: 8px; }
 
 .nav-section-title {
-  display: block;
-  padding: 8px 20px 4px;
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--text-muted);
+  display: block; padding: 8px 20px 4px;
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.8px; color: var(--text-muted);
 }
 
 .nav-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 20px;
-  font-size: 14px;
-  color: var(--text-secondary);
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 16px; margin: 0 8px; border-radius: var(--radius-sm);
+  font-size: 13px; font-weight: 500; color: var(--text-secondary);
   text-decoration: none;
-  transition: background 0.15s, color 0.15s;
+  transition: all 0.2s var(--ease-out);
+  position: relative;
 }
 
-.nav-item:hover {
-  background: var(--bg-tertiary);
-  color: var(--text-primary);
+.nav-item::before {
+  content: ""; position: absolute; left: 0; top: 50%; transform: translateY(-50%);
+  width: 2px; height: 0; background: var(--accent); border-radius: 1px;
+  transition: height 0.25s var(--ease-spring);
 }
+
+.nav-item:hover { background: var(--bg-raised); color: var(--text-primary); }
+.nav-item:hover::before { height: 16px; }
 
 .nav-item.active {
-  background: rgba(88, 166, 255, 0.1);
-  color: var(--accent);
+  background: var(--accent-glow); color: var(--accent);
 }
+.nav-item.active::before { height: 20px; }
 
-.nav-icon {
-  width: 20px;
-  text-align: center;
-  font-size: 16px;
-}
+.nav-icon { width: 20px; text-align: center; font-size: 15px; transition: transform 0.2s var(--ease-spring); }
+.nav-item:hover .nav-icon { transform: scale(1.15); }
 
 .sidebar-footer {
-  padding: 16px 20px;
-  border-top: 1px solid var(--border-color);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  padding: 16px 20px; border-top: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
 }
 
-.user-info {
-  font-size: 13px;
-  color: var(--text-secondary);
-}
+.user-info { font-size: 13px; color: var(--text-secondary); font-weight: 500; }
 
 .btn-logout {
-  padding: 4px 12px;
-  font-size: 12px;
-  color: var(--text-muted);
-  background: transparent;
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
-  transition: color 0.15s, border-color 0.15s;
+  padding: 5px 14px; font-size: 12px; font-weight: 500;
+  color: var(--text-muted); background: transparent;
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  transition: all 0.2s var(--ease-out);
 }
+.btn-logout:hover { color: var(--danger); border-color: var(--danger); background: rgba(248,81,73,0.08); }
 
-.btn-logout:hover {
-  color: var(--danger);
-  border-color: var(--danger);
-}
+.main-content { flex: 1; margin-left: var(--sidebar-width); padding: 32px; min-height: 100vh; }
 
-.main-content {
-  flex: 1;
-  margin-left: var(--sidebar-width);
-  padding: 32px;
-  min-height: 100vh;
-}
+/* Page transition */
+.page-enter-active { transition: opacity 0.2s var(--ease-out), transform 0.2s var(--ease-out); }
+.page-leave-active { transition: opacity 0.1s var(--ease-out); }
+.page-enter-from { opacity: 0; transform: translateY(6px); }
+.page-leave-to { opacity: 0; }
 </style>

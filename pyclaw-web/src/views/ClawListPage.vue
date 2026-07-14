@@ -9,22 +9,32 @@
     <div v-else-if="error" class="error-msg">{{ error }}</div>
 
     <div v-else class="claw-grid">
-      <div v-for="claw in claws" :key="claw.id" class="claw-card" @click="goDetail(claw.id)">
-        <div class="claw-card-header">
-          <h3>{{ claw.name }}</h3>
-          <span class="claw-status" :class="claw.status">{{ claw.status }}</span>
+      <TransitionGroup name="stagger">
+        <div v-for="(claw, i) in claws" :key="claw.id" class="card claw-card"
+             :style="{ transitionDelay: `${i * 60}ms` }"
+             @click="goDetail(claw.id)">
+          <div class="claw-card-header">
+            <h3>{{ claw.name }}</h3>
+            <span class="status-tag" :class="claw.status">{{ claw.status }}</span>
+          </div>
+          <p class="claw-desc">{{ claw.description || "暂无描述" }}</p>
+          <div class="claw-meta">
+            <span class="meta-item">
+              <span class="meta-dot"></span>
+              {{ claw.roles?.length || 0 }} 个 Agent 角色
+            </span>
+            <span v-if="claw.feishuEnabled" class="meta-item">
+              <span class="meta-dot feishu"></span>飞书已启用
+            </span>
+          </div>
+          <div class="claw-actions" @click.stop>
+            <button class="btn-delete" @click="handleDelete(claw)">删除</button>
+          </div>
         </div>
-        <p class="claw-desc">{{ claw.description || "暂无描述" }}</p>
-        <div class="claw-meta">
-          <span>{{ claw.roles?.length || 0 }} 个 Agent 角色</span>
-          <span v-if="claw.feishuEnabled">飞书已启用</span>
-        </div>
-        <div class="claw-actions" @click.stop>
-          <button class="btn-sm btn-danger" @click="handleDelete(claw)">删除</button>
-        </div>
-      </div>
+      </TransitionGroup>
 
-      <div v-if="claws.length === 0" class="empty">
+      <div v-if="claws.length === 0 && !loading" class="empty-state">
+        <div class="empty-icon">&#x1F980;</div>
         <p>还没有 Claw，创建一个开始吧</p>
       </div>
     </div>
@@ -136,39 +146,45 @@ onMounted(load);
 
 <style scoped>
 .page { max-width: 1200px; }
-.page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
-.page-header h1 { font-size: 24px; }
-.claw-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; }
-.claw-card {
-  background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 10px;
-  padding: 20px; cursor: pointer; transition: border-color 0.2s;
-}
-.claw-card:hover { border-color: var(--accent); }
-.claw-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-.claw-card-header h3 { font-size: 16px; }
-.claw-status { font-size: 11px; padding: 2px 8px; border-radius: 10px; text-transform: uppercase; }
-.claw-status.active { background: rgba(63, 185, 80, 0.15); color: var(--success); }
-.claw-desc { color: var(--text-secondary); font-size: 13px; margin-bottom: 12px; }
-.claw-meta { display: flex; gap: 16px; font-size: 12px; color: var(--text-muted); }
-.claw-actions { margin-top: 12px; }
-.btn-sm { padding: 4px 12px; font-size: 12px; border-radius: 4px; border: 1px solid var(--border-color); background: transparent; }
-.btn-danger { color: var(--danger); border-color: var(--danger); }
-.btn-primary { padding: 8px 20px; font-size: 14px; font-weight: 600; color: #fff; background: var(--accent); border: none; border-radius: 6px; }
-.btn-secondary { padding: 8px 20px; font-size: 14px; color: var(--text-secondary); background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 6px; }
-.loading, .error-msg, .empty { text-align: center; padding: 48px; color: var(--text-secondary); }
-.error-msg { color: var(--danger); }
 
-.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 100; }
-.modal { background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 12px; padding: 32px; width: 480px; max-width: 90vw; }
-.modal h2 { margin-bottom: 20px; }
-.form-group { margin-bottom: 16px; }
-.form-group label { display: block; margin-bottom: 4px; font-size: 13px; color: var(--text-secondary); }
-.form-group input, .form-group textarea, .form-group select {
-  width: 100%; padding: 8px 12px; background: var(--bg-primary); border: 1px solid var(--border-color);
-  border-radius: 6px; color: var(--text-primary); font-size: 14px;
+.claw-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 20px; }
+
+.claw-card { cursor: pointer; }
+.claw-card h3 { font-size: 16px; }
+.claw-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+
+.claw-desc { color: var(--text-secondary); font-size: 13px; margin-bottom: 14px; line-height: 1.5; }
+
+.claw-meta { display: flex; gap: 16px; font-size: 12px; color: var(--text-muted); }
+.meta-item { display: flex; align-items: center; gap: 6px; }
+.meta-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); opacity: 0.6; }
+.meta-dot.feishu { background: var(--success); }
+
+.claw-actions { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
+
+.btn-delete {
+  padding: 4px 14px; font-size: 12px; font-weight: 500;
+  color: var(--text-muted); background: transparent;
+  border: 1px solid transparent; border-radius: var(--radius-sm);
+  transition: all 0.2s var(--ease-out);
 }
-.form-group input:focus, .form-group textarea:focus, .form-group select:focus { outline: none; border-color: var(--accent); }
-.checkbox-label { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px; color: var(--text-primary); }
-.checkbox-label input { width: auto; }
-.modal-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px; }
+.claw-card:hover .btn-delete { border-color: var(--border); color: var(--text-secondary); }
+.btn-delete:hover { color: var(--danger) !important; border-color: var(--danger) !important; background: rgba(248,81,73,0.06); }
+
+/* Empty state */
+.empty-state { grid-column: 1 / -1; text-align: center; padding: 72px 24px; color: var(--text-muted); }
+.empty-icon { font-size: 48px; margin-bottom: 16px; animation: float 3s var(--ease-in-out) infinite; }
+.empty-state p { font-size: 15px; }
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+/* TransitionGroup staggered enter */
+.stagger-enter-active { transition: opacity 0.4s var(--ease-out), transform 0.4s var(--ease-spring); }
+.stagger-leave-active { transition: opacity 0.2s var(--ease-out), transform 0.2s var(--ease-out); position: absolute; }
+.stagger-enter-from { opacity: 0; transform: translateY(20px) scale(0.98); }
+.stagger-leave-to { opacity: 0; transform: translateY(-8px) scale(0.96); }
+.stagger-move { transition: transform 0.3s var(--ease-out); }
 </style>
