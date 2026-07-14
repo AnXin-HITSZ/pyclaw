@@ -1,87 +1,85 @@
 <template>
   <div class="console-shell">
-    <aside class="sidebar">
-      <div class="brand">
-        <b>P</b>
-        <span>pyclaw</span>
-      </div>
-      <nav class="nav-list" aria-label="Console navigation">
-        <button
-          v-for="item in visibleNav"
-          :key="item.key"
-          :class="['nav-link', { active: state.view === item.key }]"
-          @click="setView(item.key)"
-        >
-          <span class="nav-icon">{{ item.icon }}</span>
-          <span>{{ item.label }}</span>
-        </button>
-      </nav>
-    </aside>
-
-    <main class="main">
-      <header class="topbar">
-        <div>
-          <p>{{ currentTitle }}</p>
-          <h1>{{ currentSubtitle }}</h1>
+    <!-- Top Navbar — matches /product page style -->
+    <header class="console-navbar">
+      <div class="navbar-inner">
+        <div class="navbar-brand">
+          <b>P</b>
+          <span>PyClaw</span>
         </div>
+        <nav class="navbar-links" aria-label="Console navigation">
+          <button
+            v-for="item in visibleNav"
+            :key="item.key"
+            :class="['nav-link', { active: state.view === item.key }]"
+            @click="setView(item.key)"
+          >
+            {{ item.label }}
+          </button>
+        </nav>
         <div class="user-menu">
           <span class="status-dot"></span>
           <b>{{ state.me?.username }}</b>
-          <button class="btn btn-outline" @click="logout">Logout</button>
+          <button class="btn btn-outline btn-sm" @click="logout">Logout</button>
         </div>
-      </header>
+      </div>
+    </header>
 
+    <main class="main">
       <div v-if="state.loading" class="loading-bar"></div>
       <div v-if="state.error" class="toast toast-error">{{ state.error }}<button @click="state.error=''">Close</button></div>
       <div v-if="state.notice" class="toast toast-ok">{{ state.notice }}<button @click="state.notice=''">Close</button></div>
 
-      <!-- Dashboard -->
-      <section v-if="state.view==='dashboard'" class="product-home">
-        <section class="product-hero">
-          <div class="product-hero-copy">
-            <p class="product-kicker">pyclaw workspace</p>
-            <h2>把你的 Claw 部署到网页和飞书。</h2>
-            <p>创建一个 Claw，绑定一个飞书群，再把前端、后端、运维、产品、算法等角色 Agent 放进同一个协作入口。</p>
-            <div class="product-actions">
-              <button v-if="has('claw:read')" class="btn btn-light" @click="setView('claws')">管理 Claw</button>
-              <button v-if="has('agent:run')" class="btn btn-ghost" @click="setView('agent')">打开 Web 对话</button>
+      <!-- Page title for non-dashboard views -->
+      <div v-if="state.view !== 'dashboard'" class="page-title">
+        <h1>{{ currentSubtitle }}</h1>
+      </div>
+
+      <!-- ====== Dashboard ====== -->
+      <section v-if="state.view==='dashboard'" class="dashboard">
+        <!-- Hero — matching /product page clean style -->
+        <section class="dashboard-hero">
+          <div class="hero-text">
+            <p class="hero-kicker">pyclaw workspace</p>
+            <h1>把你的 Claw 部署到网页和飞书。</h1>
+            <p class="hero-desc">创建一个 Claw，绑定一个飞书群，再把前端、后端、运维、产品、算法等角色 Agent 放进同一个协作入口。</p>
+            <div class="hero-actions">
+              <button v-if="has('claw:read')" class="btn-primary" @click="setView('claws')">管理 Claw</button>
+              <button v-if="has('agent:run')" class="btn-outline" @click="setView('agent')">打开 Web 对话</button>
             </div>
           </div>
-          <div class="device-preview" aria-hidden="true">
-            <div class="device-toolbar"><span></span><span></span><span></span></div>
-            <div class="device-content">
-              <article><small>Backend</small><b>{{ dashboard.health }}</b></article>
-              <article><small>Claws</small><b>{{ claws.length }}</b></article>
-              <article><small>Runs</small><b>{{ usageStats.totalRuns }}</b></article>
-              <article><small>User</small><b>{{ state.me?.username }}</b></article>
+          <div class="hero-preview" aria-hidden="true">
+            <div class="preview-toolbar"><span></span><span></span><span></span></div>
+            <div class="preview-body">
+              <div class="preview-card"><small>Backend</small><b>{{ dashboard.health }}</b></div>
+              <div class="preview-card"><small>Claws</small><b>{{ claws.length }}</b></div>
+              <div class="preview-card"><small>Runs</small><b>{{ usageStats.totalRuns }}</b></div>
+              <div class="preview-card"><small>User</small><b>{{ state.me?.username }}</b></div>
             </div>
           </div>
         </section>
 
-        <section class="product-showcase">
-          <button v-if="has('claw:read')" class="product-tile tile-dark" @click="setView('claws')">
-            <span>Claw Builder</span>
-            <b>开启我的 Claw</b>
-            <small>创建 Claw，绑定飞书群，并选择多个角色 Agent。</small>
-            <i></i>
+        <!-- Quick Actions — feature-card style -->
+        <section class="dashboard-actions">
+          <button v-if="has('claw:read')" class="action-card" @click="setView('claws')">
+            <span class="action-icon">🦞</span>
+            <h3>Claw Builder</h3>
+            <p>创建 Claw，绑定飞书群，并选择多个角色 Agent。</p>
           </button>
-          <button v-if="has('agent:run')" class="product-tile tile-light" @click="setView('agent')">
-            <span>Web Chat</span>
-            <b>进入 Web 对话</b>
-            <small>直接在网页中发起一次 Agent 会话。</small>
-            <i></i>
+          <button v-if="has('agent:run')" class="action-card" @click="setView('agent')">
+            <span class="action-icon">💬</span>
+            <h3>Web Chat</h3>
+            <p>直接在网页中发起一次 Agent 会话。</p>
           </button>
-          <button v-if="has('channel:manage')" class="product-tile tile-light" @click="setView('channels')">
-            <span>Feishu</span>
-            <b>部署到飞书</b>
-            <small>检查飞书 Channel 配置和回调模式。</small>
-            <i></i>
+          <button v-if="has('channel:manage')" class="action-card" @click="setView('channels')">
+            <span class="action-icon">⚡</span>
+            <h3>飞书集成</h3>
+            <p>检查飞书 Channel 配置和回调模式。</p>
           </button>
-          <button v-if="has('provider:manage')" class="product-tile tile-dark" @click="setView('providers')">
-            <span>Providers</span>
-            <b>Provider 配置</b>
-            <small>维护 DeepSeek 或其他模型服务配置。</small>
-            <i></i>
+          <button v-if="has('provider:manage')" class="action-card" @click="setView('providers')">
+            <span class="action-icon">🛠</span>
+            <h3>Provider 配置</h3>
+            <p>维护 DeepSeek 或其他模型服务配置。</p>
           </button>
         </section>
 
@@ -90,7 +88,7 @@
         </Panel>
       </section>
 
-      <!-- Claws -->
+      <!-- ====== Claws ====== -->
       <section v-if="state.view==='claws'" class="stack">
         <form class="panel form-grid" @submit.prevent="saveClaw">
           <h2>{{ clawForm.id?'Edit':'Create' }} Claw</h2>
@@ -123,7 +121,7 @@
         <DataTable title="Claws" :rows="claws" :columns="clawColumns"><template #actions="{row}"><button class="btn btn-outline" @click="editClaw(row)">Edit</button><button class="btn btn-outline" @click="syncClawRoutes(row.id)">Sync routes</button><button class="btn btn-danger" @click="deleteClaw(row.id)">Delete</button></template></DataTable>
       </section>
 
-      <!-- Agent -->
+      <!-- ====== Agent ====== -->
       <section v-if="state.view==='agent'" class="content-grid">
         <form class="panel form-grid" @submit.prevent="runAgent">
           <h2>Agent Playground</h2>
@@ -140,7 +138,7 @@
         </Panel>
       </section>
 
-      <!-- Tokens -->
+      <!-- ====== Tokens ====== -->
       <section v-if="state.view==='tokens'" class="stack">
         <form class="panel form-grid compact-form" @submit.prevent="createToken">
           <h2>Create Token</h2>
@@ -152,7 +150,7 @@
         <DataTable title="Tokens" :rows="tokens" :columns="tokenColumns"><template #actions="{row}"><button class="btn btn-danger" @click="revokeToken(row.id)">Revoke</button></template></DataTable>
       </section>
 
-      <!-- Users -->
+      <!-- ====== Users ====== -->
       <section v-if="state.view==='users'" class="stack">
         <form class="panel form-grid compact-form" @submit.prevent="createUser">
           <h2>Create User</h2>
@@ -165,7 +163,7 @@
         <DataTable title="Users" :rows="users" :columns="userColumns"><template #actions="{row}"><button class="btn btn-danger" @click="disableUser(row.id)">Disable</button></template></DataTable>
       </section>
 
-      <!-- Providers -->
+      <!-- ====== Providers ====== -->
       <section v-if="state.view==='providers'" class="stack">
         <form class="panel form-grid" @submit.prevent="saveProvider">
           <h2>{{ providerForm.id?'Edit':'Create' }} Provider</h2>
@@ -183,7 +181,7 @@
         <DataTable title="Providers" :rows="providers" :columns="providerColumns"><template #actions="{row}"><button class="btn btn-outline" @click="editProvider(row)">Edit</button><button class="btn btn-danger" @click="deleteProvider(row.id)">Delete</button></template></DataTable>
       </section>
 
-      <!-- Channels -->
+      <!-- ====== Channels ====== -->
       <section v-if="state.view==='channels'" class="stack">
         <form class="panel form-grid" @submit.prevent="saveChannel">
           <h2>{{ channelForm.id?'Edit':'Create' }} Channel</h2>
@@ -198,7 +196,7 @@
         <DataTable title="Channels" :rows="channels" :columns="channelColumns"><template #actions="{row}"><button class="btn btn-outline" @click="editChannel(row)">Edit</button><button class="btn btn-danger" @click="deleteChannel(row.id)">Delete</button></template></DataTable>
       </section>
 
-      <!-- Agents -->
+      <!-- ====== Agents ====== -->
       <section v-if="state.view==='agents'" class="stack">
         <form class="panel form-grid" @submit.prevent="saveAgent">
           <h2>{{ agentForm2.id?'Edit':'Create' }} Agent</h2>
@@ -224,7 +222,7 @@
         <DataTable title="Agents" :rows="agents" :columns="agentColumns"><template #actions="{row}"><button class="btn btn-outline" @click="editAgent(row)">Edit</button><button class="btn btn-danger" @click="deleteAgent(row.id)">Delete</button></template></DataTable>
       </section>
 
-      <!-- Tools -->
+      <!-- ====== Tools ====== -->
       <section v-if="state.view==='tools'" class="stack">
         <form class="panel form-grid" @submit.prevent="previewTools">
           <h2>Effective Tools</h2>
@@ -239,7 +237,7 @@
         <DataTable title="Tool Catalog" :rows="toolCatalog" :columns="toolColumns" />
       </section>
 
-      <!-- Routes -->
+      <!-- ====== Routes ====== -->
       <section v-if="state.view==='routes'" class="stack">
         <form class="panel form-grid" @submit.prevent="saveRoute">
           <h2>{{ routeForm.id?'Edit':'Create' }} Route</h2>
@@ -261,7 +259,7 @@
         <DataTable title="Routes" :rows="routes" :columns="routeColumns"><template #actions="{row}"><button class="btn btn-outline" @click="editRoute(row)">Edit</button><button class="btn btn-danger" @click="deleteRoute(row.id)">Delete</button></template></DataTable>
       </section>
 
-      <!-- Audit & Usage -->
+      <!-- ====== Audit & Usage ====== -->
       <section v-if="state.view==='audit'" class="stack"><DataTable title="Audit" :rows="auditLogs" :columns="auditColumns" /></section>
       <section v-if="state.view==='usage'" class="stack"><DataTable title="Usage" :rows="usageRecords" :columns="usageColumns" /></section>
     </main>
@@ -305,7 +303,7 @@ const tokenForm=reactive({name:'frontend-token',expiresAt:'',scopes:'agent:run'}
 const providerForm=reactive(defProvider()), channelForm=reactive(defChannel()), agentForm2=reactive(defAgent()), clawForm=reactive(defClaw()), toolForm=reactive({profile:'coding',allow:'',deny:'',alsoAllow:'',readonly:false}), routeForm=reactive(defRoute());
 const tokens=ref([]),users=ref([]),providers=ref([]),providerOptions=ref([]),channels=ref([]),agents=ref([]),claws=ref([]),toolCatalog=ref([]),routes=ref([]),auditLogs=ref([]),usageRecords=ref([]),toolProfiles=ref(['minimal','readonly','messaging','coding','full']);
 const toolPreview=reactive({effectiveTools:[],deniedTools:[]});
-const visibleNav=computed(()=>nav.filter(i=>!i.authority||has(i.authority))), currentTitle=computed(()=>nav.find(i=>i.key===state.view)?.label||'Console'), currentSubtitle=computed(()=>({dashboard:'Workspace',claws:'My Claws',agent:'Run agent',tokens:'API tokens',users:'Users',providers:'Providers',channels:'Channels',agents:'Agent registry',tools:'Tool policy preview',routes:'Route bindings',audit:'Audit logs',usage:'Usage records'}[state.view]||''));
+const visibleNav=computed(()=>nav.filter(i=>!i.authority||has(i.authority))), currentSubtitle=computed(()=>({dashboard:'Workspace',claws:'My Claws',agent:'Run agent',tokens:'API tokens',users:'Users',providers:'Providers',channels:'Channels',agents:'Agent registry',tools:'Tool policy preview',routes:'Route bindings',audit:'Audit logs',usage:'Usage records'}[state.view]||''));
 const channelReplyModes=computed(()=>channelForm.channelType==='wechat'?[{value:'passive_xml',label:'Passive XML'},{value:'async_worker',label:'Async Worker'}]:[{value:'async_worker',label:'Async Worker'}]);
 const usageStats=computed(()=>({totalRuns:usageRecords.value.length,totalTokens:usageRecords.value.reduce((s,r)=>s+Number(r.totalTokens||0),0)}));
 const tokenColumns=['name','scopes','expiresAt','revokedAt','createdAt'], userColumns=['username','displayName','status','authorities'], providerColumns=['name','providerType','baseUrl','model','apiMode','apiKeyConfigured','enabled'], channelColumns=['channelType','name','secretRef','enabled','updatedAt'];
@@ -429,82 +427,129 @@ function notice(m){state.notice=m;setTimeout(()=>{if(state.notice===m)state.noti
   --border:#dee2e6;
   --muted:#6c757d;
   --text:#212529;
-  --sidebar:#111827;
-  --sidebar-active:#1f6feb;
   --shadow:0 12px 30px rgba(15,23,42,.08);
 }
 
 *{box-sizing:border-box}
 
-.console-shell{min-height:100vh;display:grid;grid-template-columns:264px minmax(0,1fr)}
-.main{min-width:0;padding:24px}
+/* ---- Shell (no sidebar) ---- */
+.console-shell{min-height:100vh;display:flex;flex-direction:column;background:#fff;color:#212529}
 
-.sidebar{position:sticky;top:0;height:100vh;background:var(--sidebar);color:#e9ecef;padding:18px 14px;display:flex;flex-direction:column;border-right:1px solid rgba(255,255,255,.08)}
-.brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:1.12rem;letter-spacing:.2px}
-.brand b{width:38px;height:38px;display:grid;place-items:center;border-radius:8px;background:linear-gradient(135deg,var(--bs-blue),var(--bs-cyan));color:#fff;box-shadow:0 8px 20px rgba(13,110,253,.28)}
-.nav-list{margin-top:22px;display:grid;gap:4px}
-.nav-link{width:100%;height:42px;display:flex;align-items:center;gap:10px;border:0;border-radius:6px;background:transparent;color:#cbd5e1;text-align:left;padding:0 12px;font:inherit;cursor:pointer}
-.nav-link:hover{background:rgba(255,255,255,.08);color:#fff}
-.nav-link.active{background:var(--sidebar-active);color:#fff;box-shadow:0 10px 22px rgba(31,111,235,.24)}
-.nav-icon{width:26px;height:26px;display:grid;place-items:center;border-radius:6px;background:rgba(255,255,255,.08);font-size:.76rem;font-weight:800}
-.nav-link.active .nav-icon{background:rgba(255,255,255,.18)}
+/* ---- Navbar — matches /product page ---- */
+.console-navbar{
+  position:sticky;top:0;z-index:100;
+  background:rgba(255,255,255,.92);
+  backdrop-filter:blur(10px);
+  -webkit-backdrop-filter:blur(10px);
+  border-bottom:1px solid #e9ecef;
+}
+.navbar-inner{
+  max-width:1200px;margin:0 auto;
+  padding:.75rem 1.5rem;
+  display:flex;align-items:center;justify-content:space-between;gap:1rem;
+}
+.navbar-brand{
+  display:flex;align-items:center;gap:10px;font-weight:800;font-size:1.12rem;letter-spacing:.2px;
+  color:#212529;text-decoration:none;flex-shrink:0;
+}
+.navbar-brand b{
+  width:36px;height:36px;display:grid;place-items:center;border-radius:8px;
+  background:linear-gradient(135deg,var(--bs-blue),var(--bs-cyan));color:#fff;
+  box-shadow:0 8px 20px rgba(13,110,253,.28);
+}
+.navbar-links{
+  display:flex;align-items:center;gap:.25rem;
+  overflow-x:auto;-webkit-overflow-scrolling:touch;
+  scrollbar-width:none;-ms-overflow-style:none;
+}
+.navbar-links::-webkit-scrollbar{display:none}
+.nav-link{
+  border:0;background:transparent;color:#495057;text-align:left;padding:.4rem .7rem;
+  font:inherit;font-weight:600;font-size:.9rem;cursor:pointer;white-space:nowrap;
+  border-bottom:2px solid transparent;border-radius:0;transition:color .15s,border-color .15s;
+}
+.nav-link:hover{color:#212529;border-bottom-color:#adb5bd}
+.nav-link.active{color:#212529;border-bottom-color:#212529}
 
-.topbar{max-width:1480px;margin:0 auto 20px;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 20px;background:var(--surface);border:1px solid var(--border);border-radius:8px;box-shadow:var(--shadow)}
-.topbar p{margin:0 0 4px;color:var(--muted);font-size:.78rem;text-transform:uppercase;font-weight:800}
-.topbar h1{margin:0;font-size:clamp(1.35rem,2vw,1.9rem);line-height:1.15}
-.user-menu{display:flex;align-items:center;gap:10px;min-width:max-content}
+.user-menu{display:flex;align-items:center;gap:10px;flex-shrink:0}
 .status-dot{width:9px;height:9px;border-radius:50%;background:var(--bs-green);box-shadow:0 0 0 4px rgba(25,135,84,.14)}
+.btn-sm{padding:6px 12px;font-size:.85rem;min-height:34px}
 
-.stack,.content-grid{max-width:1480px;margin:0 auto}
+/* ---- Main ---- */
+.main{flex:1;min-width:0;padding:0 1.5rem 2rem}
+
+/* ---- Page title ---- */
+.page-title{max-width:1200px;margin:1.5rem auto 1rem}
+.page-title h1{margin:0;font-size:1.5rem;font-weight:800;color:#212529}
+
+/* ---- Toast & Loading ---- */
+.toast{max-width:1200px;margin:1rem auto 0;display:flex;align-items:center;justify-content:space-between;gap:12px;border-radius:8px;padding:12px 14px;font-weight:700}
+.toast button{border:0;background:transparent;color:inherit;font-weight:800;cursor:pointer}
+.toast-error{background:#f8d7da;color:#842029;border:1px solid #f5c2c7}
+.toast-ok{background:#d1e7dd;color:#0f5132;border:1px solid #badbcc}
+.loading-bar{max-width:1200px;height:3px;margin:0 auto;border-radius:999px;background:linear-gradient(90deg,var(--bs-blue),var(--bs-cyan));animation:pulse 1.2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:.35}50%{opacity:1}}
+
+/* ====== Dashboard — matches /product page style ====== */
+.dashboard{max-width:1200px;margin:0 auto;display:grid;gap:2rem}
+
+/* Hero */
+.dashboard-hero{
+  display:grid;grid-template-columns:1fr 1fr;align-items:center;gap:3rem;
+  margin-top:3rem;
+}
+.hero-text{display:flex;flex-direction:column;gap:1rem}
+.hero-kicker{margin:0;color:#6c757d;text-transform:uppercase;font-size:.78rem;font-weight:800;letter-spacing:.08em}
+.hero-text h1{margin:0;font-size:clamp(2.2rem,4.5vw,3.5rem);font-weight:800;line-height:1.08;letter-spacing:-.02em}
+.hero-desc{margin:0;color:#6c757d;font-size:1.15rem;line-height:1.7;max-width:520px}
+.hero-actions{display:flex;gap:.75rem;margin-top:.5rem}
+.btn-primary{
+  display:inline-flex;align-items:center;padding:.7rem 1.6rem;font-size:.95rem;font-weight:700;
+  color:#fff;background:#212529;border:2px solid #212529;border-radius:.375rem;
+  text-decoration:none;cursor:pointer;transition:background-color .15s,border-color .15s;
+}
+.btn-primary:hover{background:#424649;border-color:#373b3e}
+.btn-outline{
+  display:inline-flex;align-items:center;padding:.7rem 1.6rem;font-size:.95rem;font-weight:700;
+  color:#212529;background:transparent;border:2px solid #6c757d;border-radius:.375rem;
+  text-decoration:none;cursor:pointer;transition:background-color .15s,border-color .15s,color .15s;
+}
+.btn-outline:hover{background:#212529;border-color:#212529;color:#fff}
+
+/* Hero Preview (device mockup) */
+.hero-preview{
+  background:#212529;border-radius:1.5rem;padding:1rem;
+  box-shadow:0 25px 60px rgba(0,0,0,.18);transform:rotate(1deg);
+}
+.preview-toolbar{display:flex;gap:7px;padding:0 .5rem .75rem;border-bottom:1px solid rgba(255,255,255,.12)}
+.preview-toolbar span{width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.35)}
+.preview-body{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;padding:1rem .5rem .5rem}
+.preview-card{background:#343a40;border-radius:.5rem;padding:1rem;color:#fff;display:flex;flex-direction:column;gap:.35rem}
+.preview-card small{font-size:.68rem;font-weight:700;text-transform:uppercase;color:rgba(255,255,255,.55);letter-spacing:.05em}
+.preview-card b{font-size:1.15rem;font-weight:700}
+
+/* Quick Actions — feature-card style */
+.dashboard-actions{display:grid;grid-template-columns:repeat(2,1fr);gap:1.5rem}
+.action-card{
+  text-align:left;border:1px solid #e9ecef;border-radius:.75rem;background:#fff;padding:2rem;
+  display:flex;flex-direction:column;gap:.5rem;cursor:pointer;font:inherit;
+  transition:box-shadow .2s,transform .2s;
+}
+.action-card:hover{box-shadow:0 12px 30px rgba(0,0,0,.08);transform:translateY(-2px)}
+.action-icon{font-size:2rem;display:block;margin-bottom:.25rem}
+.action-card h3{margin:0;font-size:1.2rem;font-weight:700;color:#212529}
+.action-card p{margin:0;color:#6c757d;line-height:1.6;font-size:.95rem}
+
+/* ====== Shared layout containers ====== */
+.stack,.content-grid{max-width:1200px;margin:0 auto}
 .stack{display:grid;gap:18px}
 .content-grid{display:grid;grid-template-columns:minmax(360px,.9fr) minmax(0,1.1fr);gap:18px;align-items:start}
-.product-home{max-width:1480px;margin:0 auto;display:grid;gap:20px}
-.product-hero{position:relative;min-height:430px;display:grid;grid-template-columns:minmax(0,1fr) minmax(330px,440px);align-items:center;gap:40px;overflow:hidden;border-radius:8px;background:#212529;color:#fff;padding:54px;box-shadow:var(--shadow)}
-.product-hero::before{content:"";position:absolute;inset:auto -8% -36% 42%;height:360px;background:#f8f9fa;border-radius:999px 999px 0 0;transform:rotate(-10deg);opacity:.1}
-.product-hero-copy{position:relative;z-index:1;display:grid;gap:18px;max-width:720px}
-.product-kicker{margin:0;color:#9ec5fe;text-transform:uppercase;font-size:.78rem;font-weight:900;letter-spacing:.08em}
-.product-hero h2{margin:0;font-size:clamp(2.4rem,5vw,4.4rem);line-height:1.02;letter-spacing:0}
-.product-hero-copy>p:not(.product-kicker){margin:0;max-width:640px;color:rgba(255,255,255,.76);font-size:1.16rem;line-height:1.7}
-.product-actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:10px}
-.btn-light{background:#f8f9fa;border-color:#f8f9fa;color:#212529}
-.btn-ghost{background:transparent;border-color:rgba(255,255,255,.5);color:#fff}
-.btn-ghost:hover{background:rgba(255,255,255,.1)}
-.device-preview{position:relative;z-index:1;align-self:stretch;min-height:320px;border-radius:26px;background:#f8f9fa;color:#212529;padding:16px;box-shadow:0 28px 70px rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.28);transform:rotate(2deg)}
-.device-toolbar{height:34px;display:flex;align-items:center;gap:7px;padding:0 8px;border-bottom:1px solid #dee2e6}
-.device-toolbar span{width:10px;height:10px;border-radius:50%;background:#adb5bd}
-.device-content{height:calc(100% - 34px);display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding:16px 4px 4px}
-.device-content article{display:grid;align-content:space-between;min-height:110px;border-radius:8px;background:#fff;border:1px solid #e9ecef;padding:14px;box-shadow:0 8px 20px rgba(33,37,41,.06)}
-.device-content small{color:#6c757d;font-weight:850;text-transform:uppercase}
-.device-content b{font-size:1.45rem;line-height:1.1;overflow-wrap:anywhere}
-.product-showcase{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
-.product-tile{position:relative;min-height:430px;overflow:hidden;text-align:center;border:0;border-radius:8px;padding:42px 32px;color:#212529;display:grid;justify-items:center;align-content:start;gap:10px;box-shadow:var(--shadow);font:inherit;cursor:pointer}
-.product-tile span{font-size:.78rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:inherit;opacity:.68}
-.product-tile b{font-size:clamp(1.8rem,3vw,2.8rem);line-height:1.08;letter-spacing:0}
-.product-tile small{max-width:460px;color:inherit;opacity:.72;font-size:1rem;line-height:1.55}
-.product-tile i{position:absolute;left:50%;bottom:-78px;width:min(420px,76%);aspect-ratio:1.55;border-radius:22px 22px 0 0;background:currentColor;opacity:.14;transform:translateX(-50%);box-shadow:0 -16px 0 rgba(255,255,255,.28) inset}
-.product-tile:hover{filter:brightness(.99);transform:translateY(-1px)}
-.tile-dark{background:#212529;color:#fff}
-.tile-light{background:#f8f9fa;color:#212529;border:1px solid #dee2e6}
-.panel,.metrics article{background:var(--surface);border:1px solid var(--border);border-radius:8px;box-shadow:var(--shadow)}
-.panel{padding:20px}
+
+/* ====== Panels & Cards ====== */
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:8px;box-shadow:var(--shadow);padding:20px}
 .panel h2{margin:0 0 16px;font-size:1.05rem}
 
-.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
-.metrics article{padding:18px;min-height:112px;display:grid;align-content:space-between}
-.metrics span{color:var(--muted);font-size:.82rem;font-weight:800;text-transform:uppercase}
-.metrics b{font-size:1.75rem;line-height:1.1;overflow-wrap:anywhere}
-
-.action-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
-.action-card{min-height:132px;text-align:left;border:1px solid var(--border);border-radius:8px;background:#fff;padding:18px;display:grid;align-content:space-between;gap:12px;box-shadow:var(--shadow);color:var(--text)}
-.action-card b{font-size:1rem;line-height:1.25}
-.action-card span{color:var(--muted);font-size:.86rem;line-height:1.45}
-.action-card:hover{border-color:#86b7fe;box-shadow:0 14px 34px rgba(13,110,253,.12)}
-.role-editor{display:grid;gap:12px;border:1px solid var(--border);border-radius:8px;background:#f8f9fa;padding:14px}
-.role-editor-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
-.role-editor-head h3{margin:0;font-size:.95rem}
-.role-card{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;border:1px solid #dee2e6;border-radius:8px;background:#fff;padding:14px}
-.role-actions{display:flex;align-items:end;justify-content:flex-end}
-.empty-state{border:1px dashed #ced4da;border-radius:8px;background:#fff;color:var(--muted);padding:18px;text-align:center;font-weight:750}
+/* ====== Forms ====== */
 .form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
 .compact-form{grid-template-columns:repeat(4,minmax(0,1fr));align-items:end}
 .form-grid h2,.form-actions,.span-2{grid-column:1/-1}
@@ -516,6 +561,16 @@ input:focus,select:focus,textarea:focus{border-color:#86b7fe;box-shadow:0 0 0 .2
 .check-field input{width:1rem;height:1rem}
 .form-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:2px}
 
+/* ====== Role editor ====== */
+.role-editor{display:grid;gap:12px;border:1px solid var(--border);border-radius:8px;background:#f8f9fa;padding:14px}
+.role-editor-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.role-editor-head h3{margin:0;font-size:.95rem}
+.role-card{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;border:1px solid #dee2e6;border-radius:8px;background:#fff;padding:14px}
+.role-actions{display:flex;align-items:end;justify-content:flex-end}
+
+.empty-state{border:1px dashed #ced4da;border-radius:8px;background:#fff;color:var(--muted);padding:18px;text-align:center;font-weight:750}
+
+/* ====== Picker ====== */
 .picker{display:grid;gap:10px}
 .picker-head{display:flex;align-items:center;justify-content:space-between;gap:12px;color:#495057;font-size:.86rem;font-weight:800}
 .picker-head code{border:1px solid #b6d4fe;background:#eef6ff;color:#084298;border-radius:999px;padding:3px 8px;font-size:.76rem}
@@ -534,6 +589,7 @@ input:focus,select:focus,textarea:focus{border-color:#86b7fe;box-shadow:0 0 0 .2
 .link-btn{border:0;background:transparent;color:var(--bs-blue);font-size:.76rem;font-weight:850;padding:0;cursor:pointer}
 .picker-empty{margin:0;color:var(--muted);font-size:.86rem}
 
+/* ====== Buttons ====== */
 .btn{border:1px solid var(--border);border-radius:6px;background:#fff;color:var(--text);padding:9px 13px;font-weight:750;line-height:1.2;min-height:38px;font:inherit;cursor:pointer}
 .btn:hover{filter:brightness(.98)}
 .btn-primary{background:var(--bs-blue);border-color:var(--bs-blue);color:#fff}
@@ -541,15 +597,11 @@ input:focus,select:focus,textarea:focus{border-color:#86b7fe;box-shadow:0 0 0 .2
 .btn-danger{background:#fff;border-color:#f1aeb5;color:#b02a37}
 .btn-danger:hover{background:#fff5f5}
 
+/* ====== Chips ====== */
 .chips{display:flex;flex-wrap:wrap;gap:8px}
 .chips span{display:inline-flex;align-items:center;min-height:30px;border:1px solid #b6d4fe;background:#eef6ff;color:#084298;border-radius:999px;padding:4px 10px;font-size:.84rem;font-weight:750}
-.toast{max-width:1480px;margin:0 auto 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;border-radius:8px;padding:12px 14px;font-weight:700}
-.toast button{border:0;background:transparent;color:inherit;font-weight:800;cursor:pointer}
-.toast-error{background:#f8d7da;color:#842029;border:1px solid #f5c2c7}
-.toast-ok{background:#d1e7dd;color:#0f5132;border:1px solid #badbcc}
-.loading-bar{max-width:1480px;height:3px;margin:0 auto 16px;border-radius:999px;background:linear-gradient(90deg,var(--bs-blue),var(--bs-cyan));animation:pulse 1.2s ease-in-out infinite}
-@keyframes pulse{0%,100%{opacity:.35}50%{opacity:1}}
 
+/* ====== Table ====== */
 .scroll{overflow:auto;border:1px solid var(--border);border-radius:8px}
 table{width:100%;border-collapse:separate;border-spacing:0;min-width:900px;background:#fff}
 th,td{border-bottom:1px solid #e9ecef;padding:12px 14px;text-align:left;vertical-align:top;max-width:340px;overflow-wrap:anywhere}
@@ -558,32 +610,31 @@ tbody tr:hover{background:#f8fbff}
 tbody tr:last-child td{border-bottom:0}
 td:last-child{white-space:nowrap}
 
+/* ====== Code ====== */
 pre{margin:0;background:#0f172a;color:#e2e8f0;border-radius:8px;padding:14px;white-space:pre-wrap;overflow:auto;line-height:1.5}
 details{margin-top:14px}
 summary{cursor:pointer;color:#495057;font-weight:800}
+
+/* ====== Modal ====== */
 .modal{position:fixed;inset:0;background:rgba(15,23,42,.48);display:grid;place-items:center;padding:24px;z-index:20}
 .modal section{width:min(680px,100%);background:#fff;border-radius:8px;border:1px solid var(--border);box-shadow:0 24px 70px rgba(15,23,42,.3);padding:20px}
 
-@media(max-width:1100px){
-  .console-shell{grid-template-columns:220px minmax(0,1fr)}
-  .product-hero{grid-template-columns:1fr;padding:42px}
-  .device-preview{min-height:260px;transform:none}
-  .product-showcase{grid-template-columns:1fr}
+/* ====== Responsive ====== */
+@media(max-width:860px){
+  .dashboard-hero{grid-template-columns:1fr;gap:2rem;margin-top:2rem}
+  .hero-preview{transform:none}
+  .dashboard-actions{grid-template-columns:1fr}
   .content-grid{grid-template-columns:1fr}
-  .compact-form{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 @media(max-width:760px){
-  .console-shell{grid-template-columns:1fr}
-  .main{padding:14px}
-  .sidebar{position:relative;height:auto}
-  .nav-list{grid-template-columns:repeat(2,minmax(0,1fr));margin-top:14px}
-  .topbar{align-items:flex-start;flex-direction:column}
-  .user-menu{width:100%;justify-content:space-between}
+  .navbar-inner{flex-wrap:wrap;gap:.5rem}
+  .navbar-links{order:3;width:100%;padding-bottom:.25rem}
+  .user-menu{min-width:max-content}
+  .nav-link{font-size:.82rem;padding:.35rem .55rem}
+  .main{padding:0 1rem 2rem}
   .form-grid,.compact-form,.role-card{grid-template-columns:1fr}
-  .product-hero{min-height:auto;padding:28px 20px}
-  .product-actions{display:grid;grid-template-columns:1fr}
-  .device-content{grid-template-columns:1fr}
-  .product-tile{min-height:340px;padding:32px 20px}
+  .hero-actions{flex-direction:column}
+  .btn-primary,.btn-outline{text-align:center;justify-content:center}
   .picker-groups,.picker-options{grid-template-columns:1fr}
   .panel{padding:16px}
 }
