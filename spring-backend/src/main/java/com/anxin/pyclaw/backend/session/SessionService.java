@@ -90,6 +90,18 @@ public class SessionService {
         return new SessionDetailResponse(toSummary(sessionId, meta), messages);
     }
 
+    /** Validate that the given session belongs to the specified claw. Throws ApiException(NOT_FOUND) if not. */
+    public void requireOwnedByClaw(String sessionId, String clawId) {
+        Map<String, String> meta = getMeta(sessionId);
+        if (meta.isEmpty()) {
+            throw new ApiException(HttpStatus.NOT_FOUND, "Session not found");
+        }
+        String sessionClawId = meta.get("clawId");
+        if (sessionClawId == null || !sessionClawId.equals(clawId)) {
+            throw new ApiException(HttpStatus.NOT_FOUND, "Session does not belong to this Claw");
+        }
+    }
+
     /** Validate that the given session is owned by the principal. Throws ApiException(NOT_FOUND) if not. */
     public void requireOwned(String sessionId, AuthenticatedPrincipal principal) {
         boolean isAdmin = principal.getAuthorities().stream()
@@ -114,6 +126,13 @@ public class SessionService {
     public void saveMessage(String sessionId, String userId, String clawId, String clawName,
                             String agentKey, String provider, String model,
                             String role, String content, long timestamp) {
+        saveMessage(sessionId, userId, clawId, clawName, agentKey, null, null, provider, model, role, content, timestamp);
+    }
+
+    public void saveMessage(String sessionId, String userId, String clawId, String clawName,
+                            String agentKey, String roleKey, String agentId,
+                            String provider, String model,
+                            String role, String content, long timestamp) {
         SessionMessageResponse msg = new SessionMessageResponse(role, content, timestamp);
         try {
             String json = objectMapper.writeValueAsString(msg);
@@ -127,6 +146,8 @@ public class SessionService {
         meta.put("clawId", clawId != null ? clawId : "");
         meta.put("clawName", clawName != null ? clawName : "");
         meta.put("agentKey", agentKey != null ? agentKey : "");
+        meta.put("roleKey", roleKey != null ? roleKey : "");
+        meta.put("agentId", agentId != null ? agentId : "");
         meta.put("provider", provider != null ? provider : "");
         meta.put("model", model != null ? model : "");
 

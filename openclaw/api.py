@@ -70,6 +70,14 @@ class AgentRunRequest(BaseModel):
     tool_result_max_chars: int = Field(default=20_000, ge=1)
     disable_compaction: bool = False
     mock_response: str | None = None
+    # Claw context fields
+    claw_id: str | None = None
+    owner_user_id: str | None = None
+    claw_name: str | None = None
+    role_key: str | None = None
+    agent_key: str | None = None
+    sandbox_base_url: str | None = None
+    workspace_mode: Literal["local", "sandbox_runner"] = "local"
 
 
 class AgentRunResponse(BaseModel):
@@ -290,13 +298,34 @@ def build_provider(request: AgentRunRequest, *, model: str) -> Any:
     raise ValueError(f"unsupported provider: {request.provider}")
 
 
+# Local fs tools that should be denied when using sandbox_runner workspace mode
+SANDBOX_MODE_DENY_TOOLS = {
+    "read", "list_dir", "ls", "grep", "find",
+    "write", "edit", "apply_patch", "shell", "exec",
+}
+SANDBOX_MODE_ALLOW_TOOLS = {
+    "sandbox_workspace_info", "sandbox_list_files",
+    "sandbox_read_file", "sandbox_write_file",
+}
+
+
 def build_policy(request: AgentRunRequest) -> ToolPolicy:
     profile = request.tool_profile
+    deny = normalize_name_set(request.tools_deny) or set()
+    also_allow = normalize_name_set(request.tools_also_allow) or set()
+
+    if request.workspace_mode == "sandbox_runner":
+        if not request.sandbox_base_url:
+            raise HTTPException(status_code=400, detail="sandbox_base_url is required when workspace_mode=sandbox_runner")
+        # Prevent local filesystem tools from operating on the pyclaw-api pod filesystem
+        deny = deny | SANDBOX_MODE_DENY_TOOLS
+        also_allow = also_allow | SANDBOX_MODE_ALLOW_TOOLS
+
     return ToolPolicy(
         profile=profile,
         allow=normalize_name_set(request.tools_allow),
-        deny=normalize_name_set(request.tools_deny) or set(),
-        also_allow=normalize_name_set(request.tools_also_allow) or set(),
+        deny=deny,
+        also_allow=also_allow,
         readonly=profile == "readonly",
     )
 
@@ -311,7 +340,16 @@ def build_model_options(request: AgentRunRequest) -> dict[str, Any]:
 
 
 def build_tool_metadata(request: AgentRunRequest) -> dict[str, Any]:
-    return {"shell_approval_mode": request.shell_approval}
+    meta: dict[str, Any] = {"shell_approval_mode": request.shell_approval}
+    if request.workspace_mode == "sandbox_runner":
+        meta["workspace_mode"] = request.workspace_mode
+        meta["sandbox_base_url"] = request.sandbox_base_url
+        meta["claw_id"] = request.claw_id
+        meta["owner_user_id"] = request.owner_user_id
+        meta["claw_name"] = request.claw_name
+        meta["role_key"] = request.role_key
+        meta["agent_key"] = request.agent_key
+    return meta
 
 
 def build_session(request: AgentRunRequest, agent: Agent, *, session_id: str, cwd: str) -> AgentSession:

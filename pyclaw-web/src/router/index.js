@@ -68,6 +68,13 @@ const routes = [
         component: () => import("../views/PodStatusPage.vue"),
       },
       {
+        path: "claws/:id/chat",
+        name: "claw-chat",
+        component: () => import("../views/ClawChatPage.vue"),
+        props: true,
+        meta: { authority: "agent:run" },
+      },
+      {
         path: "claws/:id/files",
         name: "workspace-files",
         component: () => import("../views/WorkspaceFilesPage.vue"),

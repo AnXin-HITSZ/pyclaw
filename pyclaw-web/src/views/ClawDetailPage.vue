@@ -3,6 +3,7 @@
     <div class="page-header">
       <button class="btn-back" @click="$router.push('/workspace/claws')">← 返回列表</button>
       <h1>{{ claw?.name || "加载中..." }}</h1>
+      <button v-if="claw?.status === 'active'" class="btn-chat" @click="$router.push(`/workspace/claws/${claw.id}/chat`)">💬 开始对话</button>
       <button class="btn-primary" @click="openEdit">编辑</button>
     </div>
 
@@ -208,6 +209,7 @@ onMounted(load);
 .page-header h1 { font-size: 22px; flex: 1; }
 .btn-back { padding: 6px 12px; font-size: 13px; color: var(--text-secondary); background: transparent; border: 1px solid var(--border-color); border-radius: 6px; }
 .btn-primary { padding: 8px 20px; font-size: 14px; font-weight: 600; color: #fff; background: var(--accent); border: none; border-radius: 6px; }
+.btn-chat { padding: 8px 20px; font-size: 14px; font-weight: 600; color: #fff; background: var(--success); border: none; border-radius: 6px; }
 .btn-secondary { padding: 8px 20px; font-size: 14px; color: var(--text-secondary); background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 6px; }
 .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
 .card { background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 10px; padding: 20px; }

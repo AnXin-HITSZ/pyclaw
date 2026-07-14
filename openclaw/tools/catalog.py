@@ -13,6 +13,12 @@ from openclaw.tools.fs.list_dir import create_list_dir_tool, create_ls_tool
 from openclaw.tools.fs.read import create_read_tool
 from openclaw.tools.fs.write import create_write_tool
 from openclaw.tools.host_ssh import create_host_df_tool, create_host_free_tool, create_host_uname_tool
+from openclaw.tools.sandbox_workspace import (
+    create_sandbox_list_files_tool,
+    create_sandbox_read_file_tool,
+    create_sandbox_workspace_info_tool,
+    create_sandbox_write_file_tool,
+)
 from openclaw.tools.shell.exec import create_exec_tool, create_shell_tool
 from openclaw.tools.types import ToolDefinition, ToolMetadata, ToolRisk, ToolSource
 from openclaw.tools.web.fetch import create_web_fetch_tool
@@ -204,6 +210,54 @@ CORE_TOOL_CATALOG: tuple[ToolCatalogEntry, ...] = (
         profiles=("full",),
         tags=("host", "ssh", "runtime", "readonly"),
         risk="low",
+        workspace_only=False,
+    ),
+    ToolCatalogEntry(
+        id="sandbox_workspace_info",
+        name="sandbox_workspace_info",
+        label="Sandbox Workspace Info",
+        description="Get information about the Claw sandbox workspace.",
+        section_id="sandbox",
+        factory=create_sandbox_workspace_info_tool,
+        profiles=("minimal", "readonly", "coding", "full", "messaging"),
+        tags=("sandbox", "workspace", "readonly"),
+        risk="low",
+        workspace_only=False,
+    ),
+    ToolCatalogEntry(
+        id="sandbox_list_files",
+        name="sandbox_list_files",
+        label="Sandbox List Files",
+        description="List files in the Claw sandbox workspace directory tree.",
+        section_id="sandbox",
+        factory=create_sandbox_list_files_tool,
+        profiles=("minimal", "readonly", "coding", "full", "messaging"),
+        tags=("sandbox", "files", "readonly"),
+        risk="low",
+        workspace_only=False,
+    ),
+    ToolCatalogEntry(
+        id="sandbox_read_file",
+        name="sandbox_read_file",
+        label="Sandbox Read File",
+        description="Read a UTF-8 text file from the Claw sandbox workspace.",
+        section_id="sandbox",
+        factory=create_sandbox_read_file_tool,
+        profiles=("minimal", "readonly", "coding", "full", "messaging"),
+        tags=("sandbox", "files", "readonly"),
+        risk="low",
+        workspace_only=False,
+    ),
+    ToolCatalogEntry(
+        id="sandbox_write_file",
+        name="sandbox_write_file",
+        label="Sandbox Write File",
+        description="Write UTF-8 text content to a file in the Claw sandbox workspace.",
+        section_id="sandbox",
+        factory=create_sandbox_write_file_tool,
+        profiles=("coding", "full"),
+        tags=("sandbox", "files", "mutation"),
+        risk="medium",
         workspace_only=False,
     ),
     ToolCatalogEntry(

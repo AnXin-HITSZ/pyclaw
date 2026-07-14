@@ -1,5 +1,6 @@
 package com.anxin.pyclaw.backend.provider;
 
+import com.anxin.pyclaw.backend.agentconfig.AgentConfigEntity;
 import com.anxin.pyclaw.backend.audit.AuditLogService;
 import com.anxin.pyclaw.backend.auth.AuthenticatedPrincipal;
 import com.anxin.pyclaw.backend.common.ApiException;
@@ -93,6 +94,61 @@ public class ProviderConfigService {
             throw new ApiException(HttpStatus.NOT_FOUND, "Provider config not found");
         }
         return entity;
+    }
+
+    /**
+     * Resolve a ProviderConfig for a given Agent and user.
+     * Prefers: agent.providerId (must be owned or shared) > name/type match (owned first, then shared).
+     * Returns null if no provider is found.
+     */
+    public ProviderConfigEntity resolveForAgentAndUser(AgentConfigEntity agent, String ownerUserId) {
+        // 1. Direct providerId reference
+        if (agent.getProviderId() != null && !agent.getProviderId().isBlank()) {
+            ProviderConfigEntity byId = repository.findById(agent.getProviderId()).orElse(null);
+            if (byId != null && byId.isEnabled() && (byId.isShared() || Objects.equals(byId.getOwnerUserId(), ownerUserId))) {
+                return byId;
+            }
+        }
+
+        // 2. By name (owned first, then shared)
+        String requestedProvider = agent.getProvider();
+        if (requestedProvider != null && !requestedProvider.isBlank()) {
+            ProviderConfigEntity byName = repository.findFirstByNameIgnoreCaseAndEnabledTrue(requestedProvider);
+            if (byName != null && (byName.isShared() || Objects.equals(byName.getOwnerUserId(), ownerUserId))) {
+                return byName;
+            }
+            // Fallback: any shared provider with that name
+            ProviderConfigEntity byNameShared = repository
+                    .findByOwnerUserIdOrSharedTrueOrderByUpdatedAtDesc(ownerUserId).stream()
+                    .filter(p -> p.isEnabled() && requestedProvider.equalsIgnoreCase(p.getName()))
+                    .findFirst().orElse(null);
+            if (byNameShared != null) return byNameShared;
+        }
+
+        // 3. By provider type (owned first, then shared)
+        String providerType = agent.getProvider();
+        if (providerType == null || providerType.isBlank()) {
+            providerType = "openai-compatible";
+        }
+        String normalizedType = providerType.trim().toLowerCase();
+        ProviderConfigEntity byTypeOwned = repository.findAll().stream()
+                .filter(p -> p.isEnabled() && normalizedType.equals(p.getProviderType().toLowerCase())
+                        && Objects.equals(p.getOwnerUserId(), ownerUserId))
+                .findFirst().orElse(null);
+        if (byTypeOwned != null) return byTypeOwned;
+
+        ProviderConfigEntity byTypeShared = repository.findAll().stream()
+                .filter(p -> p.isEnabled() && p.isShared()
+                        && normalizedType.equals(p.getProviderType().toLowerCase()))
+                .findFirst().orElse(null);
+        if (byTypeShared != null) return byTypeShared;
+
+        // 4. For openai, also try openai-compatible (shared first)
+        if ("openai".equals(normalizedType)) {
+            return repository.findFirstByProviderTypeIgnoreCaseAndEnabledTrueOrderByUpdatedAtDesc("openai-compatible");
+        }
+
+        return null;
     }
 
     private void apply(ProviderConfigEntity entity, ProviderConfigRequest request) {
