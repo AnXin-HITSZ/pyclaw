@@ -17,9 +17,13 @@ import com.anxin.pyclaw.backend.provider.ProviderConfigService;
 import com.anxin.pyclaw.backend.pyclaw.PyclawAgentRunRequest;
 import com.anxin.pyclaw.backend.pyclaw.PyclawAgentRunResponse;
 import com.anxin.pyclaw.backend.pyclaw.PyclawClient;
+import com.anxin.pyclaw.backend.pyclaw.PyclawToolCatalogEntry;
+import com.anxin.pyclaw.backend.pyclaw.PyclawToolResolveRequest;
+import com.anxin.pyclaw.backend.pyclaw.PyclawToolResolveResponse;
 import com.anxin.pyclaw.backend.sandbox.SandboxClient;
 import com.anxin.pyclaw.backend.sandbox.SandboxNamingService;
 import com.anxin.pyclaw.backend.session.SessionService;
+import com.anxin.pyclaw.backend.tool.RuntimePromptComposer;
 import com.anxin.pyclaw.backend.usage.UsageRecordEntity;
 import com.anxin.pyclaw.backend.usage.UsageRecordRepository;
 import java.time.OffsetDateTime;
@@ -48,6 +52,7 @@ public class ClawChatService {
     private final SandboxNamingService namingService;
     private final PyclawSandboxProperties sandboxProperties;
     private final PyclawClient pyclawClient;
+    private final RuntimePromptComposer promptComposer;
     private final UsageRecordRepository usageRecords;
     private final AuditLogService auditLogService;
 
@@ -62,6 +67,7 @@ public class ClawChatService {
             SandboxNamingService namingService,
             PyclawSandboxProperties sandboxProperties,
             PyclawClient pyclawClient,
+            RuntimePromptComposer promptComposer,
             UsageRecordRepository usageRecords,
             AuditLogService auditLogService
     ) {
@@ -75,6 +81,7 @@ public class ClawChatService {
         this.namingService = namingService;
         this.sandboxProperties = sandboxProperties;
         this.pyclawClient = pyclawClient;
+        this.promptComposer = promptComposer;
         this.usageRecords = usageRecords;
         this.auditLogService = auditLogService;
     }
@@ -114,14 +121,26 @@ public class ClawChatService {
                 ? namingService.serviceBaseUrl(claw.getOwnerUserId(), claw.getId())
                 : null;
 
-        // Append sandbox hint to system prompt when using sandbox_runner mode
-        String systemPrompt = agent.getSystemPrompt();
-        if (sandboxProperties.isEnabled()) {
-            systemPrompt = (systemPrompt != null ? systemPrompt + "\n\n" : "")
-                    + "当前工作区是 Claw 专属 sandbox workspace。"
-                    + "文件读写必须使用 sandbox_* 工具（sandbox_workspace_info, sandbox_list_files, sandbox_read_file, sandbox_write_file）。"
-                    + "请勿使用本地文件系统工具 (read, write, edit 等) 操作用户项目文件。";
-        }
+        String workspaceMode = sandboxProperties.isEnabled() ? "sandbox_runner" : "local";
+        List<String> toolsAllow = agentConfigService.readList(policy.getToolsAllowJson());
+        List<String> toolsDeny = agentConfigService.readList(policy.getToolsDenyJson());
+        List<String> toolsAlsoAllow = agentConfigService.readList(policy.getToolsAlsoAllowJson());
+        PyclawToolResolveResponse resolvedTools = pyclawClient.resolveTools(new PyclawToolResolveRequest(
+                policy.getProfile() != null ? policy.getProfile() : "minimal",
+                toolsAllow,
+                toolsDeny,
+                toolsAlsoAllow,
+                policy.isReadonly(),
+                workspaceMode,
+                policy.isWebAccess()
+        ));
+        String systemPrompt = promptComposer.compose(agent.getSystemPrompt(), resolvedTools.promptFragments());
+        List<String> runtimeToolsAllow = resolvedTools.tools().stream()
+                .map(PyclawToolCatalogEntry::name)
+                .toList();
+        List<String> runtimeToolsDeny = resolvedTools.deniedTools().stream()
+                .map(com.anxin.pyclaw.backend.pyclaw.PyclawDeniedTool::name)
+                .toList();
 
         PyclawAgentRunRequest pyRequest = new PyclawAgentRunRequest(
                 request.prompt(),
@@ -133,9 +152,9 @@ public class ClawChatService {
                 provider.getBaseUrl(),
                 providerConfigService.getDecryptedApiKey(provider),
                 systemPrompt,
-                agentConfigService.readList(policy.getToolsAllowJson()),
-                agentConfigService.readList(policy.getToolsDenyJson()),
-                agentConfigService.readList(policy.getToolsAlsoAllowJson()),
+                runtimeToolsAllow,
+                runtimeToolsDeny,
+                List.of(),
                 policy.getShellApproval(),
                 claw.getId(),
                 claw.getOwnerUserId(),
@@ -143,7 +162,7 @@ public class ClawChatService {
                 resolved.roleKey(),
                 agent.getAgentKey(),
                 sandboxBaseUrl,
-                sandboxProperties.isEnabled() ? "sandbox_runner" : "local"
+                workspaceMode
         );
 
         boolean success = false;

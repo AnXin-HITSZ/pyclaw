@@ -16,6 +16,13 @@ class WriteFileRequest(BaseModel):
     content: str
 
 
+class PatchFileRequest(BaseModel):
+    file_path: str
+    old_text: str
+    new_text: str
+    replace_all: bool = False
+
+
 def workspace_path(relative_path: str) -> Path:
     candidate = (WORKSPACE / relative_path).resolve()
     if candidate != WORKSPACE and WORKSPACE not in candidate.parents:
@@ -79,3 +86,20 @@ def write_file(file_path: str, request: WriteFileRequest):
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(request.content, encoding="utf-8")
     return {"path": file_path, "size": target.stat().st_size}
+
+@app.post("/v1/workspace/patches")
+def apply_patch(request: PatchFileRequest):
+    target = workspace_path(request.file_path)
+    if not target.exists():
+        raise HTTPException(status_code=404, detail="file not found")
+    if not target.is_file():
+        raise HTTPException(status_code=400, detail="path is not a file")
+    content = target.read_text(encoding="utf-8")
+    count = content.count(request.old_text)
+    if count == 0:
+        raise HTTPException(status_code=409, detail="old_text not found")
+    if count > 1 and not request.replace_all:
+        raise HTTPException(status_code=409, detail="old_text appears multiple times; set replace_all=true to replace all occurrences")
+    patched = content.replace(request.old_text, request.new_text) if request.replace_all else content.replace(request.old_text, request.new_text, 1)
+    target.write_text(patched, encoding="utf-8")
+    return {"path": request.file_path, "replacements": count if request.replace_all else 1, "size": target.stat().st_size}

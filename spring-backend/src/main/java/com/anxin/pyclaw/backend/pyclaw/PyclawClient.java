@@ -68,6 +68,48 @@ public class PyclawClient {
         }
     }
 
+
+    public PyclawToolCatalogResponse toolCatalog() {
+        try {
+            HttpRequest.Builder builder = HttpRequest.newBuilder()
+                    .uri(URI.create(trimTrailingSlash(properties.baseUrl()) + "/v1/tools/catalog"))
+                    .version(HttpClient.Version.HTTP_1_1)
+                    .timeout(Duration.ofSeconds(properties.readTimeoutSeconds()))
+                    .GET();
+            addInternalAuthorization(builder);
+            HttpResponse<String> response = httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                throw new ApiException(HttpStatus.BAD_GATEWAY, "pyclaw tool catalog failed: " + response.body());
+            }
+            return objectMapper.readValue(response.body(), PyclawToolCatalogResponse.class);
+        } catch (ApiException exc) {
+            throw exc;
+        } catch (Exception exc) {
+            throw new ApiException(HttpStatus.BAD_GATEWAY, "pyclaw tool catalog failed: " + exc.getMessage());
+        }
+    }
+
+    public PyclawToolResolveResponse resolveTools(PyclawToolResolveRequest request) {
+        try {
+            String body = objectMapper.writeValueAsString(request);
+            HttpRequest.Builder builder = HttpRequest.newBuilder()
+                    .uri(URI.create(trimTrailingSlash(properties.baseUrl()) + "/v1/tools/resolve"))
+                    .version(HttpClient.Version.HTTP_1_1)
+                    .timeout(Duration.ofSeconds(properties.readTimeoutSeconds()))
+                    .header(HttpHeaders.CONTENT_TYPE, "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(body));
+            addInternalAuthorization(builder);
+            HttpResponse<String> response = httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                throw new ApiException(HttpStatus.BAD_GATEWAY, "pyclaw tool resolve failed: " + response.body());
+            }
+            return objectMapper.readValue(response.body(), PyclawToolResolveResponse.class);
+        } catch (ApiException exc) {
+            throw exc;
+        } catch (Exception exc) {
+            throw new ApiException(HttpStatus.BAD_GATEWAY, "pyclaw tool resolve failed: " + exc.getMessage());
+        }
+    }
     public ResponseEntity<byte[]> forwardChannelWebhook(
             String channel,
             String queryString,

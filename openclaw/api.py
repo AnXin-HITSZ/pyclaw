@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hmac
+from dataclasses import asdict
 import os
 from pathlib import Path
 from typing import Any, Literal
@@ -34,7 +35,9 @@ from openclaw.session.paths import resolve_chatdata_dir, resolve_session_store_p
 from openclaw.session.store import SessionStore
 from openclaw.session.transcript import Transcript
 from openclaw.tools.builder import build_tool_registry
+from openclaw.tools.catalog import user_visible_catalog
 from openclaw.tools.policy import ToolPolicy
+from openclaw.tools.resolver import ToolResolveInput, resolve_tools
 
 ApiProviderName = Literal["openai", "mock"]
 ApiMode = Literal["auto", "responses", "chat_completions", "chat-completions"]
@@ -85,6 +88,67 @@ class AgentRunResponse(BaseModel):
     message: dict[str, Any]
     text: str
 
+class ToolCatalogItem(BaseModel):
+    name: str
+    label: str
+    description: str
+    section_id: str
+    profiles: list[str]
+    tags: list[str]
+    risk: str
+    workspace_only: bool
+    workspace_modes: list[str]
+    readonly: bool
+    requires_approval: bool
+    prompt_hint: str
+
+
+class ToolCatalogResponse(BaseModel):
+    profiles: list[str]
+    tools: list[ToolCatalogItem]
+
+
+class ToolResolveRequest(BaseModel):
+    profile: ToolProfileName = "coding"
+    allow: list[str] | None = None
+    deny: list[str] | None = None
+    also_allow: list[str] | None = None
+    readonly: bool = False
+    workspace_mode: Literal["local", "sandbox_runner"] = "sandbox_runner"
+    web_access: bool = False
+
+
+class ResolvedToolResponse(BaseModel):
+    name: str
+    label: str
+    description: str
+    section_id: str
+    profiles: list[str]
+    tags: list[str]
+    risk: str
+    workspace_only: bool
+    workspace_modes: list[str]
+    readonly: bool
+    requires_approval: bool
+    prompt_hint: str
+
+
+class DeniedToolResponse(BaseModel):
+    name: str
+    reason: str
+
+
+class PromptFragmentResponse(BaseModel):
+    key: str
+    content: str
+
+
+class ToolResolveResponse(BaseModel):
+    profile: str
+    workspace_mode: str
+    tools: list[ResolvedToolResponse]
+    denied_tools: list[DeniedToolResponse]
+    prompt_fragments: list[PromptFragmentResponse]
 
 app = FastAPI(title="pyclaw API", version="0.1.0")
 
@@ -217,6 +281,50 @@ def healthz() -> HealthResponse:
     return HealthResponse()
 
 
+
+@app.get("/v1/tools/catalog", response_model=ToolCatalogResponse)
+def tools_catalog(_: None = Depends(require_api_token)) -> ToolCatalogResponse:
+    tools = [
+        ToolCatalogItem(
+            name=entry.name,
+            label=entry.label,
+            description=entry.description,
+            section_id=entry.section_id,
+            profiles=list(entry.profiles),
+            tags=list(entry.tags),
+            risk=entry.risk,
+            workspace_only=entry.workspace_only,
+            workspace_modes=list(entry.workspace_modes),
+            readonly=entry.readonly,
+            requires_approval=entry.requires_approval,
+            prompt_hint=entry.prompt_hint,
+        )
+        for entry in user_visible_catalog()
+    ]
+    return ToolCatalogResponse(profiles=["minimal", "readonly", "messaging", "coding", "full"], tools=tools)
+
+
+@app.post("/v1/tools/resolve", response_model=ToolResolveResponse)
+def tools_resolve(request: ToolResolveRequest, _: None = Depends(require_api_token)) -> ToolResolveResponse:
+    result = resolve_tools(
+        ToolResolveInput(
+            profile=request.profile,
+            allow=normalize_name_set(request.allow),
+            deny=normalize_name_set(request.deny) or set(),
+            also_allow=normalize_name_set(request.also_allow) or set(),
+            readonly=request.readonly,
+            workspace_mode=request.workspace_mode,
+            web_access=request.web_access,
+        )
+    )
+    return ToolResolveResponse(
+        profile=result.profile,
+        workspace_mode=result.workspace_mode,
+        tools=[ResolvedToolResponse(**asdict(tool)) for tool in result.tools],
+        denied_tools=[DeniedToolResponse(**asdict(tool)) for tool in result.denied_tools],
+        prompt_fragments=[PromptFragmentResponse(**asdict(fragment)) for fragment in result.prompt_fragments],
+    )
+
 @app.post("/v1/agent/run", response_model=AgentRunResponse)
 async def run_agent(
     request: AgentRunRequest,
@@ -306,6 +414,7 @@ SANDBOX_MODE_DENY_TOOLS = {
 SANDBOX_MODE_ALLOW_TOOLS = {
     "sandbox_workspace_info", "sandbox_list_files",
     "sandbox_read_file", "sandbox_write_file",
+    "sandbox_apply_patch",
 }
 
 

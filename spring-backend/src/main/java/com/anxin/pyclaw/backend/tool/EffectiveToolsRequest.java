@@ -1,4 +1,4 @@
-package com.anxin.pyclaw.backend.tool;
+﻿package com.anxin.pyclaw.backend.tool;
 
 import java.util.List;
 
@@ -7,6 +7,8 @@ public record EffectiveToolsRequest(
         List<String> allow,
         List<String> deny,
         List<String> alsoAllow,
-        Boolean readonly
+        Boolean readonly,
+        String workspaceMode,
+        Boolean webAccess
 ) {
 }

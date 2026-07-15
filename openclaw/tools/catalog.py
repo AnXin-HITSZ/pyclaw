@@ -17,6 +17,7 @@ from openclaw.tools.sandbox_workspace import (
     create_sandbox_read_file_tool,
     create_sandbox_workspace_info_tool,
     create_sandbox_write_file_tool,
+    create_sandbox_apply_patch_tool,
 )
 from openclaw.tools.shell.exec import create_exec_tool, create_shell_tool
 from openclaw.tools.types import ToolDefinition, ToolMetadata, ToolRisk, ToolSource
@@ -42,6 +43,11 @@ class ToolCatalogEntry:
     expose_to_llm: bool = True
     workspace_only: bool = True
     include_in_openclaw_group: bool = False
+    workspace_modes: tuple[str, ...] = ("local", "sandbox_runner")
+    readonly: bool = False
+    requires_approval: bool = False
+    prompt_hint: str = ""
+    user_visible: bool = False
 
 
 CORE_TOOL_CATALOG: tuple[ToolCatalogEntry, ...] = (
@@ -174,6 +180,9 @@ CORE_TOOL_CATALOG: tuple[ToolCatalogEntry, ...] = (
         tags=("web", "fetch", "network"),
         risk="medium",
         workspace_only=False,
+        user_visible=True,
+        workspace_modes=("local", "sandbox_runner"),
+        prompt_hint="Fetch a public HTTP(S) URL when the user provides a concrete link.",
     ),
     ToolCatalogEntry(
         id="sandbox_workspace_info",
@@ -186,6 +195,10 @@ CORE_TOOL_CATALOG: tuple[ToolCatalogEntry, ...] = (
         tags=("sandbox", "workspace", "readonly"),
         risk="low",
         workspace_only=False,
+        workspace_modes=("sandbox_runner",),
+        readonly=True,
+        prompt_hint="Inspect the current Claw sandbox workspace identity and root directory.",
+        user_visible=True,
     ),
     ToolCatalogEntry(
         id="sandbox_list_files",
@@ -198,6 +211,10 @@ CORE_TOOL_CATALOG: tuple[ToolCatalogEntry, ...] = (
         tags=("sandbox", "files", "readonly"),
         risk="low",
         workspace_only=False,
+        workspace_modes=("sandbox_runner",),
+        readonly=True,
+        prompt_hint="List files and directories in the current Claw sandbox workspace.",
+        user_visible=True,
     ),
     ToolCatalogEntry(
         id="sandbox_read_file",
@@ -210,6 +227,10 @@ CORE_TOOL_CATALOG: tuple[ToolCatalogEntry, ...] = (
         tags=("sandbox", "files", "readonly"),
         risk="low",
         workspace_only=False,
+        workspace_modes=("sandbox_runner",),
+        readonly=True,
+        prompt_hint="Read a UTF-8 text file from the current Claw sandbox workspace.",
+        user_visible=True,
     ),
     ToolCatalogEntry(
         id="sandbox_write_file",
@@ -222,6 +243,24 @@ CORE_TOOL_CATALOG: tuple[ToolCatalogEntry, ...] = (
         tags=("sandbox", "files", "mutation"),
         risk="medium",
         workspace_only=False,
+        workspace_modes=("sandbox_runner",),
+        prompt_hint="Write a UTF-8 text file in the current Claw sandbox workspace.",
+        user_visible=True,
+    ),
+    ToolCatalogEntry(
+        id="sandbox_apply_patch",
+        name="sandbox_apply_patch",
+        label="Sandbox Apply Patch",
+        description="Apply an exact-text patch to a file in the Claw sandbox workspace.",
+        section_id="sandbox",
+        factory=create_sandbox_apply_patch_tool,
+        profiles=("coding", "full"),
+        tags=("sandbox", "files", "patch", "mutation"),
+        risk="medium",
+        workspace_only=False,
+        workspace_modes=("sandbox_runner",),
+        prompt_hint="Apply an exact-text replacement patch inside the current Claw sandbox workspace.",
+        user_visible=True,
     ),
     ToolCatalogEntry(
         id="web_search",
@@ -234,12 +273,19 @@ CORE_TOOL_CATALOG: tuple[ToolCatalogEntry, ...] = (
         tags=("web", "search", "network"),
         risk="medium",
         workspace_only=False,
+        user_visible=True,
+        workspace_modes=("local", "sandbox_runner"),
+        prompt_hint="Search the public web when the Agent needs to discover external pages or references.",
     ),
 )
 
 
 def list_catalog_entries() -> list[ToolCatalogEntry]:
     return list(CORE_TOOL_CATALOG)
+
+
+def user_visible_catalog() -> list[ToolCatalogEntry]:
+    return [entry for entry in CORE_TOOL_CATALOG if entry.user_visible]
 
 
 def materialize_catalog_entry(entry: ToolCatalogEntry) -> ToolDefinition:

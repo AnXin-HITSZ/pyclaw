@@ -98,6 +98,15 @@
             </div>
             <div class="form-group switch-field">
               <label class="switch-line">
+                <span class="switch-label">允许 Web 工具</span>
+                <input class="switch-input" type="checkbox" v-model="form.webAccess" />
+                <span class="switch-track"></span>
+              </label>
+            </div>
+          </div>
+          <div class="form-row single-switch-row">
+            <div class="form-group switch-field">
+              <label class="switch-line">
                 <span class="switch-label">启用</span>
                 <input class="switch-input" type="checkbox" v-model="form.enabled" />
                 <span class="switch-track"></span>
@@ -144,7 +153,7 @@ function openCreate() {
   form.value = {
     agentKey: "", name: "", description: "", providerId: "", model: "",
     systemPrompt: "", toolProfile: "messaging", shellApproval: "deny",
-    workspaceDir: "", enabled: true,
+    workspaceDir: "", enabled: true, webAccess: false,
   };
   showModal.value = true;
 }
@@ -162,6 +171,7 @@ function openEdit(agent) {
     shellApproval: agent.toolPolicy?.shellApproval || "deny",
     workspaceDir: agent.workspaceDir || "",
     enabled: agent.enabled,
+    webAccess: Boolean(agent.toolPolicy?.webAccess),
   };
   showModal.value = true;
 }
@@ -184,7 +194,7 @@ async function handleSave() {
         toolsAlsoAllow: [],
         workspaceOnly: true,
         readonly: false,
-        webAccess: false,
+        webAccess: Boolean(form.value.webAccess),
       },
     };
     if (editing.value) {
