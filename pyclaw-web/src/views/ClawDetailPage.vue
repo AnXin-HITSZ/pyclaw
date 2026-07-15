@@ -94,11 +94,11 @@
               <option v-for="a in allAgents" :key="a.id" :value="a.id">{{ a.name }}</option>
             </select>
           </div>
-          <div class="form-group">
-            <label class="checkbox-label">
-              <input type="checkbox" v-model="editForm.feishuEnabled" /> 启用飞书
-            </label>
-          </div>
+          <label class="switch-line">
+            <span class="switch-label">启用飞书</span>
+            <input class="switch-input" type="checkbox" v-model="editForm.feishuEnabled" />
+            <span class="switch-track"></span>
+          </label>
           <div v-if="editForm.feishuEnabled" class="form-group">
             <label>飞书 Peer ID</label>
             <input v-model="editForm.feishuPeerId" />
@@ -139,12 +139,16 @@
             <label>Command Prefixes</label>
             <input v-model="roleForm.commandPrefixes" placeholder="/frontend, /fe" />
           </div>
-          <div class="form-group inline-options">
-            <label class="checkbox-label">
-              <input type="checkbox" v-model="roleForm.defaultRole" /> 设为默认角色
+          <div class="switch-grid">
+            <label class="switch-line">
+              <span class="switch-label">设为默认角色</span>
+              <input class="switch-input" type="checkbox" v-model="roleForm.defaultRole" />
+              <span class="switch-track"></span>
             </label>
-            <label class="checkbox-label">
-              <input type="checkbox" v-model="roleForm.enabled" /> 启用
+            <label class="switch-line">
+              <span class="switch-label">启用</span>
+              <input class="switch-input" type="checkbox" v-model="roleForm.enabled" />
+              <span class="switch-track"></span>
             </label>
           </div>
           <div class="modal-actions">
@@ -284,11 +288,11 @@ function existingRoleRequests() {
   return (claw.value?.roles || []).map(toRoleRequest);
 }
 
-function baseUpdatePayload(roles) {
+function baseUpdatePayload(roles, defaultAgentId = claw.value.defaultAgentId) {
   return {
     name: claw.value.name,
     description: claw.value.description || undefined,
-    defaultAgentId: claw.value.defaultAgentId || undefined,
+    defaultAgentId: defaultAgentId || undefined,
     feishuEnabled: claw.value.feishuEnabled,
     feishuPeerId: claw.value.feishuPeerId || undefined,
     roles,
@@ -330,8 +334,10 @@ async function handleAddRole() {
     ? existingRoles.map(role => ({ ...role, defaultRole: false })).concat(newRole)
     : existingRoles.concat(newRole);
 
+  const defaultAgentId = roleForm.value.defaultRole ? selectedAgent.id : claw.value.defaultAgentId;
+
   try {
-    await api.put(`/api/claws/${route.params.id}`, baseUpdatePayload(roles));
+    await api.put(`/api/claws/${route.params.id}`, baseUpdatePayload(roles, defaultAgentId));
     showAddRole.value = false;
     await load();
   } catch (e) { alert("添加角色失败: " + e.message); }
@@ -353,7 +359,7 @@ onMounted(load);
 
 .btn-secondary.compact { padding: 6px 10px; font-size: 12px; }
 
-.inline-options { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
+.switch-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
 
 dl { display: grid; grid-template-columns: auto 1fr; gap: 8px 16px; font-size: 13px; }
 dt { color: var(--text-muted); font-weight: 500; }
@@ -381,4 +387,8 @@ dt { color: var(--text-muted); font-weight: 500; }
 
 .btn-chat { padding: 8px 20px; font-size: 14px; font-weight: 600; color: #0a0e14; background: var(--success); border: none; border-radius: var(--radius-sm); transition: all 0.2s var(--ease-out); }
 .btn-chat:hover { filter: brightness(1.1); transform: translateY(-1px); box-shadow: 0 4px 16px rgba(63,185,80,0.25); }
+
+@media (max-width: 640px) {
+  .switch-grid { grid-template-columns: 1fr; }
+}
 </style>

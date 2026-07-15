@@ -315,7 +315,7 @@ function handleLogout() {
 .mobile-topbar { display: none; }
 
 .main-content {
-  max-width: 980px;
+  max-width: min(1180px, calc(100vw - 220px));
   margin: 0 auto;
   padding: 34px 42px 72px;
 }
