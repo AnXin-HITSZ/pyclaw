@@ -599,13 +599,11 @@ onMounted(load);
   border-radius: 8px;
   background: rgba(17, 22, 29, 0.9);
   cursor: pointer;
-  transition: border-color 0.2s var(--ease-out), transform 0.2s var(--ease-out), box-shadow 0.2s var(--ease-out);
+  transition: border-color 0.2s var(--ease-out);
 }
 
 .claw-card:hover {
-  transform: translateY(-2px);
   border-color: var(--border-light);
-  box-shadow: var(--shadow);
 }
 
 .claw-card-top {
@@ -752,16 +750,18 @@ onMounted(load);
   display: grid;
   place-items: center;
   gap: 3px;
-  border: 1px dashed rgba(240, 163, 58, 0.55);
+  border: 1px dashed rgba(92, 104, 120, 0.42);
   border-radius: 8px;
-  color: var(--accent);
-  background: rgba(240, 163, 58, 0.07);
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.015);
   text-align: center;
+  transition: border-color 0.18s var(--ease-out), background 0.18s var(--ease-out), color 0.18s var(--ease-out);
 }
 
 .add-role-box:hover {
-  border-color: var(--accent);
-  background: rgba(240, 163, 58, 0.12);
+  border-color: rgba(240, 163, 58, 0.75);
+  color: var(--accent);
+  background: rgba(240, 163, 58, 0.08);
 }
 
 .add-role-plus {
@@ -770,19 +770,31 @@ onMounted(load);
   display: grid;
   place-items: center;
   border-radius: 999px;
-  background: rgba(240, 163, 58, 0.15);
-  color: var(--accent);
+  background: rgba(92, 104, 120, 0.16);
+  color: var(--text-muted);
   font-weight: 900;
+  transition: background 0.18s var(--ease-out), color 0.18s var(--ease-out);
+}
+
+.add-role-box:hover .add-role-plus {
+  background: rgba(240, 163, 58, 0.16);
+  color: var(--accent);
 }
 
 .add-role-box strong {
-  color: var(--accent);
+  color: currentColor;
   font-size: 12px;
+  transition: color 0.18s var(--ease-out);
 }
 
 .add-role-box small {
-  color: #b39056;
+  color: var(--text-muted);
   font-size: 11px;
+  transition: color 0.18s var(--ease-out);
+}
+
+.add-role-box:hover small {
+  color: #b39056;
 }
 
 .claw-card-footer {
