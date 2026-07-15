@@ -36,6 +36,8 @@ env:
   SPRING_DATASOURCE_URL: jdbc:mysql://pyclaw-mysql:3306/pyclaw_control?useUnicode=true&characterEncoding=utf8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai
   SPRING_DATASOURCE_USERNAME: pyclaw
   SPRING_JPA_DDL_AUTO: update
+  SPRING_DATA_REDIS_HOST: redis-master.pyclaw.svc.cluster.local
+  SPRING_DATA_REDIS_PORT: "6379"
   PYCLAW_BASE_URL: http://pyclaw.pyclaw.svc.cluster.local:8000
   BOOTSTRAP_ADMIN_USERNAME: admin
   PYCLAW_SANDBOX_ENABLED: "false"
@@ -78,6 +80,7 @@ secret:
     BOOTSTRAP_ADMIN_PASSWORD: ""
     PYCLAW_API_TOKEN: ""
     PYCLAW_INTERNAL_API_TOKEN: ""
+    SPRING_DATA_REDIS_PASSWORD: ""
 
 persistence:
   enabled: false
@@ -110,3 +113,4 @@ resources:
   limits:
     cpu: 1000m
     memory: 1Gi
+

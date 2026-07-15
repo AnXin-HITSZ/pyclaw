@@ -1,6 +1,7 @@
 # Example K3s values for Spring Backend.
 # Copy to spring-values-k3s.yaml on the server and replace placeholders there.
-# Store JWT, admin password, pyclaw token, and datasource password in the Secret.
+# Store JWT, admin password, pyclaw token, datasource password, and Redis password
+# in the ECS private Secret/values. Do not commit real passwords.
 
 image:
   repository: <ACR_REGISTRY>/pyclaw/spring-backend
@@ -12,12 +13,15 @@ imagePullSecrets:
 
 secret:
   create: false
+  # Existing Secret must include SPRING_DATA_REDIS_PASSWORD.
   existingSecret: pyclaw-spring-backend-secret
 
 env:
   SPRING_DATASOURCE_URL: jdbc:mysql://pyclaw-mysql:3306/pyclaw_control?useUnicode=true&characterEncoding=utf8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai
   SPRING_DATASOURCE_USERNAME: pyclaw
   SPRING_JPA_DDL_AUTO: update
+  SPRING_DATA_REDIS_HOST: redis-master.pyclaw.svc.cluster.local
+  SPRING_DATA_REDIS_PORT: "6379"
   PYCLAW_BASE_URL: http://pyclaw.pyclaw.svc.cluster.local:8000
   BOOTSTRAP_ADMIN_USERNAME: admin
   PYCLAW_SANDBOX_ENABLED: "false"
@@ -50,3 +54,4 @@ ingress:
 persistence:
   enabled: false
   size: 2Gi
+

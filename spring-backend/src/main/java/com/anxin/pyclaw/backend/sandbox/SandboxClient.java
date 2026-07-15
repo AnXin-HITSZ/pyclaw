@@ -3,10 +3,12 @@ package com.anxin.pyclaw.backend.sandbox;
 import com.anxin.pyclaw.backend.config.PyclawRuntimeProperties;
 import com.anxin.pyclaw.backend.config.PyclawSandboxProperties;
 import java.util.Locale;
+import java.util.Map;
 import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatusCode;
+import org.springframework.http.MediaType;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -86,7 +88,10 @@ public class SandboxClient {
     public String putFile(String userId, String clawId, String filePath, String content) {
         String url = serviceUrl(userId, clawId) + "/v1/workspace/files/" + filePath;
         return sandboxCall("putFile", url, () ->
-                restClient.put().uri(url).body(content).retrieve()
+                restClient.put().uri(url)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body(Map.of("content", content == null ? "" : content))
+                        .retrieve()
                         .onStatus(HttpStatusCode::isError, (req, res) -> {
                             throw new SandboxClientException("runner put file failed: status=" + res.getStatusCode());
                         })

@@ -27,9 +27,9 @@
       <div class="card">
         <h3>Sandbox 状态</h3>
         <div v-if="sandboxLoading" class="no-data">查询中...</div>
-        <div v-else-if="sandboxError" class="no-data" style="color:var(--danger)">{{ sandboxError }}</div>
+        <div v-else-if="!sandboxLoading && sandboxError" class="no-data" style="color:var(--danger)">连接失败</div>
         <dl v-else>
-          <dt>Health</dt><dd><span class="status-tag" :class="sandboxHealthy ? 'active' : ''">{{ sandboxHealthy ? 'Healthy' : 'Down' }}</span></dd>
+          <dt>Health</dt><dd><span class="status-tag" :class="sandboxHealthy ? 'active' : ''" :title="!sandboxHealthy && sandboxError ? sandboxError : ''">{{ sandboxHealthy ? 'Healthy' : (sandboxError ? 'Down — 悬浮查看详情' : 'Down') }}</span></dd>
           <dt>Workspace</dt><dd class="mono">{{ sandboxWorkspace || "—" }}</dd>
         </dl>
         <div style="margin-top: 14px;">
@@ -147,7 +147,15 @@ async function load() {
     sessions.value = s || [];
 
     sandboxLoading.value = true;
-    try { await api.get(`/api/claws/${route.params.id}/sandbox/healthz`); sandboxHealthy.value = true; } catch { sandboxHealthy.value = false; }
+    try {
+      await api.get(`/api/claws/${route.params.id}/sandbox/healthz`);
+      sandboxHealthy.value = true;
+      sandboxError.value = "";
+    } catch (e) {
+      sandboxHealthy.value = false;
+      sandboxError.value = e.message || "Sandbox unavailable";
+      console.warn("sandbox healthz failed:", e.message);
+    }
     try { const w = await api.get(`/api/claws/${route.params.id}/sandbox/workspace`); sandboxWorkspace.value = typeof w === "string" ? w : JSON.stringify(w); } catch { sandboxWorkspace.value = ""; }
     sandboxLoading.value = false;
   } catch (e) {

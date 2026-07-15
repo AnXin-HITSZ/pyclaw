@@ -16,7 +16,7 @@
         <div v-if="entries.length === 0" class="no-data">目录为空</div>
         <div v-else class="file-list">
           <div v-for="entry in entries" :key="entry.name" class="file-item"
-               @click="entry.isDir ? navigateTo(entry.name) : openFile(entry.name)">
+               @click="entry.isDir ? navigateTo(entry) : openFile(entry)">
             <span class="file-icon">{{ entry.isDir ? '📁' : '📄' }}</span>
             <span class="file-name">{{ entry.name }}</span>
             <span v-if="!entry.isDir" class="file-size">{{ formatSize(entry.size) }}</span>
@@ -58,15 +58,15 @@ async function loadDir(path) {
   error.value = "";
   try {
     const data = await api.get(`/api/claws/${clawId.value}/sandbox/files?path=${encodeURIComponent(path)}`);
-    if (Array.isArray(data)) {
-      entries.value = data.map(e => ({
-        name: typeof e === "string" ? e : e.name || e,
-        isDir: typeof e === "object" ? e.is_dir : false,
-        size: typeof e === "object" ? e.size : null,
-      }));
-    } else {
-      entries.value = [];
-    }
+    // Runner returns {path, items} — extract items array
+    const rawItems = Array.isArray(data) ? data : (Array.isArray(data?.items) ? data.items : []);
+    if (data?.path) currentPath.value = data.path;
+    entries.value = rawItems.map(e => ({
+      name: typeof e === "string" ? e : (e.name || e.path || ""),
+      path: typeof e === "object" ? (e.path || e.name || "") : (typeof e === "string" ? e : ""),
+      isDir: typeof e === "object" ? (e.type === "directory" || e.is_dir === true || e.isDir === true) : false,
+      size: typeof e === "object" ? e.size : null,
+    })).filter(e => e.name);
   } catch (e) {
     error.value = "获取文件列表失败: " + e.message;
   } finally {
@@ -74,18 +74,23 @@ async function loadDir(path) {
   }
 }
 
-function navigateTo(name) {
-  const newPath = currentPath.value === "." ? name : currentPath.value + "/" + name;
+function navigateTo(entry) {
+  const targetPath = entry.path || entry.name;
+  const newPath = currentPath.value === "." ? targetPath : currentPath.value + "/" + targetPath;
   currentPath.value = newPath;
   loadDir(newPath);
 }
 
-async function openFile(name) {
-  const filePath = currentPath.value === "." ? name : currentPath.value + "/" + name;
+async function openFile(entry) {
+  const targetPath = entry.path || entry.name;
+  const filePath = currentPath.value === "." ? targetPath : currentPath.value + "/" + targetPath;
   try {
     const data = await api.get(`/api/claws/${clawId.value}/sandbox/files/${encodeURIComponent(filePath)}`);
-    selectedFile.value = name;
-    fileContent.value = typeof data === "string" ? data : JSON.stringify(data);
+    selectedFile.value = targetPath;
+    // Runner returns {path, content} — extract content field
+    fileContent.value = data && typeof data === "object" && "content" in data
+      ? data.content
+      : (typeof data === "string" ? data : JSON.stringify(data, null, 2));
     saveMsg.value = "";
   } catch (e) {
     error.value = "读取文件失败: " + e.message;
@@ -95,7 +100,10 @@ async function openFile(name) {
 async function saveFile() {
   const filePath = currentPath.value === "." ? selectedFile.value : currentPath.value + "/" + selectedFile.value;
   try {
-    await api.put(`/api/claws/${clawId.value}/sandbox/files/${encodeURIComponent(filePath)}`, fileContent.value);
+    // Send {content: "..."} as runner expects JSON body
+    await api.put(`/api/claws/${clawId.value}/sandbox/files/${encodeURIComponent(filePath)}`, {
+      content: fileContent.value,
+    });
     saveMsg.value = "保存成功";
   } catch (e) {
     saveMsg.value = "保存失败: " + e.message;
