@@ -12,7 +12,6 @@ from openclaw.tools.fs.grep import create_grep_tool
 from openclaw.tools.fs.list_dir import create_list_dir_tool, create_ls_tool
 from openclaw.tools.fs.read import create_read_tool
 from openclaw.tools.fs.write import create_write_tool
-from openclaw.tools.host_ssh import create_host_df_tool, create_host_free_tool, create_host_uname_tool
 from openclaw.tools.sandbox_workspace import (
     create_sandbox_list_files_tool,
     create_sandbox_read_file_tool,
@@ -174,42 +173,6 @@ CORE_TOOL_CATALOG: tuple[ToolCatalogEntry, ...] = (
         profiles=("full",),
         tags=("web", "fetch", "network"),
         risk="medium",
-        workspace_only=False,
-    ),
-    ToolCatalogEntry(
-        id="host_uname",
-        name="host_uname",
-        label="Host Uname",
-        description="Read the ECS host kernel and system identity with uname -a over SSH.",
-        section_id="host",
-        factory=create_host_uname_tool,
-        profiles=("full",),
-        tags=("host", "ssh", "runtime", "readonly"),
-        risk="low",
-        workspace_only=False,
-    ),
-    ToolCatalogEntry(
-        id="host_df",
-        name="host_df",
-        label="Host Disk Usage",
-        description="Read ECS host filesystem disk usage with df -h over SSH.",
-        section_id="host",
-        factory=create_host_df_tool,
-        profiles=("full",),
-        tags=("host", "ssh", "runtime", "readonly"),
-        risk="low",
-        workspace_only=False,
-    ),
-    ToolCatalogEntry(
-        id="host_free",
-        name="host_free",
-        label="Host Memory Usage",
-        description="Read ECS host memory usage with free -h over SSH.",
-        section_id="host",
-        factory=create_host_free_tool,
-        profiles=("full",),
-        tags=("host", "ssh", "runtime", "readonly"),
-        risk="low",
         workspace_only=False,
     ),
     ToolCatalogEntry(
