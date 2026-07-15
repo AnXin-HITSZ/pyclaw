@@ -1,107 +1,121 @@
 <template>
-  <div class="workspace-layout">
-    <!-- Top Navigation Bar -->
-    <header class="topbar">
-      <div class="topbar-inner">
-        <router-link to="/workspace" class="logo-link">
-          <svg width="28" height="28" viewBox="0 0 64 64" fill="none" class="logo-mark">
-            <rect width="64" height="64" rx="16" fill="url(#topbar-grad)" />
-            <path d="M18 46V18l14 10-14 10z" fill="#0a0e14" />
-            <path d="M32 38l14-10-14-10v20z" fill="#0a0e14" opacity="0.7" />
-            <defs>
-              <linearGradient id="topbar-grad" x1="0" y1="0" x2="64" y2="64">
-                <stop offset="0%" stop-color="#f0a33a" />
-                <stop offset="100%" stop-color="#c78a2e" />
-              </linearGradient>
-            </defs>
-          </svg>
-          <span class="logo-text">PyClaw</span>
+  <div class="workspace-shell">
+    <aside class="sidebar">
+      <router-link to="/workspace/claws" class="brand">
+        <span class="brand-mark">▶</span>
+        <span>PyClaw</span>
+      </router-link>
+
+      <nav class="side-nav" aria-label="Workspace navigation">
+        <p class="nav-section">工作台</p>
+        <router-link to="/workspace/claws" class="nav-item">
+          <span class="nav-icon">▣</span>
+          <span>Claw 管理</span>
+        </router-link>
+        <router-link to="/workspace/playground" class="nav-item">
+          <span class="nav-icon">◫</span>
+          <span>Agent 对话</span>
+        </router-link>
+        <router-link to="/workspace/tools" class="nav-item">
+          <span class="nav-icon">⌁</span>
+          <span>工具目录</span>
+        </router-link>
+        <router-link to="/workspace/pods" class="nav-item">
+          <span class="nav-icon">⌂</span>
+          <span>Pod 状态</span>
         </router-link>
 
-        <nav class="topbar-nav">
-          <!-- 工作台 -->
-          <div class="nav-group" @mouseenter="enterMenu('workspace')" @mouseleave="leaveMenu">
-            <button class="nav-trigger" :class="{ active: isActive('/workspace/claws') || isActive('/workspace/playground') || isActive('/workspace/tools') || isActive('/workspace/pods') }">
-              工作台
-            </button>
-            <div class="nav-dropdown" v-show="openMenu === 'workspace'">
-              <router-link to="/workspace/claws" class="dropdown-item" @click="openMenu = null">🦀 Claw 管理</router-link>
-              <router-link to="/workspace/playground" class="dropdown-item" @click="openMenu = null">💬 Agent 对话</router-link>
-              <router-link to="/workspace/tools" class="dropdown-item" @click="openMenu = null">🔧 工具目录</router-link>
-              <router-link to="/workspace/pods" class="dropdown-item" @click="openMenu = null">📦 Pod 状态</router-link>
-            </div>
-          </div>
+        <p class="nav-section">配置</p>
+        <router-link to="/workspace/agents" class="nav-item">
+          <span class="nav-icon">⚙</span>
+          <span>Agent 配置</span>
+        </router-link>
+        <router-link to="/workspace/providers" class="nav-item">
+          <span class="nav-icon">▤</span>
+          <span>Provider 管理</span>
+        </router-link>
+        <router-link to="/workspace/secrets" class="nav-item">
+          <span class="nav-icon">□</span>
+          <span>Secret 管理</span>
+        </router-link>
+        <router-link to="/workspace/tokens" class="nav-item">
+          <span class="nav-icon">◇</span>
+          <span>API Token</span>
+        </router-link>
 
-          <!-- 配置 -->
-          <div class="nav-group" @mouseenter="enterMenu('config')" @mouseleave="leaveMenu">
-            <button class="nav-trigger" :class="{ active: isActive('/workspace/agents') || isActive('/workspace/providers') || isActive('/workspace/secrets') || isActive('/workspace/tokens') }">
-              配置
-            </button>
-            <div class="nav-dropdown" v-show="openMenu === 'config'">
-              <router-link to="/workspace/agents" class="dropdown-item" @click="openMenu = null">🤖 Agent 配置</router-link>
-              <router-link to="/workspace/providers" class="dropdown-item" @click="openMenu = null">⚡ Provider 管理</router-link>
-              <router-link to="/workspace/secrets" class="dropdown-item" @click="openMenu = null">🔒 Secret 管理</router-link>
-              <router-link to="/workspace/tokens" class="dropdown-item" @click="openMenu = null">🔑 API Token</router-link>
-            </div>
-          </div>
+        <template v-if="isAdmin">
+          <p class="nav-section">管理后台</p>
+          <router-link to="/workspace/admin/users" class="nav-item">
+            <span class="nav-icon">◎</span>
+            <span>用户管理</span>
+          </router-link>
+          <router-link to="/workspace/admin/channels" class="nav-item">
+            <span class="nav-icon">◈</span>
+            <span>渠道管理</span>
+          </router-link>
+          <router-link to="/workspace/admin/audit" class="nav-item">
+            <span class="nav-icon">▥</span>
+            <span>审计日志</span>
+          </router-link>
+          <router-link to="/workspace/admin/usage" class="nav-item">
+            <span class="nav-icon">◧</span>
+            <span>用量统计</span>
+          </router-link>
+        </template>
+      </nav>
 
-          <!-- 管理后台 (admin only) -->
-          <div v-if="isAdmin" class="nav-group" @mouseenter="enterMenu('admin')" @mouseleave="leaveMenu">
-            <button class="nav-trigger" :class="{ active: isActive('/workspace/admin/') }">
-              管理后台
-            </button>
-            <div class="nav-dropdown" v-show="openMenu === 'admin'">
-              <router-link to="/workspace/admin/users" class="dropdown-item" @click="openMenu = null">👥 用户管理</router-link>
-              <router-link to="/workspace/admin/channels" class="dropdown-item" @click="openMenu = null">📡 渠道管理</router-link>
-              <router-link to="/workspace/admin/audit" class="dropdown-item" @click="openMenu = null">📋 审计日志</router-link>
-              <router-link to="/workspace/admin/usage" class="dropdown-item" @click="openMenu = null">📊 用量统计</router-link>
-            </div>
+      <div class="sidebar-footer">
+        <div class="workspace-chip">
+          <span class="chip-title">工作区</span>
+          <span class="chip-line"><i class="dot claw"></i>Claw</span>
+          <span class="chip-line"><i class="dot agent"></i>Agent</span>
+          <span class="chip-line"><i class="dot chat"></i>对话</span>
+        </div>
+        <div class="account-row">
+          <span class="avatar">{{ userInitial }}</span>
+          <div class="account-meta">
+            <strong>{{ user?.username || "用户" }}</strong>
+            <span>{{ currentDate }}</span>
           </div>
-        </nav>
-
-        <div class="topbar-right">
-          <span class="user-info">{{ user?.username }}</span>
-          <button class="btn-logout" @click="handleLogout">退出</button>
+          <button class="logout-icon" type="button" @click="handleLogout" title="退出登录">↗</button>
         </div>
       </div>
-    </header>
+    </aside>
 
-    <!-- Content Area (centered) -->
-    <main class="main-content">
-      <router-view v-slot="{ Component }">
-        <transition name="page" mode="out-in">
-          <component :is="Component" />
-        </transition>
-      </router-view>
-    </main>
+    <div class="workspace-main">
+      <header class="mobile-topbar">
+        <router-link to="/workspace/claws" class="brand compact">
+          <span class="brand-mark">▶</span>
+          <span>PyClaw</span>
+        </router-link>
+        <button class="btn-logout" type="button" @click="handleLogout">退出</button>
+      </header>
+
+      <main class="main-content">
+        <router-view v-slot="{ Component }">
+          <transition name="page" mode="out-in">
+            <component :is="Component" />
+          </transition>
+        </router-view>
+      </main>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from "vue";
-import { useRouter, useRoute } from "vue-router";
+import { computed } from "vue";
+import { useRouter } from "vue-router";
 import { useAuth } from "../composables/useAuth.js";
 
 const router = useRouter();
-const route = useRoute();
 const { user, isAdmin, logout } = useAuth();
-const openMenu = ref(null);
-let hideTimer = null;
 
-function enterMenu(key) {
-  clearTimeout(hideTimer);
-  openMenu.value = key;
-}
-
-function leaveMenu() {
-  hideTimer = setTimeout(() => {
-    openMenu.value = null;
-  }, 150);
-}
-
-function isActive(prefix) {
-  return route.path.startsWith(prefix);
-}
+const userInitial = computed(() => (user.value?.username || "U").slice(0, 1).toUpperCase());
+const currentDate = new Intl.DateTimeFormat("zh-CN", {
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+}).format(new Date());
 
 function handleLogout() {
   logout();
@@ -110,105 +124,238 @@ function handleLogout() {
 </script>
 
 <style scoped>
-/* ── Layout ── */
-.workspace-layout {
+.workspace-shell {
   min-height: 100vh;
-  background: var(--bg-deep);
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  background:
+    radial-gradient(circle at 70% 12%, rgba(240, 163, 58, 0.08), transparent 28%),
+    var(--bg-deep);
 }
 
-/* ── Topbar ── */
-.topbar {
-  position: sticky; top: 0; z-index: 50;
-  height: var(--topbar-height);
-  background: rgba(17, 22, 29, 0.85);
-  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+.sidebar {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border);
+  background: rgba(9, 12, 17, 0.9);
+}
+
+.brand {
+  height: 56px;
+  padding: 0 18px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-primary);
+  text-decoration: none;
+  font-weight: 800;
   border-bottom: 1px solid var(--border);
 }
 
-.topbar-inner {
-  max-width: var(--content-max-width);
-  margin: 0 auto;
-  padding: 0 var(--content-gutter);
-  height: 100%;
-  display: flex; align-items: center; gap: 32px;
+.brand.compact {
+  height: auto;
+  padding: 0;
+  border: 0;
 }
 
-/* Logo */
-.logo-link { display: flex; align-items: center; gap: 8px; color: var(--text-primary); text-decoration: none; flex-shrink: 0; }
-.logo-mark { transition: transform 0.3s var(--ease-spring); }
-.logo-link:hover .logo-mark { transform: rotate(-8deg) scale(1.05); }
-.logo-text {
-  font-size: 16px; font-weight: 800;
-  background: linear-gradient(135deg, var(--accent), var(--accent-soft));
-  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-  background-clip: text;
-  letter-spacing: -0.5px;
+.brand-mark {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  color: #0a0e14;
+  background: var(--accent);
+  font-size: 12px;
+  box-shadow: var(--shadow-glow);
 }
 
-/* Navigation */
-.topbar-nav { display: flex; align-items: center; gap: 4px; flex: 1; }
-
-.nav-group { position: relative; }
-
-.nav-trigger {
-  padding: 6px 14px; font-size: 13px; font-weight: 600; color: var(--text-secondary);
-  background: transparent; border: none; border-radius: var(--radius-sm);
-  transition: all 0.2s var(--ease-out);
-  letter-spacing: 0.1px;
-}
-.nav-trigger:hover { color: var(--text-primary); background: var(--bg-raised); }
-.nav-trigger.active { color: var(--accent); background: var(--accent-glow); }
-
-.nav-dropdown {
-  position: absolute; top: 100%; left: 0;
-  padding-top: 10px;  /* invisible bridge — eliminates gap between trigger and menu */
-  min-width: 180px;
-  animation: dropdown-enter 0.2s var(--ease-spring);
-  transform-origin: top left;
-}
-.nav-dropdown::before {
-  content: ""; position: absolute; top: 10px; left: 0; right: 0; bottom: 0;
-  background: var(--bg-surface); border: 1px solid var(--border);
-  border-radius: var(--radius); box-shadow: var(--shadow); z-index: -1;
-}
-@keyframes dropdown-enter {
-  from { opacity: 0; transform: scale(0.95) translateY(-4px); }
-  to { opacity: 1; transform: scale(1) translateY(0); }
+.side-nav {
+  padding: 18px 10px;
+  flex: 1;
+  overflow-y: auto;
 }
 
-.dropdown-item {
-  display: flex; align-items: center; gap: 8px;
-  padding: 8px 12px; border-radius: var(--radius-sm);
-  font-size: 13px; font-weight: 500; color: var(--text-secondary);
+.nav-section {
+  margin: 16px 10px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.nav-section:first-child { margin-top: 0; }
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 34px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
   text-decoration: none;
-  transition: all 0.15s var(--ease-out);
+  transition: background 0.16s var(--ease-out), color 0.16s var(--ease-out);
 }
-.dropdown-item:hover { background: var(--accent-glow); color: var(--accent); }
-.dropdown-item.router-link-active { background: var(--accent-glow); color: var(--accent); }
 
-/* Right side */
-.topbar-right { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+.nav-item:hover,
+.nav-item.router-link-active {
+  color: var(--accent);
+  background: var(--accent-glow);
+}
 
-.user-info { font-size: 13px; color: var(--text-secondary); font-weight: 500; }
+.nav-icon {
+  width: 16px;
+  color: currentColor;
+  opacity: 0.85;
+  text-align: center;
+}
+
+.sidebar-footer {
+  padding: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.workspace-chip {
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.chip-title {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--text-secondary);
+  font-weight: 700;
+}
+
+.chip-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-right: 8px;
+}
+
+.dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  display: inline-block;
+}
+
+.dot.claw { background: var(--accent); }
+.dot.agent { background: #7287ff; }
+.dot.chat { background: var(--success); }
+
+.account-row {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.avatar {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: #0a0e14;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.account-meta {
+  min-width: 0;
+  flex: 1;
+  display: grid;
+  line-height: 1.3;
+}
+
+.account-meta strong {
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-meta span {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.logout-icon {
+  width: 28px;
+  height: 28px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--text-muted);
+  background: transparent;
+}
+
+.logout-icon:hover {
+  color: var(--danger);
+  border-color: rgba(248, 81, 73, 0.45);
+  background: rgba(248, 81, 73, 0.06);
+}
+
+.workspace-main { min-width: 0; }
+
+.mobile-topbar { display: none; }
+
+.main-content {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 34px 42px 72px;
+}
 
 .btn-logout {
-  padding: 5px 14px; font-size: 12px; font-weight: 500;
-  color: var(--text-muted); background: transparent;
-  border: 1px solid var(--border); border-radius: var(--radius-sm);
-  transition: all 0.2s var(--ease-out);
-}
-.btn-logout:hover { color: var(--danger); border-color: var(--danger); background: rgba(248,81,73,0.06); }
-
-/* ── Content ── */
-.main-content {
-  max-width: var(--content-max-width);
-  margin: 0 auto;
-  padding: var(--content-gutter);
+  padding: 5px 14px;
+  font-size: 12px;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
 }
 
-/* Page transitions */
+.btn-logout:hover {
+  color: var(--danger);
+  border-color: var(--danger);
+  background: rgba(248,81,73,0.06);
+}
+
 .page-enter-active { transition: opacity 0.2s var(--ease-out), transform 0.2s var(--ease-out); }
 .page-leave-active { transition: opacity 0.1s var(--ease-out); }
 .page-enter-from { opacity: 0; transform: translateY(6px); }
 .page-leave-to { opacity: 0; }
+
+@media (max-width: 860px) {
+  .workspace-shell { display: block; }
+  .sidebar { display: none; }
+  .mobile-topbar {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    height: 56px;
+    padding: 0 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+    background: rgba(9, 12, 17, 0.92);
+    backdrop-filter: blur(10px);
+  }
+  .main-content { padding: 24px 18px 48px; }
+}
 </style>
