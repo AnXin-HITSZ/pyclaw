@@ -18,14 +18,16 @@
 
     <template v-else>
       <section class="guide-band" aria-label="开始使用 PyClaw">
-        <div class="guide-icon">↯</div>
+        <div class="guide-icon" aria-hidden="true">⚡</div>
         <div class="guide-copy">
           <h2>开始使用 PyClaw</h2>
-          <p>Claw 是执行容器，需要添加 Agent 角色后才能开始对话。完成配置后即可在 Agent 对话中与 Agent 交互。</p>
-          <div class="guide-steps">
-            <span>1 创建 Claw</span>
-            <span>2 添加 Agent 角色</span>
-            <span>3 开始对话</span>
+          <p>Claw 是执行容器，需要添加 Agent 角色后才能开始对话。完成配置后即可在「Agent 对话」中与 Agent 交互。</p>
+          <div class="guide-steps" aria-label="开始步骤">
+            <span><b>1</b> 创建 Claw</span>
+            <i>→</i>
+            <span><b>2</b> 添加 Agent 角色</span>
+            <i>→</i>
+            <span><b>3</b> 开始对话</span>
           </div>
         </div>
       </section>
@@ -466,47 +468,84 @@ onMounted(load);
 }
 
 .guide-band {
+  min-height: 96px;
   display: grid;
-  grid-template-columns: 30px minmax(0, 1fr);
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: start;
   gap: 12px;
-  margin-bottom: 16px;
-  padding: 18px 20px;
-  border: 1px solid rgba(240, 163, 58, 0.45);
-  border-radius: 8px;
-  background: linear-gradient(180deg, rgba(240, 163, 58, 0.12), rgba(240, 163, 58, 0.04));
+  margin-bottom: 22px;
+  padding: 17px 42px 18px 18px;
+  border: 1px solid rgba(198, 123, 16, 0.58);
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(34, 24, 12, 0.86), rgba(25, 18, 10, 0.82));
+  box-shadow: inset 0 1px 0 rgba(255, 181, 65, 0.06);
 }
 
 .guide-icon {
-  width: 24px;
-  height: 24px;
+  width: 18px;
+  height: 18px;
   display: grid;
   place-items: center;
-  color: var(--accent);
-  font-size: 18px;
-  font-weight: 800;
+  margin-top: 1px;
+  color: #ffb000;
+  font-size: 14px;
+  line-height: 1;
 }
 
 .guide-copy h2 {
   margin: 0 0 4px;
-  color: var(--accent);
+  color: #ffb000;
   font-size: 14px;
+  line-height: 1.25;
+  font-weight: 800;
+  letter-spacing: 0;
 }
 
 .guide-copy p {
   margin: 0;
-  color: #b39056;
+  color: #c7a43b;
   font-size: 12px;
-  line-height: 1.6;
+  line-height: 1.45;
+  font-weight: 600;
 }
 
 .guide-steps {
   display: flex;
   flex-wrap: wrap;
-  gap: 14px;
-  margin-top: 10px;
-  color: var(--accent);
+  align-items: center;
+  gap: 6px;
+  margin-top: 11px;
+  color: #ffb000;
   font-size: 12px;
+  line-height: 1;
   font-weight: 700;
+}
+
+.guide-steps span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.guide-steps b {
+  width: 14px;
+  height: 14px;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid rgba(255, 176, 0, 0.75);
+  border-radius: 999px;
+  color: #ffb000;
+  font-size: 9px;
+  line-height: 1;
+  font-weight: 800;
+}
+
+.guide-steps i {
+  color: #9a6a17;
+  font-style: normal;
+  font-size: 12px;
+  line-height: 1;
 }
 
 .metric-grid {
