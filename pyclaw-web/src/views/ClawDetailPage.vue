@@ -39,7 +39,10 @@
 
       <!-- Agent Roles Card -->
       <div class="card">
-        <h3>Agent 角色 ({{ claw.roles?.length || 0 }})</h3>
+        <div class="card-title-row">
+          <h3>Agent 角色 ({{ claw.roles?.length || 0 }})</h3>
+          <button class="btn-secondary compact" type="button" @click="openAddRole">添加角色</button>
+        </div>
         <div v-if="claw.roles?.length" class="role-list">
           <div v-for="role in claw.roles" :key="role.id" class="role-item">
             <div class="role-info">
@@ -107,6 +110,50 @@
         </form>
       </div>
     </div>
+
+    <!-- Add Role Modal -->
+    <div v-if="showAddRole" class="modal-overlay" @click.self="closeAddRole">
+      <div class="modal">
+        <h2>添加 Agent 角色</h2>
+        <form @submit.prevent="handleAddRole">
+          <div class="form-group">
+            <label>Agent *</label>
+            <select v-model="roleForm.agentId" required @change="syncSelectedAgent">
+              <option value="">请选择 Agent</option>
+              <option v-for="a in allAgents" :key="a.id" :value="a.id">{{ a.name }} ({{ a.agentKey }})</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>角色 Key *</label>
+            <input v-model="roleForm.roleKey" required placeholder="default / frontend / ops" />
+          </div>
+          <div class="form-group">
+            <label>展示名称 *</label>
+            <input v-model="roleForm.displayName" required placeholder="前端 Agent" />
+          </div>
+          <div class="form-group">
+            <label>Mention Aliases</label>
+            <input v-model="roleForm.mentionAliases" placeholder="前端, frontend" />
+          </div>
+          <div class="form-group">
+            <label>Command Prefixes</label>
+            <input v-model="roleForm.commandPrefixes" placeholder="/frontend, /fe" />
+          </div>
+          <div class="form-group inline-options">
+            <label class="checkbox-label">
+              <input type="checkbox" v-model="roleForm.defaultRole" /> 设为默认角色
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" v-model="roleForm.enabled" /> 启用
+            </label>
+          </div>
+          <div class="modal-actions">
+            <button type="button" class="btn-secondary" @click="closeAddRole">取消</button>
+            <button type="submit" class="btn-primary" :disabled="!allAgents.length">添加</button>
+          </div>
+        </form>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -122,7 +169,9 @@ const sessions = ref([]);
 const loading = ref(true);
 const error = ref("");
 const showEdit = ref(false);
+const showAddRole = ref(false);
 const editForm = ref({});
+const roleForm = ref(emptyRoleForm());
 const sandboxHealthy = ref(false);
 const sandboxWorkspace = ref("");
 const sandboxLoading = ref(true);
@@ -174,16 +223,118 @@ function openEdit() {
   };
 }
 
+function emptyRoleForm() {
+  return {
+    agentId: "",
+    roleKey: "",
+    displayName: "",
+    mentionAliases: "",
+    commandPrefixes: "",
+    defaultRole: false,
+    enabled: true,
+  };
+}
+
+function openAddRole() {
+  const roleCount = claw.value?.roles?.length || 0;
+  roleForm.value = {
+    ...emptyRoleForm(),
+    agentId: allAgents.value[0]?.id || "",
+    roleKey: roleCount ? `role-${roleCount + 1}` : "default",
+    defaultRole: !(claw.value?.roles || []).some(role => role.defaultRole),
+  };
+  syncSelectedAgent();
+  showAddRole.value = true;
+}
+
+function closeAddRole() {
+  showAddRole.value = false;
+}
+
+function syncSelectedAgent() {
+  const agent = allAgents.value.find(a => a.id === roleForm.value.agentId);
+  if (!agent) return;
+  if (!roleForm.value.displayName) {
+    roleForm.value.displayName = agent.name || agent.agentKey || "Agent 角色";
+  }
+}
+
+function splitList(value) {
+  return (value || "")
+    .split(/[,，]/)
+    .map(item => item.trim())
+    .filter(Boolean);
+}
+
+function toRoleRequest(role, index) {
+  return {
+    id: role.id,
+    agentId: role.agentId,
+    roleKey: role.roleKey,
+    displayName: role.displayName || role.agentName || role.roleKey,
+    mentionAliases: role.mentionAliases || [],
+    commandPrefixes: role.commandPrefixes || [],
+    defaultRole: !!role.defaultRole,
+    enabled: role.enabled !== false,
+    sortOrder: role.sortOrder ?? index,
+  };
+}
+
+function existingRoleRequests() {
+  return (claw.value?.roles || []).map(toRoleRequest);
+}
+
+function baseUpdatePayload(roles) {
+  return {
+    name: claw.value.name,
+    description: claw.value.description || undefined,
+    defaultAgentId: claw.value.defaultAgentId || undefined,
+    feishuEnabled: claw.value.feishuEnabled,
+    feishuPeerId: claw.value.feishuPeerId || undefined,
+    roles,
+  };
+}
+
 async function handleUpdate() {
   try {
     await api.put(`/api/claws/${route.params.id}`, {
       name: editForm.value.name, description: editForm.value.description || undefined,
       defaultAgentId: editForm.value.defaultAgentId || undefined,
       feishuEnabled: editForm.value.feishuEnabled, feishuPeerId: editForm.value.feishuPeerId || undefined,
+      roles: existingRoleRequests(),
     });
     showEdit.value = false;
     await load();
   } catch (e) { alert("更新失败: " + e.message); }
+}
+
+async function handleAddRole() {
+  const selectedAgent = allAgents.value.find(agent => agent.id === roleForm.value.agentId);
+  if (!selectedAgent) {
+    alert("请先选择 Agent");
+    return;
+  }
+
+  const existingRoles = existingRoleRequests();
+  const newRole = {
+    agentId: selectedAgent.id,
+    roleKey: roleForm.value.roleKey.trim(),
+    displayName: roleForm.value.displayName.trim(),
+    mentionAliases: splitList(roleForm.value.mentionAliases),
+    commandPrefixes: splitList(roleForm.value.commandPrefixes),
+    defaultRole: roleForm.value.defaultRole,
+    enabled: roleForm.value.enabled,
+    sortOrder: existingRoles.length,
+  };
+  const roles = roleForm.value.defaultRole
+    ? existingRoles.map(role => ({ ...role, defaultRole: false })).concat(newRole)
+    : existingRoles.concat(newRole);
+
+  try {
+    await api.put(`/api/claws/${route.params.id}`, baseUpdatePayload(roles));
+    showAddRole.value = false;
+    await load();
+  } catch (e) { alert("添加角色失败: " + e.message); }
 }
 
 function formatDate(s) {
@@ -197,6 +348,12 @@ onMounted(load);
 <style scoped>
 .page { max-width: 1000px; }
 .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.card-title-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.card-title-row h3 { margin: 0; }
+
+.btn-secondary.compact { padding: 6px 10px; font-size: 12px; }
+
+.inline-options { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
 
 dl { display: grid; grid-template-columns: auto 1fr; gap: 8px 16px; font-size: 13px; }
 dt { color: var(--text-muted); font-weight: 500; }

@@ -78,11 +78,7 @@
                 {{ role.displayName || role.agentName || role.roleKey }}
               </span>
             </div>
-            <button v-else class="add-role-box" type="button" @click.stop="goDetail(claw.id)">
-              <span>＋</span>
-              <strong>添加 Agent 角色</strong>
-              <small>Agent 是 Claw 的执行者</small>
-            </button>
+            <p v-else class="role-empty">暂无 Agent 角色</p>
           </div>
 
           <div class="claw-card-footer" @click.stop>
@@ -494,37 +490,10 @@ onMounted(load);
   font-size: 12px;
 }
 
-.add-role-box {
-  width: 100%;
-  min-height: 74px;
-  display: grid;
-  place-items: center;
-  gap: 2px;
-  border: 1px dashed var(--border-light);
-  border-radius: 8px;
+.role-empty {
+  margin: 0;
   color: var(--text-muted);
-  background: rgba(10, 14, 20, 0.62);
-  text-align: center;
-}
-
-.add-role-box span {
-  width: 26px;
-  height: 26px;
-  display: grid;
-  place-items: center;
-  border-radius: 999px;
-  background: var(--bg-raised);
-  color: var(--text-secondary);
-}
-
-.add-role-box strong {
-  color: var(--text-secondary);
   font-size: 12px;
-}
-
-.add-role-box small {
-  color: var(--text-muted);
-  font-size: 11px;
 }
 
 .claw-card-footer {
