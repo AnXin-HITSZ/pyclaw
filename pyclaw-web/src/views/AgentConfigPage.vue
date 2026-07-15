@@ -261,6 +261,31 @@ onMounted(load);
 }
 .form-group input:focus, .form-group textarea:focus, .form-group select:focus { outline: none; border-color: var(--accent); }
 .switch-field { display: flex; align-items: flex-end; }
-.switch-field .switch-line { width: 100%; margin: 0; }
+.switch-field .switch-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  margin: 0;
+  cursor: pointer;
+}
+.switch-field .switch-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+.switch-field .switch-track {
+  display: block;
+  position: relative;
+  width: 34px;
+  height: 20px;
+  flex: 0 0 34px;
+  border-radius: 999px;
+}
+.single-switch-row { grid-template-columns: 1fr 1fr; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px; }
 </style>
