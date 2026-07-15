@@ -25,6 +25,32 @@ public record PyclawAgentRunRequest(
         @JsonProperty("sandbox_base_url") String sandboxBaseUrl,
         @JsonProperty("workspace_mode") String workspaceMode
 ) {
+    public PyclawAgentRunRequest {
+        if (toolProfile == null || toolProfile.isBlank()) {
+            toolProfile = "minimal";
+        }
+        if (apiMode == null || apiMode.isBlank()) {
+            apiMode = "auto";
+        }
+        if (system == null) {
+            system = "";
+        }
+        if (toolsAllow == null) {
+            toolsAllow = List.of();
+        }
+        if (toolsDeny == null) {
+            toolsDeny = List.of();
+        }
+        if (toolsAlsoAllow == null) {
+            toolsAlsoAllow = List.of();
+        }
+        if (!"auto".equals(shellApproval) && !"require".equals(shellApproval) && !"deny".equals(shellApproval)) {
+            shellApproval = "deny";
+        }
+        if (!"local".equals(workspaceMode) && !"sandbox_runner".equals(workspaceMode)) {
+            workspaceMode = "local";
+        }
+    }
     /** Backward-compatible constructor without Claw context fields. */
     public PyclawAgentRunRequest(
             String prompt, String provider, String sessionId, String toolProfile,
