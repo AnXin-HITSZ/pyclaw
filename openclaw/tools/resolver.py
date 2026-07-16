@@ -1,11 +1,11 @@
-"""Resolve user-facing tools for a concrete Claw runtime context."""
+﻿"""Resolve user-facing tools for a concrete Claw runtime context."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 
 from openclaw.tools.catalog import ToolCatalogEntry, list_catalog_entries, materialize_core_tools
-from openclaw.tools.policy import ToolPolicy, apply_tool_policy, expand_tool_names
+from openclaw.tools.policy import ToolPolicy, apply_tool_policy_pipeline, expand_tool_names
 
 
 @dataclass(frozen=True)
@@ -57,7 +57,7 @@ def user_visible_catalog() -> list[ToolCatalogEntry]:
 
 def resolve_tools(request: ToolResolveInput) -> ToolResolveResult:
     policy = build_runtime_policy(request)
-    pipeline = apply_tool_policy(materialize_core_tools(), policy)
+    pipeline = apply_tool_policy_pipeline(materialize_core_tools(), policy)
     selected = {tool.name for tool in pipeline.tools}
 
     visible_entries = user_visible_catalog()
@@ -137,3 +137,4 @@ def normalize_profile(value: str | None) -> str:
     if normalized not in {"minimal", "readonly", "coding", "messaging", "full"}:
         return "coding"
     return normalized
+
