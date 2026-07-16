@@ -52,6 +52,7 @@ public class ToolCatalogService {
                 entry.description(),
                 entry.sectionId(),
                 entry.sectionId(),
+                entry.executionScope(),
                 entry.profiles(),
                 entry.tags(),
                 entry.risk(),

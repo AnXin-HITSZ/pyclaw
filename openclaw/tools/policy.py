@@ -12,11 +12,11 @@ from openclaw.tools.types import ToolDefinition
 ToolProfile = Literal["minimal", "readonly", "coding", "messaging", "full"]
 
 PROFILE_TAGS: dict[str, set[str]] = {
-    "minimal": set(),
+    "minimal": {"minimal"},
     "readonly": {"readonly"},
-    "coding": {"readonly", "coding"},
+    "coding": {"coding"},
     "messaging": {"messaging"},
-    "full": {"readonly", "coding", "messaging", "full"},
+    "full": {"full"},
 }
 
 CORE_TOOL_GROUPS: dict[str, set[str]] = build_tool_groups()

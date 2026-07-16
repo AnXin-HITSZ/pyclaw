@@ -247,7 +247,6 @@ def create_shell_tool() -> ToolDefinition:
             profiles=("full",),
             tags=("runtime", "shell", "exec", "legacy", "mutation", "high-risk"),
             risk="high",
-            workspace_only=True,
         ),
     )
 
@@ -265,6 +264,5 @@ def create_exec_tool() -> ToolDefinition:
             profiles=("full",),
             tags=("runtime", "shell", "exec", "mutation", "high-risk"),
             risk="high",
-            workspace_only=True,
         ),
     )

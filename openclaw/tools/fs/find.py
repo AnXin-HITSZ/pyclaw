@@ -1,4 +1,4 @@
-﻿"""File discovery tool for workspace paths."""
+"""File discovery tool for workspace paths."""
 
 from __future__ import annotations
 
@@ -86,6 +86,5 @@ def create_find_tool() -> ToolDefinition:
             profiles=("readonly", "coding", "full"),
             tags=("fs", "find", "readonly"),
             risk="low",
-            workspace_only=True,
         ),
     )

@@ -1,4 +1,4 @@
-﻿"""List-directory tool."""
+"""List-directory tool."""
 
 from __future__ import annotations
 
@@ -81,7 +81,6 @@ def create_list_dir_tool() -> ToolDefinition:
             profiles=("readonly", "coding", "full"),
             tags=("fs", "list", "readonly"),
             risk="low",
-            workspace_only=True,
         ),
     )
 
@@ -99,7 +98,6 @@ def create_ls_tool() -> ToolDefinition:
             profiles=("readonly", "coding", "full"),
             tags=("fs", "list", "readonly", "alias"),
             risk="low",
-            workspace_only=True,
         ),
     )
 

@@ -8,6 +8,7 @@ public record ToolCatalogEntryResponse(
         String description,
         String sectionId,
         String category,
+        String executionScope,
         List<String> profiles,
         List<String> tags,
         String risk,

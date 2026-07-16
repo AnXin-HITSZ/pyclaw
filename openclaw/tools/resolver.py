@@ -1,4 +1,4 @@
-﻿"""Resolve user-facing tools for a concrete Claw runtime context."""
+"""Resolve user-facing tools for a concrete Claw runtime context."""
 
 from __future__ import annotations
 
@@ -23,6 +23,7 @@ class ResolvedTool:
     label: str
     description: str
     section_id: str
+    execution_scope: str
     profiles: tuple[str, ...]
     tags: tuple[str, ...]
     risk: str
@@ -52,7 +53,7 @@ class ToolResolveResult:
 
 
 def user_visible_catalog() -> list[ToolCatalogEntry]:
-    return list_catalog_entries()
+    return [entry for entry in list_catalog_entries() if entry.user_visible]
 
 
 def resolve_tools(request: ToolResolveInput) -> ToolResolveResult:
@@ -96,6 +97,7 @@ def to_resolved_tool(entry: ToolCatalogEntry) -> ResolvedTool:
         label=entry.label,
         description=entry.description,
         section_id=entry.section_id,
+        execution_scope=entry.execution_scope,
         profiles=entry.profiles,
         tags=entry.tags,
         risk=entry.risk,
@@ -120,16 +122,22 @@ def deny_reason(entry: ToolCatalogEntry, request: ToolResolveInput, selected: se
 
 
 def build_prompt_fragments(tools: list[ResolvedTool]) -> list[PromptFragment]:
-    sandbox_tools = [tool for tool in tools if tool.section_id == "sandbox"]
-    if not sandbox_tools:
-        return []
-    lines = [
-        "The current workspace is the current Claw's dedicated sandbox workspace.",
-        "File read/write must use sandbox tools instead of the platform host filesystem.",
-        "Available sandbox tools:",
-    ]
-    lines.extend(f"- {tool.name}: {tool.prompt_hint or tool.description}" for tool in sandbox_tools)
-    return [PromptFragment(key="sandbox_workspace", content="\\n".join(lines))]
+    by_scope: dict[str, list[ResolvedTool]] = {}
+    for tool in tools:
+        by_scope.setdefault(tool.execution_scope, []).append(tool)
+
+    fragments: list[PromptFragment] = []
+    claw_workspace_tools = by_scope.get("claw_sandbox", [])
+    if claw_workspace_tools:
+        lines = [
+            "The current workspace is the current Claw's dedicated sandbox.",
+            "Use only the currently available tools to inspect or modify resources in this workspace.",
+            "Current available tools:",
+        ]
+        lines.extend(f"- {tool.name}: {tool.prompt_hint or tool.description}" for tool in claw_workspace_tools)
+        fragments.append(PromptFragment(key="claw_workspace", content="\n".join(lines)))
+
+    return fragments
 
 
 def normalize_profile(value: str | None) -> str:
@@ -137,4 +145,3 @@ def normalize_profile(value: str | None) -> str:
     if normalized not in {"minimal", "readonly", "coding", "messaging", "full"}:
         return "coding"
     return normalized
-

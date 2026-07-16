@@ -1,4 +1,4 @@
-﻿"""Text search tool for workspace files."""
+"""Text search tool for workspace files."""
 
 from __future__ import annotations
 
@@ -130,6 +130,5 @@ def create_grep_tool() -> ToolDefinition:
             profiles=("readonly", "coding", "full"),
             tags=("fs", "search", "readonly"),
             risk="low",
-            workspace_only=True,
         ),
     )

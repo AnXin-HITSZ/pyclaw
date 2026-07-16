@@ -1,4 +1,4 @@
-﻿"""Core tool runtime types."""
+"""Core tool runtime types."""
 
 from __future__ import annotations
 
@@ -12,6 +12,7 @@ from openclaw.llm.types import ContentBlock
 ExecutionMode = Literal["sequential", "parallel"]
 ToolRisk = Literal["low", "medium", "high"]
 ToolSource = Literal["core", "plugin", "mcp", "client", "runtime"]
+ExecutionScope = Literal["claw_sandbox"]
 
 
 @dataclass
@@ -66,7 +67,7 @@ class ToolMetadata:
     expose_to_llm: bool = True
     readonly: bool = False
     requires_approval: bool = False
-    workspace_only: bool = True
+    execution_scope: ExecutionScope = "claw_sandbox"
 
 
 @dataclass

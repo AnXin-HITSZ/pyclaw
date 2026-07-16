@@ -1,4 +1,4 @@
-"""Tools for operating on a remote sandbox-runner workspace via HTTP API."""
+"""Tools for operating on the current Claw workspace through sandbox-runner APIs."""
 
 from __future__ import annotations
 
@@ -66,8 +66,8 @@ def _sandbox_put_json(base_url: str, path: str, payload: dict[str, Any]) -> dict
         raise RuntimeError(f"sandbox runner unreachable: {exc.reason}")
 
 
-def create_sandbox_workspace_info_tool() -> ToolDefinition:
-    """Return a tool that queries sandbox workspace metadata."""
+def create_workspace_info_tool() -> ToolDefinition:
+    """Return a tool that queries current Claw workspace metadata."""
 
     async def execute(context: ToolExecutionContext, arguments: dict[str, Any]) -> dict[str, Any]:
         base_url = _require_sandbox_url(context.metadata)
@@ -75,9 +75,9 @@ def create_sandbox_workspace_info_tool() -> ToolDefinition:
         return {"result": result}
 
     return ToolDefinition(
-        name="sandbox_workspace_info",
-        label="Sandbox Workspace Info",
-        description="Get information about the Claw sandbox workspace.",
+        name="workspace_info",
+        label="Workspace Info",
+        description="Get information about the current Claw workspace.",
         input_schema={
             "type": "object",
             "properties": {},
@@ -87,8 +87,8 @@ def create_sandbox_workspace_info_tool() -> ToolDefinition:
     )
 
 
-def create_sandbox_list_files_tool() -> ToolDefinition:
-    """Return a tool that lists files in the sandbox workspace."""
+def create_list_files_tool() -> ToolDefinition:
+    """Return a tool that lists files in the current Claw workspace."""
 
     async def execute(context: ToolExecutionContext, arguments: dict[str, Any]) -> dict[str, Any]:
         base_url = _require_sandbox_url(context.metadata)
@@ -97,9 +97,9 @@ def create_sandbox_list_files_tool() -> ToolDefinition:
         return {"result": result}
 
     return ToolDefinition(
-        name="sandbox_list_files",
-        label="Sandbox List Files",
-        description="List files and directories in the Claw sandbox workspace. Use path='.' for root.",
+        name="list_files",
+        label="List Files",
+        description="List files and directories in the current Claw workspace. Use path='.' for root.",
         input_schema={
             "type": "object",
             "properties": {
@@ -111,8 +111,8 @@ def create_sandbox_list_files_tool() -> ToolDefinition:
     )
 
 
-def create_sandbox_read_file_tool() -> ToolDefinition:
-    """Return a tool that reads a file from the sandbox workspace."""
+def create_read_file_tool() -> ToolDefinition:
+    """Return a tool that reads a file from the current Claw workspace."""
 
     async def execute(context: ToolExecutionContext, arguments: dict[str, Any]) -> dict[str, Any]:
         base_url = _require_sandbox_url(context.metadata)
@@ -121,9 +121,9 @@ def create_sandbox_read_file_tool() -> ToolDefinition:
         return {"result": result}
 
     return ToolDefinition(
-        name="sandbox_read_file",
-        label="Sandbox Read File",
-        description="Read a UTF-8 text file from the Claw sandbox workspace.",
+        name="read_file",
+        label="Read File",
+        description="Read a UTF-8 text file from the current Claw workspace.",
         input_schema={
             "type": "object",
             "properties": {
@@ -135,8 +135,8 @@ def create_sandbox_read_file_tool() -> ToolDefinition:
     )
 
 
-def create_sandbox_write_file_tool() -> ToolDefinition:
-    """Return a tool that writes a file to the sandbox workspace."""
+def create_write_file_tool() -> ToolDefinition:
+    """Return a tool that writes a file to the current Claw workspace."""
 
     async def execute(context: ToolExecutionContext, arguments: dict[str, Any]) -> dict[str, Any]:
         base_url = _require_sandbox_url(context.metadata)
@@ -148,9 +148,9 @@ def create_sandbox_write_file_tool() -> ToolDefinition:
         return {"result": result}
 
     return ToolDefinition(
-        name="sandbox_write_file",
-        label="Sandbox Write File",
-        description="Write UTF-8 text content to a file in the Claw sandbox workspace.",
+        name="write_file",
+        label="Write File",
+        description="Write UTF-8 text content to a file in the current Claw workspace.",
         input_schema={
             "type": "object",
             "properties": {
@@ -163,8 +163,8 @@ def create_sandbox_write_file_tool() -> ToolDefinition:
     )
 
 
-def create_sandbox_apply_patch_tool() -> ToolDefinition:
-    """Return a tool that applies an exact-text patch in the sandbox workspace."""
+def create_apply_patch_tool() -> ToolDefinition:
+    """Return a tool that applies an exact-text patch in the current Claw workspace."""
 
     async def execute(context: ToolExecutionContext, arguments: dict[str, Any]) -> dict[str, Any]:
         base_url = _require_sandbox_url(context.metadata)
@@ -178,9 +178,9 @@ def create_sandbox_apply_patch_tool() -> ToolDefinition:
         return {"result": result}
 
     return ToolDefinition(
-        name="sandbox_apply_patch",
-        label="Sandbox Apply Patch",
-        description="Apply an exact-text replacement patch to a file in the Claw sandbox workspace.",
+        name="apply_patch",
+        label="Apply Patch",
+        description="Apply an exact-text replacement patch to a file in the current Claw workspace.",
         input_schema={
             "type": "object",
             "properties": {
@@ -197,8 +197,8 @@ def create_sandbox_apply_patch_tool() -> ToolDefinition:
 
 def _require_sandbox_url(ctx: dict[str, Any] | None) -> str:
     if not ctx:
-        raise RuntimeError("sandbox tool requires runtime context (sandbox_base_url)")
+        raise RuntimeError("workspace tool requires runtime context (sandbox_base_url)")
     base_url = ctx.get("sandbox_base_url")
     if not base_url:
-        raise RuntimeError("sandbox_base_url is not configured for this Claw sandbox")
+        raise RuntimeError("sandbox_base_url is not configured for this Claw workspace")
     return str(base_url)

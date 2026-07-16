@@ -6,13 +6,13 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from openclaw.tools.sandbox_workspace import (
-    create_sandbox_apply_patch_tool,
-    create_sandbox_list_files_tool,
-    create_sandbox_read_file_tool,
-    create_sandbox_workspace_info_tool,
-    create_sandbox_write_file_tool,
+    create_apply_patch_tool,
+    create_list_files_tool,
+    create_read_file_tool,
+    create_workspace_info_tool,
+    create_write_file_tool,
 )
-from openclaw.tools.types import ToolDefinition, ToolMetadata, ToolRisk, ToolSource
+from openclaw.tools.types import ExecutionScope, ToolDefinition, ToolMetadata, ToolRisk, ToolSource
 
 ToolFactory = Callable[[], ToolDefinition]
 
@@ -25,12 +25,14 @@ class ToolCatalogEntry:
     description: str
     section_id: str
     factory: ToolFactory
+    execution_scope: ExecutionScope = "claw_sandbox"
     profiles: tuple[str, ...] = ()
     tags: tuple[str, ...] = ()
     risk: ToolRisk = "low"
     source: ToolSource = "core"
     plugin_id: str | None = None
     expose_to_llm: bool = True
+    user_visible: bool = True
     readonly: bool = False
     requires_approval: bool = False
     prompt_hint: str = ""
@@ -39,72 +41,72 @@ class ToolCatalogEntry:
 
 CORE_TOOL_CATALOG: tuple[ToolCatalogEntry, ...] = (
     ToolCatalogEntry(
-        id="sandbox_workspace_info",
-        name="sandbox_workspace_info",
-        label="Sandbox Workspace Info",
-        description="Get information about the Claw sandbox workspace.",
-        section_id="sandbox",
-        factory=create_sandbox_workspace_info_tool,
+        id="workspace_info",
+        name="workspace_info",
+        label="Workspace Info",
+        description="Get information about the current Claw workspace.",
+        section_id="workspace",
+        factory=create_workspace_info_tool,
         profiles=("minimal", "readonly", "coding", "messaging", "full"),
-        tags=("sandbox", "workspace", "readonly"),
+        tags=("workspace", "readonly"),
         risk="low",
         readonly=True,
         include_in_openclaw_group=True,
-        prompt_hint="Inspect the current Claw sandbox workspace identity and root directory.",
+        prompt_hint="Inspect the current Claw workspace identity and root directory.",
     ),
     ToolCatalogEntry(
-        id="sandbox_list_files",
-        name="sandbox_list_files",
-        label="Sandbox List Files",
-        description="List files and directories in the Claw sandbox workspace directory tree.",
-        section_id="sandbox",
-        factory=create_sandbox_list_files_tool,
+        id="list_files",
+        name="list_files",
+        label="List Files",
+        description="List files and directories in the current Claw workspace directory tree.",
+        section_id="workspace",
+        factory=create_list_files_tool,
         profiles=("minimal", "readonly", "coding", "messaging", "full"),
-        tags=("sandbox", "files", "readonly"),
+        tags=("workspace", "files", "readonly"),
         risk="low",
         readonly=True,
         include_in_openclaw_group=True,
-        prompt_hint="List files and directories in the current Claw sandbox workspace.",
+        prompt_hint="List files and directories in the current Claw workspace.",
     ),
     ToolCatalogEntry(
-        id="sandbox_read_file",
-        name="sandbox_read_file",
-        label="Sandbox Read File",
-        description="Read a UTF-8 text file from the Claw sandbox workspace.",
-        section_id="sandbox",
-        factory=create_sandbox_read_file_tool,
-        profiles=("minimal", "readonly", "coding", "messaging", "full"),
-        tags=("sandbox", "files", "readonly"),
+        id="read_file",
+        name="read_file",
+        label="Read File",
+        description="Read a UTF-8 text file from the current Claw workspace.",
+        section_id="workspace",
+        factory=create_read_file_tool,
+        profiles=("readonly", "coding", "full"),
+        tags=("workspace", "files", "readonly"),
         risk="low",
         readonly=True,
         include_in_openclaw_group=True,
-        prompt_hint="Read a UTF-8 text file from the current Claw sandbox workspace.",
+        prompt_hint="Read a UTF-8 text file from the current Claw workspace.",
     ),
     ToolCatalogEntry(
-        id="sandbox_write_file",
-        name="sandbox_write_file",
-        label="Sandbox Write File",
-        description="Write UTF-8 text content to a file in the Claw sandbox workspace.",
-        section_id="sandbox",
-        factory=create_sandbox_write_file_tool,
+        id="write_file",
+        name="write_file",
+        label="Write File",
+        description="Write UTF-8 text content to a file in the current Claw workspace.",
+        section_id="workspace",
+        factory=create_write_file_tool,
         profiles=("coding", "full"),
-        tags=("sandbox", "files", "mutation"),
+        tags=("workspace", "files", "mutation"),
         risk="medium",
         include_in_openclaw_group=True,
-        prompt_hint="Write a UTF-8 text file in the current Claw sandbox workspace.",
+        prompt_hint="Write a UTF-8 text file in the current Claw workspace.",
     ),
     ToolCatalogEntry(
-        id="sandbox_apply_patch",
-        name="sandbox_apply_patch",
-        label="Sandbox Apply Patch",
-        description="Apply an exact-text patch to a file in the Claw sandbox workspace.",
-        section_id="sandbox",
-        factory=create_sandbox_apply_patch_tool,
+        id="apply_patch",
+        name="apply_patch",
+        label="Apply Patch",
+        description="Apply an exact-text patch to a file in the current Claw workspace.",
+        section_id="workspace",
+        factory=create_apply_patch_tool,
         profiles=("coding", "full"),
-        tags=("sandbox", "files", "patch", "mutation"),
+        tags=("workspace", "files", "patch", "mutation"),
         risk="medium",
         include_in_openclaw_group=True,
-        prompt_hint="Apply an exact-text replacement patch inside the current Claw sandbox workspace.",
+        prompt_hint="Apply an exact-text replacement patch inside the current Claw workspace.",
     ),
 )
 
@@ -114,7 +116,7 @@ def list_catalog_entries() -> list[ToolCatalogEntry]:
 
 
 def user_visible_catalog() -> list[ToolCatalogEntry]:
-    return list_catalog_entries()
+    return [entry for entry in list_catalog_entries() if entry.user_visible]
 
 
 def materialize_catalog_entry(entry: ToolCatalogEntry) -> ToolDefinition:
@@ -139,6 +141,7 @@ def materialize_catalog_entry(entry: ToolCatalogEntry) -> ToolDefinition:
             expose_to_llm=entry.expose_to_llm,
             readonly=entry.readonly,
             requires_approval=entry.requires_approval,
+            execution_scope=entry.execution_scope,
         ),
     )
 
@@ -153,15 +156,12 @@ def build_tool_groups(entries: list[ToolCatalogEntry] | None = None) -> dict[str
 
     for entry in source_entries:
         section_key = f"group:{entry.section_id.lower()}"
+        scope_key = f"group:{entry.execution_scope.lower()}"
         groups.setdefault(section_key, set()).add(entry.name)
+        groups.setdefault(scope_key, set()).add(entry.name)
         for tag in entry.tags:
             groups.setdefault(f"group:{tag.lower()}", set()).add(entry.name)
         if entry.include_in_openclaw_group:
             groups.setdefault("group:openclaw", set()).add(entry.name)
-
-    if "group:fs" in groups:
-        groups.setdefault("group:filesystem", set()).update(groups["group:fs"])
-    if "group:runtime" in groups:
-        groups.setdefault("group:shell", set()).update(groups["group:runtime"])
 
     return groups

@@ -62,6 +62,5 @@ def create_write_tool() -> ToolDefinition:
             profiles=("coding", "full"),
             tags=("fs", "write"),
             risk="medium",
-            workspace_only=True,
         ),
     )

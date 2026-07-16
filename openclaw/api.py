@@ -92,6 +92,7 @@ class ToolCatalogItem(BaseModel):
     label: str
     description: str
     section_id: str
+    execution_scope: str
     profiles: list[str]
     tags: list[str]
     risk: str
@@ -118,6 +119,7 @@ class ResolvedToolResponse(BaseModel):
     label: str
     description: str
     section_id: str
+    execution_scope: str
     profiles: list[str]
     tags: list[str]
     risk: str
@@ -281,6 +283,7 @@ def tools_catalog(_: None = Depends(require_api_token)) -> ToolCatalogResponse:
             label=entry.label,
             description=entry.description,
             section_id=entry.section_id,
+            execution_scope=entry.execution_scope,
             profiles=list(entry.profiles),
             tags=list(entry.tags),
             risk=entry.risk,

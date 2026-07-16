@@ -70,6 +70,5 @@ def create_web_search_tool() -> ToolDefinition:
             profiles=("full",),
             tags=("web", "search"),
             risk="medium",
-            workspace_only=False,
         ),
     )

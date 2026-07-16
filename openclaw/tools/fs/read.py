@@ -70,6 +70,5 @@ def create_read_tool() -> ToolDefinition:
             profiles=("readonly", "coding", "full"),
             tags=("fs", "read", "readonly"),
             risk="low",
-            workspace_only=True,
         ),
     )

@@ -1,4 +1,4 @@
-﻿"""Conservative patch tool based on exact replacement."""
+"""Conservative patch tool based on exact replacement."""
 
 from __future__ import annotations
 
@@ -33,6 +33,5 @@ def create_apply_patch_tool() -> ToolDefinition:
             profiles=("coding", "full"),
             tags=("fs", "edit", "patch"),
             risk="medium",
-            workspace_only=True,
         ),
     )

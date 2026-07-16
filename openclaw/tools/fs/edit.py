@@ -65,6 +65,5 @@ def create_edit_tool() -> ToolDefinition:
             profiles=("coding", "full"),
             tags=("fs", "edit"),
             risk="medium",
-            workspace_only=True,
         ),
     )

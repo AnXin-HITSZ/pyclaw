@@ -8,6 +8,7 @@ public record PyclawToolCatalogEntry(
         String label,
         String description,
         @JsonProperty("section_id") String sectionId,
+        @JsonProperty("execution_scope") String executionScope,
         List<String> profiles,
         List<String> tags,
         String risk,

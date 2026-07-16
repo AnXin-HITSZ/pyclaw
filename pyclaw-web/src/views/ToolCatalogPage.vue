@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="page">
     <div class="page-header">
       <h1>工具目录</h1>
@@ -26,6 +26,7 @@
             <th>工具名称</th>
             <th>描述</th>
             <th>分类</th>
+            <th>执行范围</th>
             <th>风险</th>
             <th>只读</th>
           </tr>
@@ -35,11 +36,12 @@
             <td class="tool-name">{{ tool.name }}</td>
             <td class="tool-desc">{{ tool.description || "-" }}</td>
             <td><span class="tag">{{ tool.category || tool.sectionId || "general" }}</span></td>
+            <td><span class="tag scope">{{ tool.executionScope || "claw_sandbox" }}</span></td>
             <td><span class="tag" :class="tool.risk">{{ tool.risk || "low" }}</span></td>
             <td>{{ tool.readonly ? "是" : "否" }}</td>
           </tr>
           <tr v-if="effectiveTools.length === 0">
-            <td colspan="5" class="no-data">当前策略下暂无可用工具</td>
+            <td colspan="6" class="no-data">当前策略下暂无可用工具</td>
           </tr>
         </tbody>
       </table>
@@ -140,6 +142,7 @@ onMounted(load);
 .tag { font-size: 11px; padding: 1px 8px; border-radius: 10px; background: rgba(240,163,58,0.1); color: var(--accent); }
 .tag.medium { background: rgba(210,153,34,0.14); color: var(--warning); }
 .tag.high { background: rgba(248,81,73,0.12); color: var(--danger); }
+.tag.scope { background: rgba(56,139,253,0.12); color: #58a6ff; }
 .denied-panel { margin-top: 20px; padding: 16px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-secondary); }
 .denied-panel h3 { font-size: 14px; margin-bottom: 10px; color: var(--text-secondary); }
 .denied-list { display: flex; flex-wrap: wrap; gap: 8px; }

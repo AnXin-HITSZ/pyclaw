@@ -68,6 +68,5 @@ def create_web_fetch_tool() -> ToolDefinition:
             profiles=("full",),
             tags=("web", "fetch"),
             risk="medium",
-            workspace_only=False,
         ),
     )
