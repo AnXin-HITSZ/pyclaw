@@ -18,7 +18,6 @@ except ImportError as exc:  # pragma: no cover - exercised only without the api 
     ) from exc
 
 from openclaw.agent.agent import Agent
-from openclaw.cli import DEFAULT_MODEL, DEFAULT_SYSTEM_PROMPT, sanitize_session_id
 from openclaw.config import load_env_file
 from openclaw.llm.openai_provider import OpenAIProvider
 from openclaw.llm.provider import MockProvider
@@ -31,6 +30,7 @@ from openclaw.llm.types import AssistantMessage, message_to_dict
 from openclaw.routing.resolve_route import resolve_agent_route
 from openclaw.session.agent_session import AgentSession, SessionContextPolicy
 from openclaw.session.context import CompactionSettings
+from openclaw.session.ids import sanitize_session_id
 from openclaw.session.paths import resolve_chatdata_dir, resolve_session_store_path, resolve_session_transcript_path
 from openclaw.session.store import SessionStore
 from openclaw.session.transcript import Transcript
@@ -56,7 +56,7 @@ class AgentRunRequest(BaseModel):
     model: str | None = None
     api_key: str | None = None
     base_url: str | None = None
-    system: str = DEFAULT_SYSTEM_PROMPT
+    system: str | None = None
     api_mode: ApiMode = "auto"
     reasoning_effort: Literal["low", "medium", "high"] | None = None
     max_output_tokens: int | None = Field(default=None, ge=1)
@@ -170,7 +170,7 @@ async def build_channel_agent_session(message: Any) -> AgentSession:
         model=runtime_config.model,
         api_key=runtime_config.api_key,
         base_url=runtime_config.base_url,
-        system=runtime_config.system or DEFAULT_SYSTEM_PROMPT,
+        system=runtime_config.system,
         api_mode=runtime_config.api_mode,  # type: ignore[arg-type]
         chatdata_dir=os.environ.get("OPENCLAW_CHANNEL_CHATDATA_DIR"),
         tool_profile=runtime_config.tool_policy.profile,  # type: ignore[arg-type]
@@ -179,13 +179,13 @@ async def build_channel_agent_session(message: Any) -> AgentSession:
         tools_also_allow=runtime_config.tool_policy.also_allow,
     )
     cwd = runtime_config.workspace_dir or os.getcwd()
-    model = request.model or os.environ.get("OPENAI_MODEL") or DEFAULT_MODEL
+    model = resolve_model(request)
     provider = build_provider(request, model=model)
     policy = build_policy_from_runtime(runtime_config)
     agent = Agent(
         model=model,
         provider=provider,
-        system_prompt=request.system,
+        system_prompt=request.system or "",
         tools=build_tool_registry(policy),
         model_options=build_model_options(request),
         session_id=session_id,
@@ -333,7 +333,7 @@ async def run_agent_request(request: AgentRunRequest) -> tuple[AssistantMessage,
     require_sandbox_base_url(request)
     session_id = sanitize_session_id(request.session_id or uuid4().hex)
     cwd = os.getcwd()
-    model = request.model or os.environ.get("OPENAI_MODEL") or DEFAULT_MODEL
+    model = resolve_model(request)
     provider = build_provider(request, model=model)
     policy = build_policy(request)
     resolved_tools = resolve_runtime_tools(policy)
@@ -366,6 +366,12 @@ def env_bool(name: str, *, default: bool = False) -> bool:
     if value is None:
         return default
     return value.strip().lower() in {"1", "true", "yes", "on"}
+
+def resolve_model(request: AgentRunRequest) -> str:
+    model = first_non_blank(request.model, os.environ.get("OPENAI_MODEL"))
+    if model is None:
+        raise ValueError("model is required. Configure Agent/Provider model or set OPENAI_MODEL.")
+    return model
 
 def build_provider(request: AgentRunRequest, *, model: str) -> Any:
     if request.provider == "mock":
@@ -422,12 +428,18 @@ def resolve_runtime_tools(policy: ToolPolicy) -> ToolResolveResult:
     )
 
 
-def compose_runtime_system_prompt(base_prompt: str, resolved_tools: ToolResolveResult) -> str:
+def compose_runtime_system_prompt(base_prompt: str | None, resolved_tools: ToolResolveResult) -> str:
     fragments = [fragment.content for fragment in resolved_tools.prompt_fragments if fragment.content]
     parts = [base_prompt.strip() if base_prompt else ""]
     parts.extend(fragments)
     return "\n\n".join(part for part in parts if part)
 
+
+def first_non_blank(*values: str | None) -> str | None:
+    for value in values:
+        if value is not None and value.strip():
+            return value.strip()
+    return None
 
 def build_model_options(request: AgentRunRequest) -> dict[str, Any]:
     options: dict[str, Any] = {}
