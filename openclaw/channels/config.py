@@ -48,7 +48,6 @@ class ChannelAgentConfig:
     api_mode: str = "auto"
     chatdata_dir: str | None = None
     tool_profile: str = "messaging"
-    shell_approval: str = "deny"
     webhook_sync: bool = False
 
 
@@ -63,7 +62,6 @@ def load_channel_agent_config() -> ChannelAgentConfig:
         api_mode=os.environ.get("OPENCLAW_CHANNEL_API_MODE", "auto"),
         chatdata_dir=_optional_str(os.environ.get("OPENCLAW_CHANNEL_CHATDATA_DIR")),
         tool_profile=os.environ.get("OPENCLAW_CHANNEL_TOOL_PROFILE", "messaging"),
-        shell_approval=os.environ.get("OPENCLAW_CHANNEL_SHELL_APPROVAL", "deny"),
         webhook_sync=_env_bool("OPENCLAW_CHANNEL_WEBHOOK_SYNC", default=False),
     )
 

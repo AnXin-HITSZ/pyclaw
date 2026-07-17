@@ -137,7 +137,6 @@ public class AgentConfigService {
                 readList(entity.getToolsDenyJson()),
                 readList(entity.getToolsAlsoAllowJson()),
                 entity.isReadonly(),
-                entity.getShellApproval(),
                 entity.getCreatedAt(),
                 entity.getUpdatedAt()
         );
@@ -202,14 +201,13 @@ public class AgentConfigService {
 
     private void applyPolicy(AgentToolPolicyEntity entity, AgentToolPolicyRequest request, OffsetDateTime now) {
         AgentToolPolicyRequest policy = request == null
-                ? new AgentToolPolicyRequest("messaging", null, List.of(), List.of(), false, "deny")
+                ? new AgentToolPolicyRequest("messaging", null, List.of(), List.of(), false)
                 : request;
         entity.setProfile(grantValidator.normalizeProfile(policy.profile()));
         entity.setToolsAllowJson(writeNullableList(policy.toolsAllow()));
         entity.setToolsDenyJson(writeList(policy.toolsDeny()));
         entity.setToolsAlsoAllowJson(writeList(policy.toolsAlsoAllow()));
         entity.setReadonly(Boolean.TRUE.equals(policy.readonly()) || "readonly".equals(entity.getProfile()));
-        entity.setShellApproval(grantValidator.normalizeShellApproval(policy.shellApproval()));
         entity.setUpdatedAt(OffsetDateTime.now());
         if (entity.getCreatedAt() == null) {
             entity.setCreatedAt(now);

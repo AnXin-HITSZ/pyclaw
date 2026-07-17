@@ -25,8 +25,6 @@ public class AgentToolPolicyEntity {
     @Column(nullable = false)
     private boolean readonly;
     @Column(nullable = false)
-    private String shellApproval;
-    @Column(nullable = false)
     private OffsetDateTime createdAt;
     @Column(nullable = false)
     private OffsetDateTime updatedAt;
@@ -45,8 +43,6 @@ public class AgentToolPolicyEntity {
     public void setToolsAlsoAllowJson(String toolsAlsoAllowJson) { this.toolsAlsoAllowJson = toolsAlsoAllowJson; }
     public boolean isReadonly() { return readonly; }
     public void setReadonly(boolean readonly) { this.readonly = readonly; }
-    public String getShellApproval() { return shellApproval; }
-    public void setShellApproval(String shellApproval) { this.shellApproval = shellApproval; }
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(OffsetDateTime createdAt) { this.createdAt = createdAt; }
     public OffsetDateTime getUpdatedAt() { return updatedAt; }

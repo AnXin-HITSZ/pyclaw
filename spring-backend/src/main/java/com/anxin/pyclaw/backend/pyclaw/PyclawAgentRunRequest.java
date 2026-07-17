@@ -16,7 +16,6 @@ public record PyclawAgentRunRequest(
         @JsonProperty("tools_allow") List<String> toolsAllow,
         @JsonProperty("tools_deny") List<String> toolsDeny,
         @JsonProperty("tools_also_allow") List<String> toolsAlsoAllow,
-        @JsonProperty("shell_approval") String shellApproval,
         @JsonProperty("claw_id") String clawId,
         @JsonProperty("owner_user_id") String ownerUserId,
         @JsonProperty("claw_name") String clawName,
@@ -43,9 +42,6 @@ public record PyclawAgentRunRequest(
         if (toolsAlsoAllow == null) {
             toolsAlsoAllow = List.of();
         }
-        if (!"auto".equals(shellApproval) && !"require".equals(shellApproval) && !"deny".equals(shellApproval)) {
-            shellApproval = "deny";
-        }
     }
 
     public PyclawAgentRunRequest(
@@ -54,6 +50,6 @@ public record PyclawAgentRunRequest(
     ) {
         this(prompt, provider, sessionId, toolProfile, model, apiMode, baseUrl, apiKey,
                 null, null, null, null, null,
-                null, null, null, null, null, null);
+                null, null, null, null, null);
     }
 }

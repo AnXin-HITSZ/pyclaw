@@ -29,7 +29,6 @@ class Agent:
         workspace_dir: Any | None = None,
         chatdata_dir: Any | None = None,
         tool_hooks: ToolHooks | None = None,
-        workspace_only: bool = True,
         readonly: bool = False,
         tool_metadata: dict[str, Any] | None = None,
     ) -> None:
@@ -44,7 +43,6 @@ class Agent:
         self.workspace_dir = workspace_dir
         self.chatdata_dir = chatdata_dir
         self.tool_hooks = tool_hooks
-        self.workspace_only = workspace_only
         self.readonly = readonly
         self.tool_metadata = dict(tool_metadata or {})
         self.state = AgentState()
@@ -97,7 +95,6 @@ class Agent:
             workspace_dir=self.workspace_dir,
             chatdata_dir=self.chatdata_dir,
             tool_hooks=self.tool_hooks,
-            workspace_only=self.workspace_only,
             readonly=self.readonly,
             tool_metadata=self.tool_metadata,
         )

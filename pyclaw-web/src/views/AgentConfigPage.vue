@@ -82,14 +82,6 @@
                 <option value="full">full</option>
               </select>
             </div>
-            <div class="form-group">
-              <label>Shell 审批</label>
-              <select v-model="form.shellApproval">
-                <option value="deny">deny</option>
-                <option value="require">require</option>
-                <option value="auto">auto</option>
-              </select>
-            </div>
           </div>
           <div class="form-row">
             <div class="form-group">
@@ -146,7 +138,7 @@ function openCreate() {
   editing.value = null;
   form.value = {
     agentKey: "", name: "", description: "", providerId: "", model: "",
-    systemPrompt: "", toolProfile: "messaging", shellApproval: "deny",
+    systemPrompt: "", toolProfile: "messaging",
     workspaceDir: "", enabled: true,
   };
   showModal.value = true;
@@ -162,7 +154,6 @@ function openEdit(agent) {
     model: agent.model || "",
     systemPrompt: agent.systemPrompt || "",
     toolProfile: agent.toolPolicy?.profile || "messaging",
-    shellApproval: agent.toolPolicy?.shellApproval || "deny",
     workspaceDir: agent.workspaceDir || "",
     enabled: agent.enabled,
   };
@@ -182,7 +173,6 @@ async function handleSave() {
       enabled: form.value.enabled,
       toolPolicy: {
         profile: form.value.toolProfile,
-        shellApproval: form.value.shellApproval,
         toolsDeny: [],
         toolsAlsoAllow: [],
         readonly: false,

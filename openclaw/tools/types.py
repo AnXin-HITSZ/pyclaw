@@ -82,7 +82,6 @@ class ToolExecutionContext:
     provider: str | None = None
     emit: Callable[[Any], None] | None = None
     readonly: bool = False
-    workspace_only: bool = True
     metadata: dict[str, Any] = field(default_factory=dict)
 
 

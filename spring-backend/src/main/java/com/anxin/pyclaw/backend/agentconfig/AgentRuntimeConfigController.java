@@ -66,8 +66,7 @@ public class AgentRuntimeConfigController {
                         agents.readListOrNull(policy.getToolsAllowJson()),
                         agents.readList(policy.getToolsDenyJson()),
                         agents.readList(policy.getToolsAlsoAllowJson()),
-                        policy.isReadonly(),
-                        policy.getShellApproval()
+                        policy.isReadonly()
                 ),
                 agent.getUpdatedAt().toInstant().toString() + ":" + policy.getUpdatedAt().toInstant(),
                 agent.getUpdatedAt().isAfter(policy.getUpdatedAt()) ? agent.getUpdatedAt() : policy.getUpdatedAt()

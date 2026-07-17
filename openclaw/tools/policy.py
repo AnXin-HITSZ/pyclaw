@@ -28,7 +28,6 @@ class ToolPolicy:
     deny: set[str] = field(default_factory=set)
     profile: ToolProfile = "coding"
     also_allow: set[str] = field(default_factory=set)
-    workspace_only: bool = True
     readonly: bool = False
 
 

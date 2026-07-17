@@ -15,7 +15,6 @@ class ToolCatalogTests(unittest.TestCase):
         self.assertTrue(tools["read_file"].metadata.readonly)
         self.assertEqual(tools["apply_patch"].metadata.risk, "medium")
         self.assertNotIn("read", tools)
-        self.assertNotIn("web_fetch", tools)
         self.assertFalse(any(name.startswith("sandbox" + "_") for name in tools))
 
     def test_resolve_tools_returns_workspace_tools(self):

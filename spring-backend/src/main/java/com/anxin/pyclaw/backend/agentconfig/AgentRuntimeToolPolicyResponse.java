@@ -7,7 +7,6 @@ public record AgentRuntimeToolPolicyResponse(
         List<String> allow,
         List<String> deny,
         List<String> alsoAllow,
-        boolean readonly,
-        String shellApproval
+        boolean readonly
 ) {
 }

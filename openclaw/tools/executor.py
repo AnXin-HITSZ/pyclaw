@@ -157,7 +157,6 @@ def make_base_context(
     provider: str | None = None,
     emit: Any | None = None,
     readonly: bool = False,
-    workspace_only: bool = True,
     metadata: dict[str, Any] | None = None,
 ) -> ToolExecutionContext:
     cwd_path = Path(cwd) if cwd is not None else Path.cwd()
@@ -173,7 +172,6 @@ def make_base_context(
         provider=provider,
         emit=emit,
         readonly=readonly,
-        workspace_only=workspace_only,
         metadata=dict(metadata or {}),
     )
 
@@ -190,7 +188,6 @@ def _context_for_call(context: ToolExecutionContext, call: ToolCallBlock) -> Too
         provider=context.provider,
         emit=context.emit,
         readonly=context.readonly,
-        workspace_only=context.workspace_only,
         metadata=dict(context.metadata),
     )
 

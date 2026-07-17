@@ -35,16 +35,6 @@ public class ToolPolicyGrantValidator {
         return profile == null ? "messaging" : profile;
     }
 
-    public String normalizeShellApproval(String value) {
-        String mode = normalize(value);
-        if (mode == null) {
-            return "deny";
-        }
-        if (!Set.of("deny", "require", "auto").contains(mode)) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "Unsupported shellApproval: " + value);
-        }
-        return mode;
-    }
 
     private boolean canGrantProfile(Set<String> authorities, String profile) {
         int requested = PROFILE_ORDER.indexOf(profile);

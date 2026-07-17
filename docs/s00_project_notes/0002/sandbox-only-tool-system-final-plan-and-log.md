@@ -300,3 +300,57 @@ execute(context, arguments)
 2. 它是否应进入 LLM 可见的 tool catalog？
 
 只有答案都明确，才允许进入注册链路。
+
+## 13. 2026-07-16 严格删除旧 fs/shell/web 实现记录
+
+本次补充执行“严格删除”，不再只是从 catalog 隐藏旧工具，而是从代码、测试、API DTO、前端表单和部署配置中移除旧本地工具链路。
+
+已删除：
+
+- Python 旧本地文件工具目录：`openclaw/tools/fs/*`
+- Python 旧 shell/exec 工具目录：`openclaw/tools/shell/*`
+- Python 旧 web 工具目录：`openclaw/tools/web/*`
+- 旧工具测试：`tests/test_fs_tools.py`、`tests/test_fs_mutation_tools.py`、`tests/test_shell_tool.py`、`tests/test_shell_parser.py`、`tests/test_web_guard.py`
+
+已同步收口：
+
+- `openclaw/cli.py` 删除 `--shell-approval`、`--yes` 和 shell 审批回调链路，只保留通过 `PYCLAW_SANDBOX_BASE_URL` 注入 Claw sandbox 上下文。
+- `openclaw/api.py` 删除 `shell_approval` 请求字段和 `shell_approval_mode` metadata。
+- `openclaw/agents/runtime_config_client.py`、`openclaw/channels/config.py` 删除运行时 shell approval 配置。
+- Spring Boot 删除 `shellApproval` 请求/响应/实体映射，`PyclawAgentRunRequest` 不再向 Python API 传递 `shell_approval`。
+- 前端 `AgentConfigPage.vue` 删除 Shell 审批表单项，保存 Agent 时不再提交 `shellApproval`。
+- `helm/pyclaw/values.yaml` 和 `pyclaw-values-k3s.example.yaml` 删除 `OPENCLAW_CHANNEL_SHELL_APPROVAL`。
+- Bootstrap 管理员默认权限删除 `tool:grant:shell` 和 `tool:grant:web`。
+
+当前代码扫描结果：
+
+- 用户可见工具名不再包含 `sandbox_*` 旧前缀工具。
+- 代码范围内不再存在旧 `openclaw.tools.fs`、`openclaw.tools.shell`、`openclaw.tools.web` import。
+- 代码范围内不再存在 `shellApproval` / `shell_approval` / `OPENCLAW_CHANNEL_SHELL_APPROVAL`。
+- 代码范围内不再存在 `web_fetch` / `web_search` / `list_dir` 旧工具名。
+
+验证命令：
+
+```powershell
+py -m py_compile openclaw\cli.py openclaw\api.py openclaw\agents\runtime_config_client.py openclaw\channels\config.py openclaw\tools\catalog.py openclaw\tools\resolver.py openclaw\tools\policy.py openclaw\tools\sandbox_workspace.py openclaw\tools\types.py
+py -m unittest tests.test_tool_catalog tests.test_tool_policy tests.test_sandbox_workspace_tools tests.test_tool_executor tests.test_cli
+npm run build  # in pyclaw-web
+rg -n "shellApproval|shell_approval|ShellApproval|OPENCLAW_CHANNEL_SHELL_APPROVAL|tool:grant:(shell|web)|web_fetch|web_search|list_dir|openclaw\.tools\.(fs|shell|web)|create_shell_tool|create_exec_tool" openclaw tests spring-backend pyclaw-web helm pyclaw-values-k3s.example.yaml
+```
+
+验证结果：
+
+- Python 编译通过。
+- Python 单元测试通过：30 tests OK。
+- 前端 Vite production build 通过。
+- 旧工具/旧 shell approval 关键字扫描无结果。
+- 本机未安装 `mvn`，因此 Spring Boot Maven 编译未在本地执行；本次已通过字段引用扫描降低构造器和 DTO 残留风险。
+
+### 13.1 继续补齐项
+
+在严格删除旧 fs/shell/web 实现后，继续补齐验收项：
+
+- 删除 Python 执行链路残留的 `workspace_only` 字段。
+- Python `/v1/agent/run` 入口新增 `sandbox_base_url` 必填校验，缺失时直接返回 400。
+- Python `/v1/agent/run` 调用 resolver 解析实际可用工具，并将 `prompt_fragments` 动态注入 system prompt。
+- 新增 `sandbox-only-tool-system-compliance-check-2026-07-16.md` 记录当前验收结果。

@@ -20,7 +20,6 @@ class AgentRuntimeToolPolicy:
     deny: list[str] = field(default_factory=list)
     also_allow: list[str] = field(default_factory=list)
     readonly: bool = False
-    shell_approval: str = "deny"
 
 
 @dataclass(frozen=True)
@@ -85,7 +84,6 @@ class RuntimeConfigClient:
                 deny=_list(policy.get("deny")),
                 also_allow=_list(policy.get("alsoAllow") or policy.get("also_allow")),
                 readonly=_bool(policy.get("readonly"), False),
-                shell_approval=str(policy.get("shellApproval") or policy.get("shell_approval") or "deny"),
             ),
             config_version=_optional_str(payload.get("configVersion") or payload.get("config_version")),
         )

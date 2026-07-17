@@ -37,12 +37,11 @@ from openclaw.session.transcript import Transcript
 from openclaw.tools.builder import build_tool_registry
 from openclaw.tools.catalog import user_visible_catalog
 from openclaw.tools.policy import ToolPolicy
-from openclaw.tools.resolver import ToolResolveInput, resolve_tools
+from openclaw.tools.resolver import ToolResolveInput, ToolResolveResult, resolve_tools
 
 ApiProviderName = Literal["openai", "mock"]
 ApiMode = Literal["auto", "responses", "chat_completions", "chat-completions"]
 ToolProfileName = Literal["minimal", "readonly", "coding", "messaging", "full"]
-ShellApprovalModeName = Literal["auto", "require", "deny"]
 
 
 class HealthResponse(BaseModel):
@@ -66,7 +65,6 @@ class AgentRunRequest(BaseModel):
     tools_allow: list[str] | None = None
     tools_deny: list[str] | None = None
     tools_also_allow: list[str] | None = None
-    shell_approval: ShellApprovalModeName = "deny"
     context_window_tokens: int = Field(default=120_000, ge=1)
     reserve_tokens: int = Field(default=16_384, ge=0)
     keep_recent_tokens: int = Field(default=20_000, ge=0)
@@ -179,7 +177,6 @@ async def build_channel_agent_session(message: Any) -> AgentSession:
         tools_allow=runtime_config.tool_policy.allow,
         tools_deny=runtime_config.tool_policy.deny,
         tools_also_allow=runtime_config.tool_policy.also_allow,
-        shell_approval=runtime_config.tool_policy.shell_approval,  # type: ignore[arg-type]
     )
     cwd = runtime_config.workspace_dir or os.getcwd()
     model = request.model or os.environ.get("OPENAI_MODEL") or DEFAULT_MODEL
@@ -234,7 +231,6 @@ def load_legacy_channel_agent_config(message: Any) -> tuple[AgentRuntimeConfig, 
             workspace_dir=os.getcwd(),
             tool_policy=AgentRuntimeToolPolicy(
                 profile=channel_agent.tool_profile,
-                shell_approval=channel_agent.shell_approval,
             ),
         ),
         build_channel_session_id(message),
@@ -334,15 +330,17 @@ async def run_agent(
 
 async def run_agent_request(request: AgentRunRequest) -> tuple[AssistantMessage, str]:
     load_env_file_if_configured()
+    require_sandbox_base_url(request)
     session_id = sanitize_session_id(request.session_id or uuid4().hex)
     cwd = os.getcwd()
     model = request.model or os.environ.get("OPENAI_MODEL") or DEFAULT_MODEL
     provider = build_provider(request, model=model)
     policy = build_policy(request)
+    resolved_tools = resolve_runtime_tools(policy)
     agent = Agent(
         model=model,
         provider=provider,
-        system_prompt=request.system,
+        system_prompt=compose_runtime_system_prompt(request.system, resolved_tools),
         tools=build_tool_registry(policy),
         model_options=build_model_options(request),
         session_id=session_id,
@@ -406,6 +404,31 @@ def build_policy(request: AgentRunRequest) -> ToolPolicy:
     )
 
 
+
+def require_sandbox_base_url(request: AgentRunRequest) -> None:
+    if not request.sandbox_base_url or not request.sandbox_base_url.strip():
+        raise ValueError("sandbox_base_url is required for Claw sandbox tool execution")
+
+
+def resolve_runtime_tools(policy: ToolPolicy) -> ToolResolveResult:
+    return resolve_tools(
+        ToolResolveInput(
+            profile=policy.profile,
+            allow=policy.allow,
+            deny=policy.deny,
+            also_allow=policy.also_allow,
+            readonly=policy.readonly,
+        )
+    )
+
+
+def compose_runtime_system_prompt(base_prompt: str, resolved_tools: ToolResolveResult) -> str:
+    fragments = [fragment.content for fragment in resolved_tools.prompt_fragments if fragment.content]
+    parts = [base_prompt.strip() if base_prompt else ""]
+    parts.extend(fragments)
+    return "\n\n".join(part for part in parts if part)
+
+
 def build_model_options(request: AgentRunRequest) -> dict[str, Any]:
     options: dict[str, Any] = {}
     if request.reasoning_effort:
@@ -416,7 +439,7 @@ def build_model_options(request: AgentRunRequest) -> dict[str, Any]:
 
 
 def build_tool_metadata(request: AgentRunRequest) -> dict[str, Any]:
-    meta: dict[str, Any] = {"shell_approval_mode": request.shell_approval}
+    meta: dict[str, Any] = {}
     if request.sandbox_base_url:
         meta["sandbox_base_url"] = request.sandbox_base_url
         meta["claw_id"] = request.claw_id

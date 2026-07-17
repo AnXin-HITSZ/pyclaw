@@ -152,7 +152,6 @@ public class ClawChatService {
                 runtimeToolsAllow,
                 runtimeToolsDeny,
                 List.of(),
-                policy.getShellApproval(),
                 claw.getId(),
                 claw.getOwnerUserId(),
                 claw.getName(),
@@ -226,7 +225,7 @@ public class ClawChatService {
 
     private void requireRunnerHealthy(ClawEntity claw) {
         if (!sandboxProperties.isEnabled()) {
-            return; // local dev mode — skip runner check
+            return; // local dev mode 鈥?skip runner check
         }
         try {
             sandboxClient.healthz(claw.getOwnerUserId(), claw.getId());
@@ -268,7 +267,7 @@ public class ClawChatService {
         if (!Objects.equals(agent.getCreatedBy(), ownerUserId)) {
             // For now, allow if the agent was created by an admin (bootstrap)
             // TODO: add shared/template flag to AgentConfig
-            log.warn("Agent {} createdBy={} does not match claw owner={} — allowing for now", agentId, agent.getCreatedBy(), ownerUserId);
+            log.warn("Agent {} createdBy={} does not match claw owner={} 鈥?allowing for now", agentId, agent.getCreatedBy(), ownerUserId);
         }
         return agent;
     }

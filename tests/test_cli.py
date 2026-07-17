@@ -146,63 +146,35 @@ class CliTests(unittest.TestCase):
 
         self.assertEqual(code, 0)
         self.assertEqual(stderr, "")
-        self.assertIn("read", stdout)
-        self.assertIn("list_dir", stdout)
-        self.assertIn("web_fetch", stdout)
+        self.assertIn("workspace_info", stdout)
+        self.assertIn("list_files", stdout)
+        self.assertIn("read_file", stdout)
+        self.assertIn("write_file", stdout)
+        self.assertIn("apply_patch", stdout)
 
     def test_tools_describe_json(self):
         with tempfile.TemporaryDirectory() as temp_dir:
-            code, stdout, stderr = self.run_cli(["--json", "tools", "describe", "read"], chatdata_dir=temp_dir)
+            code, stdout, stderr = self.run_cli(["--json", "tools", "describe", "read_file"], chatdata_dir=temp_dir)
 
         self.assertEqual(code, 0)
         self.assertEqual(stderr, "")
         data = json.loads(stdout)
-        self.assertEqual(data["name"], "read")
-        self.assertEqual(data["input_schema"]["required"], ["path"])
+        self.assertEqual(data["name"], "read_file")
+        self.assertEqual(data["metadata"]["execution_scope"], "claw_sandbox")
+        self.assertEqual(data["input_schema"]["required"], ["file_path"])
 
-    def test_tools_run_read_json(self):
-        with tempfile.TemporaryDirectory() as temp_dir:
-            base = Path(temp_dir)
-            (base / "sample.txt").write_text("hello tools", encoding="utf-8")
-            old_cwd = os.getcwd()
-            os.chdir(base)
-            try:
-                code, stdout, stderr = self.run_cli(
-                    ["--json", "tools", "run", "read", '{"path":"sample.txt"}'],
-                    chatdata_dir=base / "chatdata",
-                )
-            finally:
-                os.chdir(old_cwd)
-
-        self.assertEqual(code, 0)
-        self.assertEqual(stderr, "")
-        data = json.loads(stdout)
-        self.assertEqual(data["output"], "hello tools")
-        self.assertFalse(data["is_error"])
-
-    def test_tools_run_shell_requires_interactive_approval(self):
+    def test_tools_run_requires_sandbox_context(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             code, stdout, stderr = self.run_cli(
-                [
-                    "--shell-approval",
-                    "require",
-                    "--json",
-                    "tools",
-                    "run",
-                    "exec",
-                    '{"command":"git add ."}',
-                ],
+                ["--json", "tools", "run", "read_file", '{"file_path":"sample.txt"}'],
                 chatdata_dir=temp_dir,
             )
 
         self.assertEqual(code, 1)
-        self.assertIn("pyclaw shell approval required", stderr)
-        self.assertIn("git add .", stderr)
-        self.assertNotEqual(stdout, "", f"code={code} stderr={stderr!r}")
-        self.assertTrue(stdout.lstrip().startswith("{"), f"code={code} stdout={stdout!r} stderr={stderr!r}")
+        self.assertEqual(stderr, "")
         data = json.loads(stdout)
         self.assertTrue(data["is_error"])
-        self.assertEqual(data["details"]["deniedReason"], "approval_required")
+        self.assertIn("sandbox_base_url", data["output"])
 
     def test_format_non_text_blocks_includes_tool_details(self):
         message = {

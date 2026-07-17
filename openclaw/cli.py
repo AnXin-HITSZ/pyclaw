@@ -31,7 +31,6 @@ from openclaw.tools.catalog import list_catalog_entries
 from openclaw.tools.executor import execute_tool_call, make_base_context
 from openclaw.tools.policy import ToolPolicy
 from openclaw.tools.registry import normalize_tool
-from openclaw.tools.shell.approval import ShellApprovalRequest
 
 DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant."
 DEFAULT_MODEL = "gpt-4.1-mini"
@@ -112,17 +111,17 @@ def build_parser() -> argparse.ArgumentParser:
         "--tool-profile",
         choices=["minimal", "readonly", "coding", "messaging", "full"],
         default="coding",
-        help="Default tool profile for agent prompts. Use full to expose runtime and web tools.",
+        help="Default tool profile for agent prompts.",
     )
     parser.add_argument(
         "--tools-allow",
         default=None,
-        help="Comma-separated tool allowlist. Supports groups such as group:fs, group:web, group:runtime.",
+        help="Comma-separated tool allowlist. Supports groups such as group:workspace or group:claw_sandbox.",
     )
     parser.add_argument(
         "--tools-deny",
         default=None,
-        help="Comma-separated tool denylist. Supports groups such as group:runtime.",
+        help="Comma-separated tool denylist. Supports groups such as group:workspace or group:claw_sandbox.",
     )
     parser.add_argument(
         "--tools-also-allow",
@@ -157,17 +156,6 @@ def build_parser() -> argparse.ArgumentParser:
         "--disable-compaction",
         action="store_true",
         help="Disable automatic session compaction; oversized tool results may still be truncated.",
-    )
-    parser.add_argument(
-        "--shell-approval",
-        choices=["auto", "require", "deny"],
-        default="auto",
-        help="Shell approval mode: auto allows known mutation commands, require prompts before non-readonly commands, deny blocks them.",
-    )
-    parser.add_argument(
-        "--yes",
-        action="store_true",
-        help="Approve shell commands that require confirmation without prompting. Use with care.",
     )
     parser.add_argument(
         "--json",
@@ -456,50 +444,8 @@ async def run_prompt(args: argparse.Namespace, prompt: str) -> AssistantMessage:
 
 
 def build_tool_context_metadata(args: argparse.Namespace) -> dict[str, Any]:
-    metadata: dict[str, Any] = {
-        "shell_approval_mode": args.shell_approval,
-    }
-    if args.yes:
-        metadata["shell_approval_callback"] = approve_shell_without_prompt
-    elif args.shell_approval == "require":
-        metadata["shell_approval_callback"] = prompt_shell_approval
-    return metadata
-
-
-def approve_shell_without_prompt(request: ShellApprovalRequest) -> bool:
-    print_shell_approval_summary(request, approved_by="--yes")
-    return True
-
-
-def prompt_shell_approval(request: ShellApprovalRequest) -> bool:
-    print_shell_approval_summary(request)
-    if not sys.stdin.isatty():
-        print("pyclaw: shell command rejected because stdin is not interactive.", file=sys.stderr)
-        return False
-    try:
-        print("Approve shell command? [y/N] ", end="", file=sys.stderr, flush=True)
-        answer = input().strip().lower()
-    except EOFError:
-        print("pyclaw: shell command rejected because approval input ended.", file=sys.stderr)
-        return False
-    return answer in {"y", "yes"}
-
-
-def print_shell_approval_summary(request: ShellApprovalRequest, *, approved_by: str | None = None) -> None:
-    print("", file=sys.stderr)
-    print("pyclaw shell approval required", file=sys.stderr)
-    print(f"tool: {request.tool_name or 'shell'}", file=sys.stderr)
-    if request.session_id:
-        print(f"session: {request.session_id}", file=sys.stderr)
-    print(f"safety: {request.safety}", file=sys.stderr)
-    print("command:", file=sys.stderr)
-    print(request.command, file=sys.stderr)
-    if request.reasons:
-        print("reasons:", file=sys.stderr)
-        for reason in request.reasons:
-            print(f"- {reason}", file=sys.stderr)
-    if approved_by:
-        print(f"approved by {approved_by}", file=sys.stderr)
+    sandbox_base_url = os.environ.get("PYCLAW_SANDBOX_BASE_URL")
+    return {"sandbox_base_url": sandbox_base_url} if sandbox_base_url else {}
 
 
 def build_tool_policy(args: argparse.Namespace, *, default_profile: str | None = None) -> ToolPolicy:

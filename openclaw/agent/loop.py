@@ -45,7 +45,6 @@ class LoopConfig:
     workspace_dir: Any | None = None
     chatdata_dir: Any | None = None
     tool_hooks: ToolHooks | None = None
-    workspace_only: bool = True
     readonly: bool = False
     tool_metadata: dict[str, Any] | None = None
 
@@ -153,7 +152,6 @@ async def execute_tool_calls(config: LoopConfig, assistant: AssistantMessage) ->
         provider=getattr(config.provider, "provider_name", None),
         emit=config.emit,
         readonly=config.readonly,
-        workspace_only=config.workspace_only,
         metadata=config.tool_metadata,
     )
     outcomes = await execute_tool_call_batch(calls, config.tools, context, config.tool_hooks)

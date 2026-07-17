@@ -10,7 +10,6 @@ public record AgentToolPolicyResponse(
         List<String> toolsDeny,
         List<String> toolsAlsoAllow,
         boolean readonly,
-        String shellApproval,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt
 ) {
