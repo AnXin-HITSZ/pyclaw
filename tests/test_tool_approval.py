@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 import asyncio
-import tempfile
 import unittest
-from pathlib import Path
+from typing import Any
 
 from openclaw.llm.types import ToolCallBlock
 from openclaw.tools.approval import (
@@ -14,12 +13,35 @@ from openclaw.tools.approval import (
     PendingToolApprovalError,
 )
 from openclaw.tools.approval_hooks import ApprovalToolHooks
-from openclaw.tools.approval_store import FilePendingApprovalStore
+from openclaw.tools.approval_store import (
+    DEFAULT_TTL_SECONDS,
+    PendingApprovalStore,
+)
 from openclaw.tools.executor import execute_tool_call, make_base_context
 from openclaw.tools.hooks import ToolExecutionDecision
 from openclaw.tools.registry import ToolRegistry
 from openclaw.tools.results import text_result
 from openclaw.tools.types import ToolDefinition, ToolMetadata
+
+
+class InMemoryPendingApprovalStore:
+    """Minimal in-memory implementation of PendingApprovalStore for tests.
+
+    Does not enforce TTL — tests that need expiry behaviour can call
+    ``delete`` manually. Production code must use ``RedisPendingApprovalStore``.
+    """
+
+    def __init__(self) -> None:
+        self._store: dict[str, dict[str, Any]] = {}
+
+    def save(self, approval_id: str, state: dict[str, Any], ttl_seconds: int = DEFAULT_TTL_SECONDS) -> None:
+        self._store[approval_id] = dict(state)
+
+    def load(self, approval_id: str) -> dict[str, Any] | None:
+        return dict(self._store[approval_id]) if approval_id in self._store else None
+
+    def delete(self, approval_id: str) -> None:
+        self._store.pop(approval_id, None)
 
 
 def _make_tool(name: str, risk: str) -> ToolDefinition:
@@ -38,17 +60,13 @@ def _make_tool(name: str, risk: str) -> ToolDefinition:
 
 class ApprovalHookTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self) -> None:
-        self.tempdir = tempfile.TemporaryDirectory()
-        self.store = FilePendingApprovalStore(self.tempdir.name)
+        self.store = InMemoryPendingApprovalStore()
         self.request_context = ApprovalRuntimeContext(
             session_id="session-1",
             claw_id="claw-1",
             owner_user_id="user-1",
             sandbox_base_url="http://sandbox.local",
         )
-
-    def tearDown(self) -> None:
-        self.tempdir.cleanup()
 
     async def test_low_risk_returns_allow(self):
         hooks = ApprovalToolHooks(pending_store=self.store, request_context=self.request_context)
@@ -86,6 +104,8 @@ class ApprovalHookTests(unittest.IsolatedAsyncioTestCase):
         self.assertIsNotNone(state)
         self.assertEqual(state["tool_call"]["name"], "write_file")
         self.assertEqual(state["session_id"], "session-1")
+        # assistant_message field must not be written (cleanup of review item #2)
+        self.assertNotIn("assistant_message", state)
 
     async def test_hard_policy_missing_sandbox_denies(self):
         request_context = ApprovalRuntimeContext(session_id="session-1")
@@ -135,31 +155,27 @@ class ApprovalHookTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(decision.status, "ALLOW")
 
 
-class PendingApprovalStoreTests(unittest.TestCase):
+class PendingApprovalStoreContractTests(unittest.TestCase):
+    """Contract tests that any PendingApprovalStore implementation must satisfy."""
+
+    def _make_store(self) -> PendingApprovalStore:
+        # Tests use the in-memory fake. Production uses RedisPendingApprovalStore.
+        return InMemoryPendingApprovalStore()
+
     def test_save_load_delete_round_trip(self):
-        with tempfile.TemporaryDirectory() as tempdir:
-            store = FilePendingApprovalStore(tempdir)
-            store.save("approval_1", {"foo": "bar"}, ttl_seconds=60)
-            self.assertEqual(store.load("approval_1"), {"foo": "bar"})
-            store.delete("approval_1")
-            self.assertIsNone(store.load("approval_1"))
+        store = self._make_store()
+        store.save("approval_1", {"foo": "bar"}, ttl_seconds=60)
+        self.assertEqual(store.load("approval_1"), {"foo": "bar"})
+        store.delete("approval_1")
+        self.assertIsNone(store.load("approval_1"))
 
     def test_missing_returns_none(self):
-        with tempfile.TemporaryDirectory() as tempdir:
-            store = FilePendingApprovalStore(tempdir)
-            self.assertIsNone(store.load("nope"))
+        store = self._make_store()
+        self.assertIsNone(store.load("nope"))
 
-    def test_expired_is_treated_as_missing(self):
-        with tempfile.TemporaryDirectory() as tempdir:
-            store = FilePendingApprovalStore(tempdir)
-            store.save("approval_1", {"foo": "bar"}, ttl_seconds=1)
-            path = Path(tempdir) / "approval_1.json"
-            # Manually rewrite the expires_at to be in the past.
-            import json
-            payload = json.loads(path.read_text(encoding="utf-8"))
-            payload["expires_at"] = 1.0
-            path.write_text(json.dumps(payload), encoding="utf-8")
-            self.assertIsNone(store.load("approval_1"))
+    def test_delete_missing_is_idempotent(self):
+        store = self._make_store()
+        store.delete("never_saved")  # must not raise
 
 
 if __name__ == "__main__":

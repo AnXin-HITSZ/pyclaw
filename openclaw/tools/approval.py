@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 
@@ -46,6 +46,13 @@ class ApprovalRuntimeContext:
     when the resume endpoint is called. The context must NOT contain any
     secret material (API keys, encrypted tokens, etc.). Secrets are
     reinjected from Spring on ``/v1/agent/resume``.
+
+    The ``messages`` snapshot is intentionally NOT stored here — it is read
+    live from ``agent.state.messages`` via the ``messages_snapshot_provider``
+    callback in ``ApprovalToolHooks`` at the moment the approval is created.
+    Stashing a snapshot at context-construction time would capture a stale
+    view that misses the assistant tool_call message that triggered the
+    approval.
     """
 
     session_id: str
@@ -55,7 +62,6 @@ class ApprovalRuntimeContext:
     role_key: str | None = None
     agent_key: str | None = None
     sandbox_base_url: str | None = None
-    messages_snapshot: list[dict[str, Any]] = field(default_factory=list)
     provider_name: str | None = None
     model: str | None = None
     system_prompt: str | None = None

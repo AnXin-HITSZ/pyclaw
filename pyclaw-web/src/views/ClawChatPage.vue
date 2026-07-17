@@ -86,6 +86,16 @@
                 <span class="approval-label">过期时间</span>
                 <span class="approval-value">{{ formatShort(pendingApproval.expiresAt) }}</span>
               </div>
+              <div class="approval-row">
+                <span class="approval-label">拒绝原因（可选）</span>
+                <textarea
+                  v-model="rejectReasonInput"
+                  class="approval-reason-input"
+                  rows="2"
+                  placeholder="例如：路径不对、内容不合适、暂不执行..."
+                  :disabled="resolvingApproval"
+                />
+              </div>
               <div v-if="approvalError" class="approval-error">{{ approvalError }}</div>
             </div>
             <div class="approval-actions">
@@ -143,6 +153,7 @@ const pendingApproval = ref(null);
 const showApprovalModal = ref(false);
 const resolvingApproval = ref(false);
 const approvalError = ref("");
+const rejectReasonInput = ref("");
 
 const roleLabel = computed(() => {
   const r = roles.value.find(r => r.roleKey === selectedRoleKey.value);
@@ -263,9 +274,10 @@ async function rejectApproval() {
   approvalError.value = "";
   const approvalId = pendingApproval.value.id;
   const cid = clawId.value;
+  const reason = rejectReasonInput.value.trim();
   try {
     const res = await api.post(`/api/claws/${cid}/chat/approvals/${approvalId}/reject`, {
-      reason: "用户在弹窗中拒绝执行该工具调用",
+      reason: reason || undefined,
     });
     closeApprovalModal();
     await handleChatResponse(res);
@@ -282,6 +294,7 @@ function closeApprovalModal() {
   showApprovalModal.value = false;
   pendingApproval.value = null;
   approvalError.value = "";
+  rejectReasonInput.value = "";
 }
 
 function formatArgumentsPreview(preview) {
@@ -506,6 +519,18 @@ onMounted(load);
   padding: 8px 12px; border-radius: var(--radius-sm); font-size: 12px;
   color: var(--danger); background: rgba(248,81,73,0.08);
 }
+.approval-reason-input {
+  background: var(--bg-deep); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 8px 10px;
+  color: var(--text-primary); font-size: 13px; font-family: inherit;
+  line-height: 1.5; resize: vertical; min-height: 56px;
+  transition: border-color 0.2s var(--ease-out), box-shadow 0.2s var(--ease-out);
+}
+.approval-reason-input:focus {
+  outline: none; border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+.approval-reason-input:disabled { opacity: 0.5; }
 .approval-actions { display: flex; justify-content: flex-end; gap: 8px; }
 .approval-actions .btn-primary {
   padding: 8px 18px; font-size: 13px; font-weight: 700; color: #0a0e14;

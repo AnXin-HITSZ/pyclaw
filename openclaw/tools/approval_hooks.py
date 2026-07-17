@@ -50,12 +50,6 @@ class ApprovalToolHooks(NoopToolHooks):
         self.ttl_seconds = ttl_seconds
         self._clock = clock or time.time
         self._messages_snapshot_provider = messages_snapshot_provider
-        self._current_assistant_snapshot: dict[str, Any] | None = None
-
-    def set_assistant_snapshot(self, assistant_message_dict: dict[str, Any]) -> None:
-        """Record the assistant message (with tool_calls) that produced the pending call."""
-
-        self._current_assistant_snapshot = assistant_message_dict
 
     async def before_tool_call(
         self,
@@ -111,8 +105,6 @@ class ApprovalToolHooks(NoopToolHooks):
         messages_snapshot: list[dict[str, Any]] = []
         if self._messages_snapshot_provider is not None:
             messages_snapshot = list(self._messages_snapshot_provider() or [])
-        elif self.request_context.messages_snapshot:
-            messages_snapshot = list(self.request_context.messages_snapshot)
 
         state: dict[str, Any] = {
             "approval_id": approval_id,
@@ -132,7 +124,6 @@ class ApprovalToolHooks(NoopToolHooks):
             "tools_deny": self.request_context.tools_deny,
             "tools_also_allow": self.request_context.tools_also_allow,
             "messages": messages_snapshot,
-            "assistant_message": self._current_assistant_snapshot,
             "tool_call": {
                 "id": call.id,
                 "name": call.name,

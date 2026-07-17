@@ -17,8 +17,4 @@ public record ClawChatRunResponse(
         long latencyMs,
         ToolApprovalResponse approval
 ) {
-    public ClawChatRunResponse(String sessionId, String clawId, String roleKey, String agentId, String agentKey,
-                               String text, Map<String, Object> message, long latencyMs) {
-        this("COMPLETED", sessionId, clawId, roleKey, agentId, agentKey, text, message, latencyMs, null);
-    }
 }
