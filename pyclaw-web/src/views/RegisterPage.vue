@@ -1,7 +1,14 @@
 <template>
   <div class="auth-page">
+    <div class="aurora aurora-1"></div>
+    <div class="aurora aurora-2"></div>
     <div class="auth-card">
-      <h2>注册 PyClaw</h2>
+      <div class="auth-brand">
+        <span class="brand-mark">◢</span>
+        <span class="brand-name">PyClaw</span>
+      </div>
+      <h1>创建账号</h1>
+      <p class="auth-sub">加入 PyClaw Multi-Agent 工作区</p>
       <form @submit.prevent="handleRegister">
         <div class="form-group">
           <label for="username">用户名</label>
@@ -15,17 +22,11 @@
           <label for="password">密码</label>
           <input id="password" v-model="password" type="password" required placeholder="请设置密码" />
         </div>
-        <p v-if="error" class="error">{{ error }}</p>
-        <button type="submit" class="btn-primary" :disabled="loading">
-          {{ loading ? "注册中..." : "注册" }}
-        </button>
+        <AppButton variant="primary" type="submit" class="auth-submit" :loading="submitting" loading-text="注册中...">
+          注册
+        </AppButton>
       </form>
-      <p class="switch-link">
-        已有账号？<router-link to="/login">立即登录</router-link>
-      </p>
-      <p class="back-link">
-        <router-link to="/">← 返回首页</router-link>
-      </p>
+      <p class="auth-switch">已有账号？<router-link to="/login">立即登录</router-link></p>
     </div>
   </div>
 </template>
@@ -34,22 +35,28 @@
 import { ref } from "vue";
 import { useRouter } from "vue-router";
 import { useAuth } from "../composables/useAuth.js";
+import { useToast } from "../composables/useToast.js";
+import AppButton from "../components/ui/AppButton.vue";
 
 const router = useRouter();
-const { register, loading } = useAuth();
+const { register } = useAuth();
+const { toast } = useToast();
 
 const username = ref("");
 const displayName = ref("");
 const password = ref("");
-const error = ref("");
+const submitting = ref(false);
 
 async function handleRegister() {
-  error.value = "";
+  if (submitting.value) return;
+  submitting.value = true;
   try {
     await register(username.value, password.value, displayName.value || undefined);
     router.push("/workspace");
   } catch (e) {
-    error.value = e.message || "注册失败，请重试";
+    toast.error(e.message || "注册失败");
+  } finally {
+    submitting.value = false;
   }
 }
 </script>
@@ -57,20 +64,43 @@ async function handleRegister() {
 <style scoped>
 .auth-page {
   min-height: 100vh; display: flex; align-items: center; justify-content: center;
-  background: radial-gradient(ellipse at 50% 0%, rgba(240,163,58,0.06) 0%, transparent 60%),
-              var(--bg-deep);
+  position: relative; overflow: hidden; padding: 24px;
 }
-
+.aurora { position: absolute; border-radius: 50%; filter: blur(90px); pointer-events: none; }
+.aurora-1 {
+  width: 460px; height: 460px; top: -100px; left: -80px;
+  background: radial-gradient(circle, rgba(245, 168, 61, 0.14), transparent 65%);
+  animation: drift 15s var(--ease-in-out) infinite alternate;
+}
+.aurora-2 {
+  width: 400px; height: 400px; bottom: -90px; right: -60px;
+  background: radial-gradient(circle, rgba(77, 208, 225, 0.1), transparent 65%);
+  animation: drift 19s var(--ease-in-out) infinite alternate-reverse;
+}
+@keyframes drift {
+  from { transform: translate(0, 0) scale(1); }
+  to { transform: translate(36px, -28px) scale(1.1); }
+}
 .auth-card {
-  background: var(--bg-surface); border: 1px solid var(--border);
-  border-radius: var(--radius-lg); padding: 44px 40px; width: 400px; max-width: 90vw;
-  animation: modal-enter 0.35s var(--ease-spring);
+  width: 400px; max-width: 100%; padding: 40px 36px; position: relative;
+  background: rgba(16, 21, 31, 0.72); border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg); box-shadow: var(--shadow);
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  animation: card-in 0.4s var(--ease-out);
 }
-
-@keyframes modal-enter { from { opacity: 0; transform: scale(0.96) translateY(8px); } to { opacity: 1; transform: scale(1) translateY(0); } }
-
-h2 { text-align: center; margin-bottom: 32px; font-size: 22px; font-weight: 700; letter-spacing: -0.3px; }
-
+@keyframes card-in {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.auth-brand { display: flex; align-items: center; gap: 10px; margin-bottom: 28px; }
+.brand-mark {
+  width: 30px; height: 30px; display: grid; place-items: center;
+  border-radius: 9px; background: var(--gradient-aurora); color: #0a0e14;
+  font-size: 13px; box-shadow: var(--glow-accent);
+}
+.brand-name { font-family: var(--font-display); font-weight: 700; font-size: 16px; }
+.auth-card h1 { font-family: var(--font-display); font-size: 24px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 6px; }
+.auth-sub { color: var(--text-muted); font-size: 13px; margin-bottom: 26px; }
 .form-group { margin-bottom: 20px; }
 label { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 500; color: var(--text-secondary); }
 input {
@@ -79,20 +109,10 @@ input {
   transition: border-color 0.2s var(--ease-out), box-shadow 0.2s var(--ease-out);
 }
 input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
-
-.error { color: var(--danger); font-size: 13px; margin-bottom: 16px; animation: fade-in-up 0.2s var(--ease-out); }
-@keyframes fade-in-up { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
-
-.btn-primary {
-  width: 100%; padding: 12px; font-size: 15px; font-weight: 700; color: #0a0e14;
-  background: var(--accent); border: none; border-radius: var(--radius-sm);
-  transition: all 0.2s var(--ease-out); min-height: 45px;
-  display: flex; align-items: center; justify-content: center;
+.auth-submit { width: 100%; margin-top: 8px; padding: 12px; }
+.auth-switch { margin-top: 22px; text-align: center; color: var(--text-muted); font-size: 13px; }
+@media (prefers-reduced-motion: reduce) {
+  .aurora-1, .aurora-2 { animation: none; }
+  .auth-card { animation: none; }
 }
-.btn-primary:hover:not(:disabled) { background: var(--accent-soft); transform: translateY(-1px); box-shadow: var(--shadow-glow); }
-.btn-primary:active:not(:disabled) { transform: translateY(0); }
-.btn-primary:disabled { opacity: 0.5; }
-
-.switch-link { text-align: center; margin-top: 22px; font-size: 14px; color: var(--text-secondary); }
-.back-link { text-align: center; margin-top: 10px; font-size: 13px; }
 </style>

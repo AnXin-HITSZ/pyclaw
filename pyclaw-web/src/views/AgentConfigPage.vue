@@ -1,24 +1,36 @@
 <template>
-  <div class="page">
-    <div class="page-header">
-      <h1>Agent 配置</h1>
-      <button class="btn-primary" @click="openCreate">+ 新建 Agent</button>
-    </div>
+  <div class="agent-page">
+    <PageHeader title="Agent 配置" subtitle="Agent 定义了 Claw 的行为方式——模型、系统提示词、工具策略和审批模式。">
+      <template #actions>
+        <AppButton variant="primary" @click="openCreate">+ 新建 Agent</AppButton>
+      </template>
+    </PageHeader>
 
-    <div v-if="loading" class="loading">加载中...</div>
-    <div v-else-if="agents.length === 0" class="empty-state">
-      <div class="empty-state-icon">🤖</div>
-      <h3>还没有 Agent 配置</h3>
-      <p>Agent 定义了 Claw 的行为方式——模型、系统提示词、工具策略和审批模式。</p>
-      <button class="btn-primary" @click="openCreate">+ 创建第一个 Agent</button>
+    <div v-if="loading" class="agent-grid">
+      <div v-for="i in 6" :key="i" class="card agent-card skeleton-card">
+        <AppSkeleton variant="text" :width="'60%'" :height="18" />
+        <AppSkeleton variant="text" :width="'40%'" :height="12" />
+        <AppSkeleton variant="text" :width="'90%'" :height="12" />
+        <AppSkeleton variant="text" :width="'70%'" :height="12" />
+      </div>
+    </div>
+    <div v-else-if="agents.length === 0" class="empty-state-wrap">
+      <AppEmpty icon="🤖" title="还没有 Agent 配置" description="Agent 定义了 Claw 的行为方式——模型、系统提示词、工具策略和审批模式。">
+        <AppButton variant="primary" @click="openCreate">+ 创建第一个 Agent</AppButton>
+      </AppEmpty>
     </div>
     <div v-else class="agent-grid">
-      <div v-for="agent in agents" :key="agent.id" class="card agent-card">
+      <article
+        v-for="(agent, index) in agents"
+        :key="agent.id"
+        class="card agent-card"
+        :style="{ transitionDelay: `${index * 40}ms` }"
+      >
         <div class="agent-header">
           <h3>{{ agent.name }}</h3>
-          <span class="agent-status" :class="agent.enabled ? 'enabled' : 'disabled'">
+          <AppTag :tone="agent.enabled ? 'success' : 'neutral'">
             {{ agent.enabled ? "启用" : "停用" }}
-          </span>
+          </AppTag>
         </div>
         <p class="agent-key">{{ agent.agentKey }}</p>
         <p class="agent-desc">{{ agent.description || "暂无描述" }}</p>
@@ -29,105 +41,117 @@
         </div>
         <p v-if="agent.systemPrompt" class="agent-prompt">System Prompt: {{ truncate(agent.systemPrompt, 100) }}</p>
         <div class="agent-actions">
-          <button class="btn-sm" @click="openEdit(agent)">编辑</button>
-          <button class="btn-sm btn-danger" @click="handleDelete(agent)">删除</button>
+          <AppButton variant="ghost" @click="openEdit(agent)">编辑</AppButton>
+          <AppButton
+            variant="danger"
+            :loading="deletingId === agent.id"
+            loading-text="删除中..."
+            @click="handleDelete(agent)"
+          >删除</AppButton>
         </div>
-      </div>
+      </article>
     </div>
 
     <!-- Create/Edit Modal -->
-    <div v-if="showModal" class="modal-overlay" @click.self="showModal = false">
-      <div class="modal">
-        <h2>{{ editing ? "编辑 Agent" : "新建 Agent" }}</h2>
-        <form @submit.prevent="handleSave">
-          <div class="form-row">
-            <div class="form-group">
-              <label class="label-with-help">
-                <span>Agent Key *</span>
-                <span
-                  class="help-dot"
-                  tabindex="0"
-                  role="img"
-                  aria-label="Agent Key 是 Agent 本体的唯一标识，用于运行时查找这套模型、提示词和工具配置。"
-                  data-tooltip="Agent 本体的唯一标识。它定义“这个 Agent 是谁”，会绑定模型、System Prompt、工具策略和工作目录。"
-                >?</span>
-              </label>
-              <input v-model="form.agentKey" required placeholder="my-agent" />
-            </div>
-            <div class="form-group">
-              <label>名称 *</label>
-              <input v-model="form.name" required placeholder="我的 Agent" />
-            </div>
+    <AppModal :show="showModal" :title="editing ? '编辑 Agent' : '新建 Agent'" @close="showModal = false">
+      <form @submit.prevent="handleSave">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="label-with-help">
+              <span>Agent Key *</span>
+              <span
+                class="help-dot"
+                tabindex="0"
+                role="img"
+                aria-label="Agent Key 是 Agent 本体的唯一标识，用于运行时查找这套模型、提示词和工具配置。"
+                data-tooltip="Agent 本体的唯一标识。它定义“这个 Agent 是谁”，会绑定模型、System Prompt、工具策略和工作目录。"
+              >?</span>
+            </label>
+            <input v-model="form.agentKey" required placeholder="my-agent" />
           </div>
           <div class="form-group">
-            <label>描述</label>
-            <input v-model="form.description" placeholder="简要描述 Agent 的用途" />
+            <label>名称 *</label>
+            <input v-model="form.name" required placeholder="我的 Agent" />
           </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Provider</label>
-              <select v-model="form.providerId">
-                <option value="">默认</option>
-                <option v-for="p in providers" :key="p.id" :value="p.id">{{ p.name }} ({{ p.model }})</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Model（可选，覆盖 Provider 默认）</label>
-              <input v-model="form.model" placeholder="如 deepseek-chat" />
-            </div>
+        </div>
+        <div class="form-group">
+          <label>描述</label>
+          <input v-model="form.description" placeholder="简要描述 Agent 的用途" />
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Provider</label>
+            <select v-model="form.providerId">
+              <option value="">默认</option>
+              <option v-for="p in providers" :key="p.id" :value="p.id">{{ p.name }} ({{ p.model }})</option>
+            </select>
           </div>
           <div class="form-group">
-            <label>System Prompt</label>
-            <textarea v-model="form.systemPrompt" rows="4" placeholder="给 Agent 的系统提示词..." />
+            <label>Model（可选，覆盖 Provider 默认）</label>
+            <input v-model="form.model" placeholder="如 deepseek-chat" />
           </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Tool Profile</label>
-              <select v-model="form.toolProfile">
-                <option value="minimal">minimal</option>
-                <option value="readonly">readonly</option>
-                <option value="coding">coding</option>
-                <option value="messaging">messaging</option>
-                <option value="full">full</option>
-              </select>
-            </div>
+        </div>
+        <div class="form-group">
+          <label>System Prompt</label>
+          <textarea v-model="form.systemPrompt" rows="4" placeholder="给 Agent 的系统提示词..." />
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Tool Profile</label>
+            <select v-model="form.toolProfile">
+              <option value="minimal">minimal</option>
+              <option value="readonly">readonly</option>
+              <option value="coding">coding</option>
+              <option value="messaging">messaging</option>
+              <option value="full">full</option>
+            </select>
           </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>工作目录</label>
-              <input v-model="form.workspaceDir" placeholder="/workspace" />
-            </div>
-            <div class="form-group"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>工作目录</label>
+            <input v-model="form.workspaceDir" placeholder="/workspace" />
           </div>
-          <div class="form-row single-switch-row">
-            <div class="form-group switch-field">
-              <label class="switch-line">
-                <span class="switch-label">启用</span>
-                <input class="switch-input" type="checkbox" v-model="form.enabled" />
-                <span class="switch-track"></span>
-              </label>
-            </div>
+          <div class="form-group"></div>
+        </div>
+        <div class="form-row single-switch-row">
+          <div class="form-group switch-field">
+            <label class="switch-line">
+              <span class="switch-label">启用</span>
+              <input class="switch-input" type="checkbox" v-model="form.enabled" />
+              <span class="switch-track"></span>
+            </label>
           </div>
-          <div class="modal-actions">
-            <button type="button" class="btn-secondary" @click="showModal = false">取消</button>
-            <button type="submit" class="btn-primary">保存</button>
-          </div>
-        </form>
-      </div>
-    </div>
+        </div>
+        <div class="modal-actions">
+          <AppButton variant="ghost" type="button" @click="showModal = false">取消</AppButton>
+          <AppButton variant="primary" type="submit" :loading="submitting" loading-text="保存中...">保存</AppButton>
+        </div>
+      </form>
+    </AppModal>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from "vue";
 import { api } from "../api/client.js";
+import { useToast } from "../composables/useToast.js";
+import AppButton from "../components/ui/AppButton.vue";
+import AppSkeleton from "../components/ui/AppSkeleton.vue";
+import AppTag from "../components/ui/AppTag.vue";
+import AppEmpty from "../components/ui/AppEmpty.vue";
+import AppModal from "../components/ui/AppModal.vue";
+import PageHeader from "../components/ui/PageHeader.vue";
 
+const { toast } = useToast();
 const agents = ref([]);
 const providers = ref([]);
 const loading = ref(true);
 const showModal = ref(false);
 const editing = ref(null);
 const form = ref({});
+const submitting = ref(false);
+const deletingId = ref(null);
 
 async function load() {
   loading.value = true;
@@ -170,6 +194,8 @@ function openEdit(agent) {
 }
 
 async function handleSave() {
+  if (submitting.value) return;
+  submitting.value = true;
   try {
     const body = {
       agentKey: form.value.agentKey,
@@ -193,19 +219,27 @@ async function handleSave() {
       await api.post("/api/agents", body);
     }
     showModal.value = false;
+    toast.success("已保存");
     await load();
   } catch (e) {
-    alert("保存失败: " + e.message);
+    toast.error("保存失败: " + e.message);
+  } finally {
+    submitting.value = false;
   }
 }
 
 async function handleDelete(agent) {
   if (!confirm(`确定删除 Agent "${agent.name}"？`)) return;
+  if (deletingId.value) return;
+  deletingId.value = agent.id;
   try {
     await api.delete(`/api/agents/${agent.id}`);
+    toast.success("已删除");
     await load();
   } catch (e) {
-    alert("删除失败: " + e.message);
+    toast.error("删除失败: " + e.message);
+  } finally {
+    if (deletingId.value === agent.id) deletingId.value = null;
   }
 }
 
@@ -218,33 +252,29 @@ onMounted(load);
 </script>
 
 <style scoped>
-.page { max-width: 1200px; }
-.page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
-.page-header h1 { font-size: 24px; }
+.agent-page { max-width: 1200px; }
 .agent-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 20px; }
-.agent-card { cursor: default; }
-.agent-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
-.agent-header h3 { font-size: 16px; }
-.agent-status { font-size: 11px; padding: 2px 8px; border-radius: 10px; }
-.agent-status.enabled { background: rgba(63,185,80,0.15); color: var(--success); }
-.agent-status.disabled { background: rgba(110,118,129,0.15); color: var(--text-muted); }
-.agent-key { font-family: monospace; font-size: 12px; color: var(--accent); margin-bottom: 8px; }
-.agent-desc { font-size: 13px; color: var(--text-secondary); margin-bottom: 8px; }
-.agent-detail { display: flex; gap: 16px; font-size: 12px; color: var(--text-muted); margin-bottom: 8px; }
-.agent-prompt { font-size: 12px; color: var(--text-muted); background: var(--bg-primary); padding: 8px; border-radius: 4px; margin-bottom: 12px; font-family: monospace; }
-.agent-actions { display: flex; gap: 8px; }
-.btn-sm { padding: 4px 12px; font-size: 12px; border-radius: 4px; border: 1px solid var(--border-color); background: transparent; color: var(--text-secondary); }
-.btn-danger { color: var(--danger); border-color: var(--danger); }
-.btn-primary { padding: 8px 20px; font-size: 14px; font-weight: 600; color: #fff; background: var(--accent); border: none; border-radius: 6px; }
-.btn-secondary { padding: 8px 20px; font-size: 14px; color: var(--text-secondary); background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 6px; }
-.loading, .empty { text-align: center; padding: 48px; color: var(--text-secondary); }
+.agent-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  animation: card-in 0.4s var(--ease-out) both;
+}
+@keyframes card-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.skeleton-card { gap: 10px; padding: 22px; }
+.agent-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px; }
+.agent-header h3 { font-size: 16px; margin: 0; }
+.agent-key { font-family: var(--font-mono); font-size: 12px; color: var(--accent); margin: 0; }
+.agent-desc { font-size: 13px; color: var(--text-secondary); margin: 0; }
+.agent-detail { display: flex; flex-wrap: wrap; gap: 16px; font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+.agent-prompt { font-size: 12px; color: var(--text-muted); background: var(--bg-primary); padding: 8px; border-radius: 6px; margin: 4px 0 0; font-family: var(--font-mono); }
+.agent-actions { display: flex; gap: 8px; margin-top: 12px; }
+.empty-state-wrap { margin-top: 24px; }
 
-.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 100; }
-.modal { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 32px; width: 640px; max-width: 90vw; max-height: 90vh; overflow-y: auto; }
-.modal h2 { margin-bottom: 20px; }
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.form-group { margin-bottom: 16px; }
-.form-group label { display: block; margin-bottom: 4px; font-size: 13px; color: var(--text-secondary); }
 .form-group .label-with-help { display: inline-flex; align-items: center; gap: 6px; }
 .help-dot {
   position: relative;
@@ -293,11 +323,6 @@ onMounted(load);
   opacity: 1;
   transform: translateX(-50%) translateY(0);
 }
-.form-group input, .form-group textarea, .form-group select {
-  width: 100%; padding: 8px 12px; background: var(--bg-primary); border: 1px solid var(--border-color);
-  border-radius: 6px; color: var(--text-primary); font-size: 14px;
-}
-.form-group input:focus, .form-group textarea:focus, .form-group select:focus { outline: none; border-color: var(--accent); }
 .switch-field { display: flex; align-items: flex-end; }
 .switch-field .switch-line {
   display: flex;
@@ -308,22 +333,10 @@ onMounted(load);
   margin: 0;
   cursor: pointer;
 }
-.switch-field .switch-input {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  opacity: 0;
-  pointer-events: none;
-}
-.switch-field .switch-track {
-  display: block;
-  position: relative;
-  width: 34px;
-  height: 20px;
-  flex: 0 0 34px;
-  border-radius: 999px;
-}
 .single-switch-row { grid-template-columns: 1fr 1fr; }
-.modal-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px; }
+
+@media (max-width: 640px) {
+  .agent-grid { grid-template-columns: 1fr; }
+  .form-row, .single-switch-row { grid-template-columns: 1fr; }
+}
 </style>

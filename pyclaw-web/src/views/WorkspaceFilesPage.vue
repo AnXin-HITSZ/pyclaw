@@ -1,38 +1,90 @@
 <template>
-  <div class="page">
-    <div class="page-header">
-      <button class="btn-back" @click="$router.push(`/workspace/claws/${clawId}`)">← Claw 详情</button>
-      <h1>Workspace 文件</h1>
-      <span class="path-breadcrumb">{{ currentPath }}</span>
-    </div>
+  <div class="files-page">
+    <PageHeader :title="`工作区文件`" :subtitle="currentPath">
+      <template #actions>
+        <AppButton variant="ghost" @click="$router.push(`/workspace/claws/${clawId}`)">← Claw 详情</AppButton>
+      </template>
+    </PageHeader>
 
-    <div v-if="loading" class="loading">加载中...</div>
-    <div v-else-if="error" class="error-msg">{{ error }}</div>
+    <div v-if="loading" class="files-card">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>名称</th>
+            <th>大小</th>
+            <th>修改时间</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="i in 5" :key="i">
+            <td><AppSkeleton variant="text" :width="`${60 + i * 6}%`" :height="14" /></td>
+            <td><AppSkeleton variant="text" width="48px" :height="14" /></td>
+            <td><AppSkeleton variant="text" width="96px" :height="14" /></td>
+            <td><AppSkeleton variant="text" width="56px" :height="14" /></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div v-else-if="error" class="error-panel">
+      <p class="error-msg">{{ error }}</p>
+      <AppButton variant="ghost" @click="loadDir(currentPath)">重试</AppButton>
+    </div>
 
     <div v-else class="file-manager">
       <!-- File List -->
-      <div class="card">
+      <div class="card files-card">
         <h3>文件列表</h3>
-        <div v-if="entries.length === 0" class="no-data">目录为空</div>
-        <div v-else class="file-list">
-          <div v-for="entry in entries" :key="entry.name" class="file-item"
-               @click="entry.isDir ? navigateTo(entry) : openFile(entry)">
-            <span class="file-icon">{{ entry.isDir ? '📁' : '📄' }}</span>
-            <span class="file-name">{{ entry.name }}</span>
-            <span v-if="!entry.isDir" class="file-size">{{ formatSize(entry.size) }}</span>
-          </div>
-        </div>
+        <AppEmpty v-if="entries.length === 0" icon="📁" title="目录为空" description="当前路径下没有可显示的文件或子目录。" />
+        <table v-else class="data-table">
+          <thead>
+            <tr>
+              <th>名称</th>
+              <th>大小</th>
+              <th>修改时间</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="entry in entries"
+              :key="entry.name"
+              class="file-row"
+              @click="entry.isDir ? navigateTo(entry) : openFile(entry)"
+            >
+              <td>
+                <span class="file-icon">{{ fileIcon(entry) }}</span>
+                <span class="file-name">{{ entry.name }}</span>
+              </td>
+              <td class="file-size">{{ entry.isDir ? '—' : formatSize(entry.size) }}</td>
+              <td class="file-mtime">{{ formatMtime(entry.mtime) }}</td>
+              <td class="file-action">
+                <button
+                  v-if="!entry.isDir"
+                  type="button"
+                  class="link-btn"
+                  @click.stop="openFile(entry)"
+                >打开</button>
+                <button
+                  v-else
+                  type="button"
+                  class="link-btn"
+                  @click.stop="navigateTo(entry)"
+                >进入</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
 
       <!-- File Editor -->
-      <div v-if="selectedFile" class="card">
+      <div v-if="selectedFile" class="card editor-card">
         <h3>{{ selectedFile }}</h3>
         <textarea v-model="fileContent" rows="15" class="file-editor" />
         <div class="editor-actions">
-          <button class="btn-secondary" @click="closeFile">取消</button>
-          <button class="btn-primary" @click="saveFile">保存</button>
+          <AppButton variant="ghost" @click="closeFile">取消</AppButton>
+          <AppButton variant="primary" :loading="saving" loading-text="保存中..." @click="saveFile">保存</AppButton>
         </div>
-        <p v-if="saveMsg" class="save-msg">{{ saveMsg }}</p>
       </div>
     </div>
   </div>
@@ -42,7 +94,13 @@
 import { ref, onMounted } from "vue";
 import { useRoute } from "vue-router";
 import { api } from "../api/client.js";
+import { useToast } from "../composables/useToast.js";
+import AppButton from "../components/ui/AppButton.vue";
+import AppSkeleton from "../components/ui/AppSkeleton.vue";
+import AppEmpty from "../components/ui/AppEmpty.vue";
+import PageHeader from "../components/ui/PageHeader.vue";
 
+const { toast } = useToast();
 const route = useRoute();
 const clawId = ref(route.params.id);
 const currentPath = ref(".");
@@ -51,7 +109,9 @@ const loading = ref(true);
 const error = ref("");
 const selectedFile = ref(null);
 const fileContent = ref("");
-const saveMsg = ref("");
+const saving = ref(false);
+
+const IMAGE_EXT = ["png", "jpg", "jpeg", "gif", "webp", "svg", "bmp", "ico"];
 
 async function loadDir(path) {
   loading.value = true;
@@ -66,6 +126,7 @@ async function loadDir(path) {
       path: typeof e === "object" ? (e.path || e.name || "") : (typeof e === "string" ? e : ""),
       isDir: typeof e === "object" ? (e.type === "directory" || e.is_dir === true || e.isDir === true) : false,
       size: typeof e === "object" ? e.size : null,
+      mtime: typeof e === "object" ? (e.mtime || e.modifiedAt || e.updatedAt || e.lastModified) : null,
     })).filter(e => e.name);
   } catch (e) {
     error.value = "获取文件列表失败: " + e.message;
@@ -91,29 +152,38 @@ async function openFile(entry) {
     fileContent.value = data && typeof data === "object" && "content" in data
       ? data.content
       : (typeof data === "string" ? data : JSON.stringify(data, null, 2));
-    saveMsg.value = "";
   } catch (e) {
-    error.value = "读取文件失败: " + e.message;
+    toast.error("读取文件失败: " + e.message);
   }
 }
 
 async function saveFile() {
+  if (saving.value) return;
   const filePath = currentPath.value === "." ? selectedFile.value : currentPath.value + "/" + selectedFile.value;
+  saving.value = true;
   try {
     // Send {content: "..."} as runner expects JSON body
     await api.put(`/api/claws/${clawId.value}/sandbox/files/${encodeURIComponent(filePath)}`, {
       content: fileContent.value,
     });
-    saveMsg.value = "保存成功";
+    toast.success("保存成功");
   } catch (e) {
-    saveMsg.value = "保存失败: " + e.message;
+    toast.error("保存失败: " + e.message);
+  } finally {
+    saving.value = false;
   }
 }
 
 function closeFile() {
   selectedFile.value = null;
   fileContent.value = "";
-  saveMsg.value = "";
+}
+
+function fileIcon(entry) {
+  if (entry.isDir) return "📁";
+  const ext = (entry.name.split(".").pop() || "").toLowerCase();
+  if (IMAGE_EXT.includes(ext)) return "🖼";
+  return "📄";
 }
 
 function formatSize(bytes) {
@@ -123,30 +193,57 @@ function formatSize(bytes) {
   return (bytes / 1048576).toFixed(1) + " MB";
 }
 
+function formatMtime(value) {
+  if (!value) return "—";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "—";
+  const pad = n => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 onMounted(() => loadDir("."));
 </script>
 
 <style scoped>
-.page { max-width: 900px; }
-.page-header { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
-.page-header h1 { font-size: 22px; }
-.btn-back { padding: 6px 12px; font-size: 13px; color: var(--text-secondary); background: transparent; border: 1px solid var(--border-color); border-radius: 6px; }
-.btn-primary { padding: 8px 20px; font-size: 14px; font-weight: 600; color: #fff; background: var(--accent); border: none; border-radius: 6px; }
-.btn-secondary { padding: 8px 20px; font-size: 14px; color: var(--text-secondary); background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 6px; }
-.path-breadcrumb { font-size: 13px; color: var(--text-muted); font-family: monospace; }
-.file-manager { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-.card { background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 10px; padding: 20px; }
-.card h3 { font-size: 15px; margin-bottom: 12px; }
-.file-list { display: flex; flex-direction: column; gap: 4px; }
-.file-item { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 6px; font-size: 13px; cursor: pointer; transition: background 0.15s; }
-.file-item:hover { background: var(--bg-tertiary); }
-.file-icon { font-size: 16px; }
-.file-name { flex: 1; }
-.file-size { color: var(--text-muted); font-size: 12px; }
-.file-editor { width: 100%; padding: 12px; background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary); font-family: monospace; font-size: 13px; resize: vertical; }
+.files-page { max-width: 900px; }
+.file-manager { display: grid; grid-template-columns: 1fr; gap: 20px; }
+.files-card { overflow: hidden; }
+.files-card h3 { font-size: 15px; margin-bottom: 12px; }
+.file-row { cursor: pointer; }
+.file-row .file-icon { margin-right: 8px; font-size: 15px; }
+.file-row .file-name { font-family: var(--font-mono); }
+.file-size, .file-mtime { color: var(--text-muted); font-size: 12px; }
+.file-action { text-align: right; }
+.link-btn {
+  padding: 3px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s var(--ease-out), border-color 0.15s var(--ease-out);
+}
+.link-btn:hover { background: var(--accent-glow); border-color: var(--border-light); }
+.file-editor {
+  width: 100%;
+  padding: 12px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  resize: vertical;
+}
 .editor-actions { display: flex; gap: 8px; margin-top: 12px; }
-.save-msg { margin-top: 8px; font-size: 13px; color: var(--success); }
-.no-data { color: var(--text-muted); font-size: 13px; }
-.loading, .error-msg { text-align: center; padding: 48px; color: var(--text-secondary); }
-.error-msg { color: var(--danger); }
+.error-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 48px 24px;
+}
+.error-panel .error-msg { margin: 0; color: var(--danger); }
 </style>
