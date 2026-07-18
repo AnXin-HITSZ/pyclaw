@@ -243,7 +243,7 @@ roleKey 冲突会被拒绝或自动生成后缀
 - 用户可见 Conversation Thread
 - 每个 Agent Instance 独立 Runtime memory session
 
-- [ ] **Step 1: 实现 ConversationService**
+- [x] **Step 1: 实现 ConversationService**
 
 职责：
 
@@ -254,7 +254,7 @@ roleKey 冲突会被拒绝或自动生成后缀
 按 conversation_id 拉取用户可见消息
 ```
 
-- [ ] **Step 2: 实现 AgentMemorySessionResolver**
+- [x] **Step 2: 实现 AgentMemorySessionResolver**
 
 规则：
 
@@ -264,7 +264,7 @@ session_id = agent-memory:{conversation_id}:{agent_instance_id}
 
 不得回退到 `roleKey`。
 
-- [ ] **Step 3: 改造 ClawChatRunRequest / Response**
+- [x] **Step 3: 改造 ClawChatRunRequest / Response**
 
 请求至少支持：
 
@@ -277,13 +277,13 @@ prompt
 
 如果只传 `roleKey`，Spring 必须解析到 `agentInstanceId` 后再进入 Orchestrator。
 
-- [ ] **Step 4: 改造消息保存**
+- [x] **Step 4: 改造消息保存**
 
 用户可见消息写入 `conversation_messages`。
 
 OpenClaw Runtime 私有上下文由 `session_id=agent-memory:{conversation_id}:{agent_instance_id}` 隔离。
 
-- [ ] **Step 5: 补测试**
+- [x] **Step 5: 补测试**
 
 覆盖：
 

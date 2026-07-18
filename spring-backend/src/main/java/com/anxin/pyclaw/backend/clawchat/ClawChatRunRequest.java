@@ -5,6 +5,9 @@ import jakarta.validation.constraints.NotBlank;
 public record ClawChatRunRequest(
         @NotBlank String prompt,
         String roleKey,
-        String sessionId
+        String sessionId,
+        // Task 4 additions (ARCHITECTURE.md)
+        String conversationId,
+        String agentInstanceId
 ) {
 }
