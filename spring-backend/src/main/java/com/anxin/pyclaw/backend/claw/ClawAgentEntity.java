@@ -3,12 +3,22 @@ package com.anxin.pyclaw.backend.claw;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.Lob;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import java.time.OffsetDateTime;
 
 @Entity
-@Table(name = "claw_agents")
+@Table(
+        name = "claw_agents",
+        uniqueConstraints = @UniqueConstraint(name = "uk_claw_agents_claw_role", columnNames = {"clawId", "roleKey"}),
+        indexes = {
+                @Index(name = "idx_claw_agents_claw_enabled_sort", columnList = "clawId,enabled,sortOrder"),
+                @Index(name = "idx_claw_agents_claw_pkgver", columnList = "clawId,packageVersionId"),
+                @Index(name = "idx_claw_agents_claw_source_agent", columnList = "clawId,sourceAgentId")
+        }
+)
 public class ClawAgentEntity {
     @Id
     private String id;
@@ -36,6 +46,18 @@ public class ClawAgentEntity {
     @Column(nullable = false)
     private OffsetDateTime updatedAt;
 
+    // Agent Instance extension (see ARCHITECTURE.md).
+    // sourceType: "local" | "package". Null is treated as "local" for legacy rows.
+    private String sourceType;
+    private String sourceAgentId;
+    private String packageId;
+    private String packageVersionId;
+    @Lob
+    private String localSystemPromptOverride;
+    private String localProfile;
+    private String installedBy;
+    private OffsetDateTime installedAt;
+
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
     public String getClawId() { return clawId; }
@@ -62,4 +84,21 @@ public class ClawAgentEntity {
     public void setCreatedAt(OffsetDateTime createdAt) { this.createdAt = createdAt; }
     public OffsetDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(OffsetDateTime updatedAt) { this.updatedAt = updatedAt; }
+
+    public String getSourceType() { return sourceType; }
+    public void setSourceType(String sourceType) { this.sourceType = sourceType; }
+    public String getSourceAgentId() { return sourceAgentId; }
+    public void setSourceAgentId(String sourceAgentId) { this.sourceAgentId = sourceAgentId; }
+    public String getPackageId() { return packageId; }
+    public void setPackageId(String packageId) { this.packageId = packageId; }
+    public String getPackageVersionId() { return packageVersionId; }
+    public void setPackageVersionId(String packageVersionId) { this.packageVersionId = packageVersionId; }
+    public String getLocalSystemPromptOverride() { return localSystemPromptOverride; }
+    public void setLocalSystemPromptOverride(String localSystemPromptOverride) { this.localSystemPromptOverride = localSystemPromptOverride; }
+    public String getLocalProfile() { return localProfile; }
+    public void setLocalProfile(String localProfile) { this.localProfile = localProfile; }
+    public String getInstalledBy() { return installedBy; }
+    public void setInstalledBy(String installedBy) { this.installedBy = installedBy; }
+    public OffsetDateTime getInstalledAt() { return installedAt; }
+    public void setInstalledAt(OffsetDateTime installedAt) { this.installedAt = installedAt; }
 }
