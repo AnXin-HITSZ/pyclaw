@@ -26,6 +26,7 @@
             <div v-for="s in sessions" :key="s.sessionId"
                  class="session-item" :class="{ active: s.sessionId === activeSessionId }"
                  @click="selectSession(s.sessionId)">
+              <span class="session-indicator"></span>
               <div class="session-name">{{ s.agentKey || '会话' }}</div>
               <div class="session-meta">{{ s.messageCount }} 条 · {{ formatShort(s.lastActiveAt) }}</div>
             </div>
@@ -37,10 +38,18 @@
       <!-- Messages -->
       <div class="chat-main">
         <div ref="messagesEl" class="messages-container" @scroll="onScroll">
-          <div v-if="messages.length === 0 && !sending" class="empty-chat">
+          <div v-if="messages.length === 0 && !sending && !loadingMessages" class="empty-chat">
             <div class="empty-chat-icon">&#x1F4AC;</div>
             <p>开始与 {{ claw?.name || 'Claw' }} 对话</p>
             <p class="empty-hint">选择一个角色，输入你的第一条消息</p>
+          </div>
+
+          <!-- Loading skeleton -->
+          <div v-if="loadingMessages" class="messages-skeleton">
+            <div v-for="i in 4" :key="i" class="skeleton-row" :class="i % 2 === 0 ? 'user' : 'assistant'">
+              <AppSkeleton variant="rect" :height="14" width="60px" />
+              <AppSkeleton variant="rect" :height="i % 2 === 0 ? 48 : 64" :width="i % 2 === 0 ? '62%' : '74%'" />
+            </div>
           </div>
 
           <TransitionGroup name="msg">
@@ -63,55 +72,55 @@
         </div>
 
         <!-- Tool approval modal -->
-        <div v-if="showApprovalModal && pendingApproval" class="approval-mask" @click.self="closeApprovalModal">
-          <div class="approval-modal">
-            <div class="approval-header">
-              <h3>需要你确认后继续执行</h3>
-              <span class="approval-risk" :class="pendingApproval.risk">{{ pendingApproval.risk }}</span>
-            </div>
-            <div class="approval-body">
-              <div class="approval-row">
-                <span class="approval-label">工具名称</span>
-                <span class="approval-value">{{ pendingApproval.toolName }}</span>
-              </div>
-              <div class="approval-row">
-                <span class="approval-label">执行意图</span>
-                <span class="approval-value">{{ pendingApproval.intent || '（未提供意图摘要）' }}</span>
-              </div>
-              <div class="approval-row">
-                <span class="approval-label">参数摘要</span>
-                <pre class="approval-args">{{ formatArgumentsPreview(pendingApproval.argumentsPreview) }}</pre>
-              </div>
-              <div class="approval-row">
-                <span class="approval-label">过期时间</span>
-                <span class="approval-value">{{ formatShort(pendingApproval.expiresAt) }}</span>
-              </div>
-              <div class="approval-row">
-                <span class="approval-label">拒绝原因（可选）</span>
-                <textarea
-                  v-model="rejectReasonInput"
-                  class="approval-reason-input"
-                  rows="2"
-                  placeholder="例如：路径不对、内容不合适、暂不执行..."
-                  :disabled="resolvingApproval"
-                />
-              </div>
-              <div v-if="approvalError" class="approval-error">{{ approvalError }}</div>
-            </div>
-            <div class="approval-actions">
-              <button class="btn-secondary" :disabled="resolvingApproval" @click="rejectApproval">拒绝执行</button>
-              <button class="btn-primary" :disabled="resolvingApproval" @click="approveApproval">同意执行</button>
-            </div>
+        <AppModal
+          :show="showApprovalModal && !!pendingApproval"
+          title="需要你确认后继续执行"
+          @close="closeApprovalModal"
+        >
+          <div class="approval-risk-row">
+            <AppTag :tone="pendingApproval && pendingApproval.risk === 'high' ? 'danger' : 'warning'" :pulse="!!pendingApproval && pendingApproval.risk === 'high'">
+              {{ pendingApproval ? pendingApproval.risk : '' }}
+            </AppTag>
           </div>
-        </div>
+          <div class="approval-body">
+            <div class="approval-row">
+              <span class="approval-label">工具名称</span>
+              <span class="approval-value">{{ pendingApproval?.toolName }}</span>
+            </div>
+            <div class="approval-row">
+              <span class="approval-label">执行意图</span>
+              <span class="approval-value">{{ pendingApproval?.intent || '（未提供意图摘要）' }}</span>
+            </div>
+            <div class="approval-row">
+              <span class="approval-label">参数摘要</span>
+              <pre class="approval-args">{{ formatArgumentsPreview(pendingApproval?.argumentsPreview) }}</pre>
+            </div>
+            <div class="approval-row">
+              <span class="approval-label">过期时间</span>
+              <span class="approval-value">{{ formatShort(pendingApproval?.expiresAt) }}</span>
+            </div>
+            <div class="approval-row">
+              <span class="approval-label">拒绝原因（可选）</span>
+              <textarea
+                v-model="rejectReasonInput"
+                class="approval-reason-input"
+                rows="2"
+                placeholder="例如：路径不对、内容不合适、暂不执行..."
+                :disabled="resolvingApproval"
+              />
+            </div>
+            <div v-if="approvalError" class="approval-error">{{ approvalError }}</div>
+          </div>
+          <template #actions>
+            <AppButton variant="ghost" :disabled="resolvingApproval" @click="rejectApproval">拒绝执行</AppButton>
+            <AppButton variant="primary" :loading="resolvingApproval" loading-text="处理中..." @click="approveApproval">同意执行</AppButton>
+          </template>
+        </AppModal>
 
         <!-- Scroll anchor hint -->
         <div v-if="showScrollHint" class="scroll-hint" @click="scrollToBottom">
           ↓ 新消息
         </div>
-
-        <!-- Error -->
-        <div v-if="error" class="chat-error">{{ error }}</div>
 
         <!-- Input -->
         <div class="chat-input-area">
@@ -121,8 +130,8 @@
                     @input="autoResize" />
           <button class="btn-send" :disabled="!prompt.trim() || sending"
                   @click="sendMessage">
-            <span v-if="!sending">发送</span>
-            <span v-else class="sending-spinner"></span>
+            <AppSpinner v-if="sending" size="sm" class="send-spinner" />
+            <span v-else class="send-icon">↑</span>
           </button>
         </div>
       </div>
@@ -134,6 +143,14 @@
 import { ref, computed, onMounted, nextTick } from "vue";
 import { useRoute } from "vue-router";
 import { api } from "../api/client.js";
+import { useToast } from "../composables/useToast.js";
+import AppModal from "../components/ui/AppModal.vue";
+import AppTag from "../components/ui/AppTag.vue";
+import AppButton from "../components/ui/AppButton.vue";
+import AppSpinner from "../components/ui/AppSpinner.vue";
+import AppSkeleton from "../components/ui/AppSkeleton.vue";
+
+const { toast } = useToast();
 
 const route = useRoute();
 const clawId = ref(route.params.id);
@@ -144,7 +161,6 @@ const activeSessionId = ref(null);
 const messages = ref([]);
 const prompt = ref("");
 const sending = ref(false);
-const error = ref("");
 const selectedRoleKey = ref("");
 const messagesEl = ref(null);
 const inputEl = ref(null);
@@ -154,6 +170,7 @@ const showApprovalModal = ref(false);
 const resolvingApproval = ref(false);
 const approvalError = ref("");
 const rejectReasonInput = ref("");
+const loadingMessages = ref(false);
 
 const roleLabel = computed(() => {
   const r = roles.value.find(r => r.roleKey === selectedRoleKey.value);
@@ -174,19 +191,19 @@ async function load() {
       selectedRoleKey.value = def.roleKey;
     }
   } catch (e) {
-    error.value = "加载 Claw 失败: " + e.message;
+    toast.error("加载 Claw 失败: " + e.message);
   }
 }
 
 function newSession() {
   activeSessionId.value = null;
   messages.value = [];
-  error.value = "";
 }
 
 async function selectSession(sid) {
   activeSessionId.value = sid;
   messages.value = [];
+  loadingMessages.value = true;
   try {
     const data = await api.get(`/api/sessions/${sid}`);
     messages.value = (data.messages || []).map(m => ({
@@ -196,14 +213,15 @@ async function selectSession(sid) {
     await nextTick();
     scrollToBottom(false);
   } catch {
-    error.value = "加载会话失败";
+    toast.error("加载会话失败");
+  } finally {
+    loadingMessages.value = false;
   }
 }
 
 async function sendMessage() {
   const text = prompt.value.trim();
   if (!text || sending.value) return;
-  error.value = "";
   sending.value = true;
 
   messages.value.push({ role: "user", content: text });
@@ -220,7 +238,7 @@ async function sendMessage() {
     });
     await handleChatResponse(res);
   } catch (e) {
-    error.value = "发送失败: " + e.message;
+    toast.error("发送失败: " + e.message);
   } finally {
     sending.value = false;
     await nextTick();
@@ -341,6 +359,12 @@ onMounted(load);
 .chat-header { display: flex; align-items: center; gap: 12px; padding-bottom: 14px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
 .chat-header h1 { font-size: 20px; font-weight: 700; letter-spacing: -0.3px; }
 
+.status-tag {
+  font-size: 11px; padding: 3px 10px; border-radius: 999px; font-weight: 600;
+  background: var(--accent-glow); color: var(--accent);
+}
+.status-tag.inactive, .status-tag.disabled { background: rgba(255, 92, 92, 0.1); color: var(--danger); }
+
 .role-picker { margin-left: auto; }
 .role-select {
   padding: 6px 12px; background: var(--bg-deep); border: 1px solid var(--border);
@@ -353,7 +377,12 @@ onMounted(load);
 .chat-body { display: flex; flex: 1; overflow: hidden; }
 
 /* Session sidebar */
-.session-sidebar { width: 220px; border-right: 1px solid var(--border); padding: 14px; overflow-y: auto; flex-shrink: 0; }
+.session-sidebar {
+  width: 220px; padding: 14px; overflow-y: auto; flex-shrink: 0;
+  background: rgba(8, 11, 17, 0.6);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  border-right: 1px solid var(--border);
+}
 
 .btn-new-session {
   width: 100%; padding: 9px; font-size: 13px; font-weight: 600; color: var(--accent);
@@ -368,11 +397,22 @@ onMounted(load);
 .session-list { display: flex; flex-direction: column; gap: 2px; }
 
 .session-item {
-  padding: 8px 10px; border-radius: var(--radius-sm); font-size: 13px; cursor: pointer;
+  position: relative; padding: 8px 12px; border-radius: var(--radius-sm);
+  font-size: 13px; cursor: pointer;
   transition: all 0.2s var(--ease-out);
 }
-.session-item:hover { background: var(--bg-hover); }
-.session-item.active { background: var(--accent-glow); }
+.session-item:hover { background: rgba(255, 255, 255, 0.04); }
+.session-item.active {
+  color: var(--accent);
+  background: linear-gradient(90deg, var(--accent-glow), transparent 80%);
+}
+.session-indicator {
+  position: absolute; left: 0; top: 8px; bottom: 8px; width: 3px; border-radius: 3px;
+  background: var(--gradient-aurora);
+  opacity: 0; transform: scaleY(0.4);
+  transition: opacity 0.2s var(--ease-out), transform 0.25s var(--ease-spring);
+}
+.session-item.active .session-indicator { opacity: 1; transform: scaleY(1); }
 .session-name { font-weight: 600; font-size: 12px; }
 .session-meta { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
 
@@ -385,13 +425,19 @@ onMounted(load);
 /* Chat main */
 .chat-main { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; }
 
-.messages-container { flex: 1; overflow-y: auto; padding: 24px 28px; scroll-behavior: smooth; }
+.messages-container { flex: 1; overflow-y: auto; padding: 24px 28px 96px; scroll-behavior: smooth; }
 
 .empty-chat { text-align: center; padding: 72px 24px; }
 .empty-chat-icon { font-size: 40px; margin-bottom: 12px; opacity: 0.6; animation: float 3s var(--ease-in-out) infinite; }
 .empty-chat p { color: var(--text-secondary); font-size: 15px; }
 .empty-hint { color: var(--text-muted) !important; font-size: 13px !important; margin-top: 6px; }
 @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+
+/* Loading skeleton */
+.messages-skeleton { display: flex; flex-direction: column; gap: 20px; padding: 8px 0; }
+.skeleton-row { display: flex; flex-direction: column; gap: 6px; max-width: 78%; }
+.skeleton-row.user { align-self: flex-end; align-items: flex-end; }
+.skeleton-row.assistant { align-self: flex-start; align-items: flex-start; }
 
 /* Message */
 .message-wrapper { margin-bottom: 20px; display: flex; }
@@ -408,12 +454,21 @@ onMounted(load);
   white-space: pre-wrap; word-break: break-word;
 }
 .message-wrapper.user .message-bubble {
-  background: var(--accent); color: #0a0e14;
+  background: var(--gradient-aurora); color: #0a0e14;
   border-bottom-right-radius: 4px;
+  box-shadow: 0 6px 20px rgba(245, 168, 61, 0.18);
 }
 .message-wrapper.assistant .message-bubble {
-  background: var(--bg-surface); border: 1px solid var(--border);
+  position: relative;
+  background: var(--bg-raised);
   border-bottom-left-radius: 4px;
+}
+.message-wrapper.assistant .message-bubble::before {
+  content: ""; position: absolute; inset: 0; border-radius: inherit;
+  padding: 1px; background: var(--gradient-aurora);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  opacity: 0.45; pointer-events: none;
 }
 
 /* Message entrance animation */
@@ -422,90 +477,74 @@ onMounted(load);
 .msg-enter-from { opacity: 0; transform: translateY(16px) scale(0.97); }
 .msg-leave-to { opacity: 0; }
 
-/* Thinking dots */
+/* Thinking dots — amber breathing */
 .thinking { display: flex; align-items: center; gap: 6px; padding: 16px 24px !important; min-width: 60px; }
 .dot {
-  width: 7px; height: 7px; border-radius: 50%; background: var(--text-muted);
-  animation: dot-bounce 1.4s var(--ease-in-out) infinite;
+  width: 7px; height: 7px; border-radius: 50%; background: var(--accent);
+  animation: dot-breathe 1.4s var(--ease-in-out) infinite;
 }
 .dot:nth-child(2) { animation-delay: 0.2s; }
 .dot:nth-child(3) { animation-delay: 0.4s; }
-@keyframes dot-bounce {
-  0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
-  40% { transform: scale(1); opacity: 1; }
+@keyframes dot-breathe {
+  0%, 100% { transform: scale(0.6); opacity: 0.35; box-shadow: 0 0 0 0 rgba(245, 168, 61, 0); }
+  50% { transform: scale(1); opacity: 1; box-shadow: 0 0 8px rgba(245, 168, 61, 0.5); }
 }
 
 /* Scroll hint */
 .scroll-hint {
-  position: absolute; bottom: 90px; left: 50%; transform: translateX(-50%);
-  padding: 6px 16px; background: var(--accent); color: #0a0e14;
+  position: absolute; bottom: 96px; left: 50%; transform: translateX(-50%);
+  padding: 6px 16px; background: var(--gradient-aurora); color: #0a0e14;
   border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer;
   animation: fade-in-up 0.25s var(--ease-out); z-index: 5;
-  box-shadow: 0 2px 12px rgba(240,163,58,0.3);
+  box-shadow: 0 2px 12px rgba(245, 168, 61, 0.3);
 }
 @keyframes fade-in-up {
   from { opacity: 0; transform: translateX(-50%) translateY(8px); }
   to { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
 
-/* Error */
-.chat-error {
-  padding: 10px 20px; font-size: 13px; color: var(--danger);
-  background: rgba(248,81,73,0.08); border-top: 1px solid rgba(248,81,73,0.2);
-  animation: fade-in-up 0.2s var(--ease-out);
-}
-
-/* Input area */
-.chat-input-area { display: flex; gap: 8px; padding: 16px 20px; border-top: 1px solid var(--border); align-items: flex-end; }
-.chat-input-area textarea {
-  flex: 1; padding: 10px 14px; background: var(--bg-deep); border: 1px solid var(--border);
-  border-radius: var(--radius); color: var(--text-primary); font-size: 14px;
-  resize: none; font-family: inherit; line-height: 1.5;
+/* Input area — floating glass bar */
+.chat-input-area {
+  position: absolute; bottom: 16px; left: 28px; right: 28px;
+  display: flex; gap: 10px; padding: 10px;
+  background: rgba(8, 11, 17, 0.72);
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--border-light);
+  border-radius: 16px; align-items: flex-end;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
   transition: border-color 0.2s var(--ease-out), box-shadow 0.2s var(--ease-out);
+}
+.chat-input-area:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35), var(--glow-accent);
+}
+.chat-input-area textarea {
+  flex: 1; padding: 10px 14px; background: transparent; border: none;
+  color: var(--text-primary); font-size: 14px;
+  resize: none; font-family: inherit; line-height: 1.5;
   max-height: 160px;
 }
-.chat-input-area textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+.chat-input-area textarea:focus { outline: none; }
+.chat-input-area textarea::placeholder { color: var(--text-muted); }
 
 .btn-send {
-  padding: 10px 22px; font-size: 14px; font-weight: 700; color: #0a0e14;
-  background: var(--accent); border: none; border-radius: var(--radius);
-  transition: all 0.2s var(--ease-out); min-width: 64px; height: 42px;
+  width: 42px; height: 42px; flex-shrink: 0;
+  font-size: 18px; font-weight: 700; color: #0a0e14;
+  background: var(--gradient-aurora); border: none; border-radius: 50%;
+  transition: all 0.2s var(--ease-out);
   display: flex; align-items: center; justify-content: center;
 }
-.btn-send:hover:not(:disabled) { background: var(--accent-soft); transform: translateY(-1px); box-shadow: var(--shadow-glow); }
+.btn-send:hover:not(:disabled) { transform: translateY(-1px); box-shadow: var(--glow-accent); }
 .btn-send:active:not(:disabled) { transform: translateY(0); }
-.btn-send:disabled { opacity: 0.4; }
-
-/* Sending spinner */
-.sending-spinner {
-  width: 16px; height: 16px; border: 2px solid transparent;
-  border-top-color: #0a0e14; border-radius: 50%;
-  animation: spin 0.6s linear infinite;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
+.btn-send:disabled { opacity: 0.4; cursor: not-allowed; }
+.send-icon { line-height: 1; }
+.send-spinner { color: #0a0e14; }
 
 .no-data { color: var(--text-muted); font-size: 12px; padding: 16px 8px; text-align: center; }
 
-/* Approval modal */
-.approval-mask {
-  position: fixed; inset: 0; background: rgba(4,7,12,0.65); backdrop-filter: blur(2px);
-  display: flex; align-items: center; justify-content: center; z-index: 20;
-  animation: fade-in-up 0.15s var(--ease-out);
-}
-.approval-modal {
-  background: var(--bg-surface); border: 1px solid var(--border);
-  border-radius: var(--radius); padding: 20px 22px; width: min(560px, 92vw);
-  box-shadow: 0 12px 48px rgba(0,0,0,0.5);
-}
-.approval-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
-.approval-header h3 { font-size: 16px; font-weight: 700; flex: 1; }
-.approval-risk {
-  font-size: 11px; padding: 2px 8px; border-radius: 999px;
-  background: rgba(210,153,34,0.14); color: var(--warning); text-transform: lowercase;
-}
-.approval-risk.high { background: rgba(248,81,73,0.12); color: var(--danger); }
-.approval-risk.low { background: rgba(56,139,253,0.14); color: #58a6ff; }
-.approval-body { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+/* Approval modal content */
+.approval-risk-row { margin-bottom: 14px; }
+.approval-body { display: flex; flex-direction: column; gap: 10px; margin-bottom: 4px; }
 .approval-row { display: flex; flex-direction: column; gap: 4px; }
 .approval-label { color: var(--text-muted); font-size: 12px; font-weight: 600; letter-spacing: 0.3px; }
 .approval-value { color: var(--text-primary); font-size: 13px; word-break: break-all; }
@@ -513,11 +552,11 @@ onMounted(load);
   background: var(--bg-deep); border: 1px solid var(--border);
   border-radius: var(--radius-sm); padding: 10px 12px;
   font-size: 12px; max-height: 220px; overflow: auto;
-  white-space: pre-wrap; word-break: break-word;
+  white-space: pre-wrap; word-break: break-word; margin: 0;
 }
 .approval-error {
   padding: 8px 12px; border-radius: var(--radius-sm); font-size: 12px;
-  color: var(--danger); background: rgba(248,81,73,0.08);
+  color: var(--danger); background: rgba(248, 81, 73, 0.08);
 }
 .approval-reason-input {
   background: var(--bg-deep); border: 1px solid var(--border);
@@ -531,15 +570,4 @@ onMounted(load);
   box-shadow: 0 0 0 3px var(--accent-glow);
 }
 .approval-reason-input:disabled { opacity: 0.5; }
-.approval-actions { display: flex; justify-content: flex-end; gap: 8px; }
-.approval-actions .btn-primary {
-  padding: 8px 18px; font-size: 13px; font-weight: 700; color: #0a0e14;
-  background: var(--accent); border: none; border-radius: var(--radius-sm);
-}
-.approval-actions .btn-primary:disabled { opacity: 0.5; }
-.approval-actions .btn-secondary {
-  padding: 8px 18px; font-size: 13px; font-weight: 600; color: var(--text-primary);
-  background: var(--bg-deep); border: 1px solid var(--border); border-radius: var(--radius-sm);
-}
-.approval-actions .btn-secondary:disabled { opacity: 0.5; }
 </style>
