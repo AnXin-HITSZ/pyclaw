@@ -69,6 +69,7 @@ class ToolApprovalServiceTest {
 
         assertThat(response.id()).isEqualTo("approval-1");
         assertThat(response.status()).isEqualTo("PENDING");
+        assertThat(response.decision()).isNull();
         assertThat(response.toolName()).isEqualTo("write_file");
         assertThat(response.risk()).isEqualTo("medium");
         assertThat(response.argumentsPreview()).containsEntry("file_path", "a.txt");
@@ -88,12 +89,26 @@ class ToolApprovalServiceTest {
     @Test
     void requireOwnedPendingRejectsResolvedApproval() {
         ToolApprovalRequestEntity entity = pendingEntity();
-        entity.setStatus(ToolApprovalStatus.APPROVED);
+        entity.setStatus(ToolApprovalStatus.CONSUMED);
+        entity.setDecision(ToolApprovalDecision.APPROVED);
         when(repository.findByIdAndClawIdAndOwnerUserId(any(), any(), any())).thenReturn(Optional.of(entity));
 
         assertThatThrownBy(() -> service.requireOwnedPending("claw-1", "approval-1", newPrincipal()))
                 .isInstanceOf(ApiException.class)
                 .satisfies(exc -> assertThat(((ApiException) exc).status()).isEqualTo(HttpStatus.CONFLICT));
+    }
+
+    @Test
+    void requireOwnedActionableAllowsSameDecisionResumeFailedRetry() {
+        ToolApprovalRequestEntity entity = pendingEntity();
+        entity.setStatus(ToolApprovalStatus.RESUME_FAILED);
+        entity.setDecision(ToolApprovalDecision.APPROVED);
+        when(repository.findByIdAndClawIdAndOwnerUserId(any(), any(), any())).thenReturn(Optional.of(entity));
+
+        ToolApprovalRequestEntity result = service.requireOwnedActionable(
+                "claw-1", "approval-1", newPrincipal(), ToolApprovalDecision.APPROVED);
+
+        assertThat(result).isSameAs(entity);
     }
 
     @Test
@@ -114,9 +129,10 @@ class ToolApprovalServiceTest {
         ToolApprovalRequestEntity entity = pendingEntity();
         when(repository.save(any(ToolApprovalRequestEntity.class))).thenAnswer(i -> i.getArgument(0));
 
-        ToolApprovalRequestEntity saved = service.markApproved(entity, null, newPrincipal());
+        ToolApprovalRequestEntity saved = service.markApprovedForResume(entity, null, newPrincipal());
 
-        assertThat(saved.getStatus()).isEqualTo(ToolApprovalStatus.APPROVED);
+        assertThat(saved.getStatus()).isEqualTo(ToolApprovalStatus.RESUMING);
+        assertThat(saved.getDecision()).isEqualTo(ToolApprovalDecision.APPROVED);
         assertThat(saved.getResolvedBy()).isEqualTo("user-1");
         verify(auditLogService).record(any(), any(), org.mockito.ArgumentMatchers.eq("tool.approval.approved"),
                 any(), any(), org.mockito.ArgumentMatchers.eq(true), any());
@@ -127,10 +143,23 @@ class ToolApprovalServiceTest {
         ToolApprovalRequestEntity entity = pendingEntity();
         when(repository.save(any(ToolApprovalRequestEntity.class))).thenAnswer(i -> i.getArgument(0));
 
-        ToolApprovalRequestEntity saved = service.markRejected(entity, "用户取消", null, newPrincipal());
+        ToolApprovalRequestEntity saved = service.markRejectedForResume(entity, "用户取消", null, newPrincipal());
 
-        assertThat(saved.getStatus()).isEqualTo(ToolApprovalStatus.REJECTED);
+        assertThat(saved.getStatus()).isEqualTo(ToolApprovalStatus.RESUMING);
+        assertThat(saved.getDecision()).isEqualTo(ToolApprovalDecision.REJECTED);
         assertThat(saved.getRejectReason()).isEqualTo("用户取消");
+    }
+
+    @Test
+    void markResumeFailedKeepsDecisionAndMakesRetryable() {
+        ToolApprovalRequestEntity entity = pendingEntity();
+        entity.setDecision(ToolApprovalDecision.APPROVED);
+        when(repository.save(any(ToolApprovalRequestEntity.class))).thenAnswer(i -> i.getArgument(0));
+
+        ToolApprovalRequestEntity saved = service.markResumeFailed(entity, null, "boom");
+
+        assertThat(saved.getStatus()).isEqualTo(ToolApprovalStatus.RESUME_FAILED);
+        assertThat(saved.getDecision()).isEqualTo(ToolApprovalDecision.APPROVED);
     }
 
     private ToolApprovalRequestEntity pendingEntity() {

@@ -56,4 +56,22 @@ class PyclawAgentRunRequestTest {
         assertThat(map.get("conversation_id")).isEqualTo("conv-xyz");
         assertThat(map.get("agent_instance_id")).isEqualTo("inst-456");
     }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void toolResolveRequestSerializesFastApiFieldNames() throws Exception {
+        PyclawToolResolveRequest req = new PyclawToolResolveRequest(
+                "coding",
+                null,
+                List.of("shell"),
+                List.of("discover_agents"),
+                false
+        );
+
+        String json = mapper.writeValueAsString(req);
+        Map<String, Object> map = mapper.readValue(json, Map.class);
+
+        assertThat(map).containsEntry("also_allow", List.of("discover_agents"));
+        assertThat(map).doesNotContainKey("alsoAllow");
+    }
 }

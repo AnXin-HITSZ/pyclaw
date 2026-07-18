@@ -12,10 +12,7 @@ import logging
 import os
 from typing import Any
 
-from openclaw.tools.types import (
-    ToolDefinition,
-    ToolMetadata,
-)
+from openclaw.tools.types import ToolDefinition, ToolExecutionContext
 
 LOGGER = logging.getLogger(__name__)
 
@@ -54,6 +51,9 @@ def _exec_discover_agents(claw_id: str, query: str = "", **_: Any) -> dict[str, 
 
 
 def create_discover_agents_tool() -> ToolDefinition:
+    async def execute(context: ToolExecutionContext, arguments: dict[str, Any]) -> dict[str, Any]:
+        return _exec_discover_agents(**arguments)
+
     return ToolDefinition(
         name="discover_agents",
         label="发现 Agent",
@@ -66,13 +66,7 @@ def create_discover_agents_tool() -> ToolDefinition:
             },
             "required": ["claw_id"],
         },
-        tool_metadata=ToolMetadata(
-            risk="low",
-            readonly=True,
-            execution_scope="claw_sandbox",
-            tags=["orchestration", "agent-discovery"],
-        ),
-        executor=_exec_discover_agents,
+        execute=execute,
     )
 
 
@@ -103,6 +97,9 @@ def _exec_request_agent_install(
 
 
 def create_request_agent_install_tool() -> ToolDefinition:
+    async def execute(context: ToolExecutionContext, arguments: dict[str, Any]) -> dict[str, Any]:
+        return _exec_request_agent_install(**arguments)
+
     return ToolDefinition(
         name="request_agent_install",
         label="请求安装 Agent",
@@ -117,13 +114,7 @@ def create_request_agent_install_tool() -> ToolDefinition:
             },
             "required": ["claw_id", "package_version_id"],
         },
-        tool_metadata=ToolMetadata(
-            risk="medium",
-            readonly=False,
-            execution_scope="claw_sandbox",
-            tags=["orchestration", "agent-install"],
-        ),
-        executor=_exec_request_agent_install,
+        execute=execute,
     )
 
 
@@ -158,6 +149,9 @@ def _exec_call_agent(
 
 
 def create_call_agent_tool() -> ToolDefinition:
+    async def execute(context: ToolExecutionContext, arguments: dict[str, Any]) -> dict[str, Any]:
+        return _exec_call_agent(**arguments)
+
     return ToolDefinition(
         name="call_agent",
         label="调用 Agent",
@@ -174,11 +168,5 @@ def create_call_agent_tool() -> ToolDefinition:
             },
             "required": ["claw_id", "calling_agent_instance_id", "message"],
         },
-        tool_metadata=ToolMetadata(
-            risk="medium",
-            readonly=False,
-            execution_scope="claw_sandbox",
-            tags=["orchestration", "agent-call"],
-        ),
-        executor=_exec_call_agent,
+        execute=execute,
     )

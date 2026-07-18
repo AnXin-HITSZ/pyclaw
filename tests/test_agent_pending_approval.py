@@ -54,6 +54,7 @@ class AgentPendingApprovalApiTests(unittest.IsolatedAsyncioTestCase):
         api._set_pending_approval_store(self.store)
 
         self._original_build_provider = api.build_provider
+        self._original_execute_tool_call_batch = api.execute_tool_call_batch
 
         tool_call_message = [
             {
@@ -85,6 +86,7 @@ class AgentPendingApprovalApiTests(unittest.IsolatedAsyncioTestCase):
         from openclaw import api
 
         api.build_provider = self._original_build_provider
+        api.execute_tool_call_batch = self._original_execute_tool_call_batch
         api._set_pending_approval_store(None)
 
     async def test_medium_risk_returns_pending_approval_via_api(self) -> None:
@@ -137,6 +139,41 @@ class AgentPendingApprovalApiTests(unittest.IsolatedAsyncioTestCase):
         self.assertIsNotNone(resume_outcome.message)
         # After consumption the pending state must be removed.
         self.assertIsNone(self.store.load(outcome.approval.approval_id))
+
+    async def test_resume_approve_failure_keeps_pending_state_for_retry(self) -> None:
+        from openclaw.api import AgentResumeRequest, AgentRunRequest, resume_agent_request, run_agent_request
+        from openclaw import api
+
+        run_request = AgentRunRequest(
+            prompt="PLEASE_WRITE hello",
+            provider="mock",
+            model="mock-model",
+            tool_profile="coding",
+            sandbox_base_url="http://sandbox.local",
+            claw_id="claw-1",
+            owner_user_id="user-1",
+        )
+        outcome = await run_agent_request(run_request)
+        self.assertEqual(outcome.status, "PENDING_APPROVAL")
+
+        async def _raise_tool_failure(*args, **kwargs):  # noqa: ANN002, ANN003
+            raise RuntimeError("sandbox unavailable")
+
+        api.execute_tool_call_batch = _raise_tool_failure
+
+        resume_request = AgentResumeRequest(
+            approval_id=outcome.approval.approval_id,
+            decision="APPROVED",
+            provider="mock",
+            model="mock-model",
+            tool_profile="coding",
+            sandbox_base_url="http://sandbox.local",
+        )
+
+        with self.assertRaises(RuntimeError):
+            await resume_agent_request(resume_request)
+
+        self.assertIsNotNone(self.store.load(outcome.approval.approval_id))
 
 
 if __name__ == "__main__":

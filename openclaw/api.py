@@ -622,6 +622,7 @@ async def resume_agent_request(request: AgentResumeRequest) -> AgentRunOutcome:
             pending_store=store,
             request_context=request_context,
             ttl_seconds=APPROVAL_TTL_SECONDS,
+            approved_tool_call_ids={str(pending_tool_call.get("id") or "")},
         )
 
         agent = Agent(
@@ -682,15 +683,15 @@ async def resume_agent_request(request: AgentResumeRequest) -> AgentRunOutcome:
         try:
             message = await session.handle_post_agent_run(await agent.continue_())
         except PendingToolApprovalError as exc:
+            store.delete(request.approval_id)
             return AgentRunOutcome(
                 status="PENDING_APPROVAL",
                 session_id=session_id,
                 message=None,
                 approval=exc.approval,
             )
-        return AgentRunOutcome(status="COMPLETED", session_id=session_id, message=message)
-    finally:
         store.delete(request.approval_id)
+        return AgentRunOutcome(status="COMPLETED", session_id=session_id, message=message)
 
 
 def _resume_request_to_run_request(

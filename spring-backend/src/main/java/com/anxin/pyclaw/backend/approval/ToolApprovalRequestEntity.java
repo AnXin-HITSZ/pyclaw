@@ -59,6 +59,10 @@ public class ToolApprovalRequestEntity {
     @Column(nullable = false, length = 32)
     private ToolApprovalStatus status;
 
+    @Enumerated(EnumType.STRING)
+    @Column(length = 32)
+    private ToolApprovalDecision decision;
+
     @Column(length = 1024)
     private String intentSummary;
 
@@ -109,6 +113,8 @@ public class ToolApprovalRequestEntity {
     public void setRisk(String risk) { this.risk = risk; }
     public ToolApprovalStatus getStatus() { return status; }
     public void setStatus(ToolApprovalStatus status) { this.status = status; }
+    public ToolApprovalDecision getDecision() { return decision; }
+    public void setDecision(ToolApprovalDecision decision) { this.decision = decision; }
     public String getIntentSummary() { return intentSummary; }
     public void setIntentSummary(String intentSummary) { this.intentSummary = intentSummary; }
     public String getArgumentsPreview() { return argumentsPreview; }

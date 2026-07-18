@@ -4,6 +4,7 @@ import com.anxin.pyclaw.backend.agentconfig.AgentConfigEntity;
 import com.anxin.pyclaw.backend.agentconfig.AgentConfigRepository;
 import com.anxin.pyclaw.backend.agentconfig.AgentConfigService;
 import com.anxin.pyclaw.backend.agentconfig.AgentToolPolicyEntity;
+import com.anxin.pyclaw.backend.approval.ToolApprovalDecision;
 import com.anxin.pyclaw.backend.approval.ToolApprovalRequestEntity;
 import com.anxin.pyclaw.backend.approval.ToolApprovalResponse;
 import com.anxin.pyclaw.backend.approval.ToolApprovalService;
@@ -214,7 +215,8 @@ public class ClawChatService {
     public ClawChatRunResponse approve(String clawId, String approvalId, Authentication authentication) {
         AuthenticatedPrincipal principal = requirePrincipal(authentication);
         ClawEntity claw = approvalService.requireOwnedClaw(clawId, principal);
-        ToolApprovalRequestEntity approval = approvalService.requireOwnedPending(clawId, approvalId, principal);
+        ToolApprovalRequestEntity approval = approvalService.requireOwnedActionable(
+                clawId, approvalId, principal, ToolApprovalDecision.APPROVED);
 
         ResolvedRole resolved = resolveRoleForApproval(claw, approval.getRoleKey());
         AgentConfigEntity agent = requireAgentAccessible(
@@ -225,7 +227,7 @@ public class ClawChatService {
         if (provider == null) {
             throw new ApiException(HttpStatus.CONFLICT, "No enabled Provider configured for this Agent.");
         }
-        approvalService.markApproved(approval, authentication, principal);
+        approvalService.markApprovedForResume(approval, authentication, principal);
 
         PyclawAgentResumeRequest resumeRequest = buildResumeRequest(
                 approval, "APPROVED", null, claw, agent, policy, provider);
@@ -235,7 +237,8 @@ public class ClawChatService {
     public ClawChatRunResponse reject(String clawId, String approvalId, String reason, Authentication authentication) {
         AuthenticatedPrincipal principal = requirePrincipal(authentication);
         ClawEntity claw = approvalService.requireOwnedClaw(clawId, principal);
-        ToolApprovalRequestEntity approval = approvalService.requireOwnedPending(clawId, approvalId, principal);
+        ToolApprovalRequestEntity approval = approvalService.requireOwnedActionable(
+                clawId, approvalId, principal, ToolApprovalDecision.REJECTED);
 
         ResolvedRole resolved = resolveRoleForApproval(claw, approval.getRoleKey());
         AgentConfigEntity agent = requireAgentAccessible(
@@ -246,7 +249,7 @@ public class ClawChatService {
         if (provider == null) {
             throw new ApiException(HttpStatus.CONFLICT, "No enabled Provider configured for this Agent.");
         }
-        approvalService.markRejected(approval, reason, authentication, principal);
+        approvalService.markRejectedForResume(approval, reason, authentication, principal);
 
         PyclawAgentResumeRequest resumeRequest = buildResumeRequest(
                 approval, "REJECTED", reason, claw, agent, policy, provider);
@@ -284,6 +287,7 @@ public class ClawChatService {
                     providerName, model, principal, authentication, latencyMs, "claw.chat.resume", null
             );
         } catch (Exception exc) {
+            approvalService.markResumeFailed(approval, authentication, exc.getMessage());
             sessionService.saveMessage(approval.getSessionId(), principal.userId(), claw.getId(), claw.getName(),
                     agent.getAgentKey(), resolved.roleKey(), agent.getId(),
                     providerName, model, "assistant",

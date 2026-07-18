@@ -43,11 +43,13 @@ class ApprovalToolHooks(NoopToolHooks):
         request_context: ApprovalRuntimeContext,
         messages_snapshot_provider: MessagesSnapshotProvider | None = None,
         ttl_seconds: int = DEFAULT_TTL_SECONDS,
+        approved_tool_call_ids: set[str] | None = None,
         clock: Any | None = None,
     ) -> None:
         self.pending_store = pending_store
         self.request_context = request_context
         self.ttl_seconds = ttl_seconds
+        self.approved_tool_call_ids = set(approved_tool_call_ids or set())
         self._clock = clock or time.time
         self._messages_snapshot_provider = messages_snapshot_provider
 
@@ -61,6 +63,9 @@ class ApprovalToolHooks(NoopToolHooks):
         hard_policy_error = _check_hard_policy(tool, arguments, context, self.request_context)
         if hard_policy_error:
             return ToolExecutionDecision(status="DENY", denied_reason=hard_policy_error, reason=hard_policy_error)
+
+        if call.id and call.id in self.approved_tool_call_ids:
+            return ToolExecutionDecision(status="ALLOW", arguments=arguments)
 
         risk = getattr(tool.metadata, "risk", "low") or "low"
         if risk == "low":

@@ -8,6 +8,7 @@ import java.util.Map;
 public record ToolApprovalResponse(
         String id,
         String status,
+        String decision,
         String clawId,
         String clawName,
         String sessionId,

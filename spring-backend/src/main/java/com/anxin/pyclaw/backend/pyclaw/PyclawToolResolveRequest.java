@@ -1,12 +1,13 @@
 package com.anxin.pyclaw.backend.pyclaw;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 
 public record PyclawToolResolveRequest(
         String profile,
         List<String> allow,
         List<String> deny,
-        List<String> alsoAllow,
+        @JsonProperty("also_allow") List<String> alsoAllow,
         Boolean readonly
 ) {
 }

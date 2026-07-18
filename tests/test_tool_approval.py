@@ -107,6 +107,26 @@ class ApprovalHookTests(unittest.IsolatedAsyncioTestCase):
         # assistant_message field must not be written (cleanup of review item #2)
         self.assertNotIn("assistant_message", state)
 
+    async def test_approved_tool_call_id_bypasses_repeat_approval(self):
+        hooks = ApprovalToolHooks(
+            pending_store=self.store,
+            request_context=self.request_context,
+            approved_tool_call_ids={"call-approved"},
+        )
+        registry = ToolRegistry()
+        registry.register(_make_tool("write_file", "medium"))
+
+        outcome = await execute_tool_call(
+            ToolCallBlock(id="call-approved", name="write_file", input={"path": "a.txt"}),
+            registry,
+            make_base_context(metadata={"sandbox_base_url": "http://sandbox.local"}),
+            hooks,
+        )
+
+        self.assertFalse(outcome.result.is_error)
+        self.assertEqual(outcome.result.output(), "executed write_file")
+        self.assertEqual(self.store._store, {})
+
     async def test_hard_policy_missing_sandbox_denies(self):
         request_context = ApprovalRuntimeContext(session_id="session-1")
         hooks = ApprovalToolHooks(pending_store=self.store, request_context=request_context)

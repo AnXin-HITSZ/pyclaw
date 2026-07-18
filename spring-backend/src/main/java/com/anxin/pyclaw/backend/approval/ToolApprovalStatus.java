@@ -2,8 +2,9 @@ package com.anxin.pyclaw.backend.approval;
 
 public enum ToolApprovalStatus {
     PENDING,
-    APPROVED,
-    REJECTED,
+    RESUMING,
+    RESUME_FAILED,
     EXPIRED,
-    CONSUMED
+    CONSUMED,
+    CANCELLED
 }
