@@ -100,6 +100,8 @@ class ApprovalToolHooks(NoopToolHooks):
             claw_name=self.request_context.claw_name,
             role_key=self.request_context.role_key,
             agent_key=self.request_context.agent_key,
+            conversation_id=self.request_context.conversation_id,
+            agent_instance_id=self.request_context.agent_instance_id,
         )
 
         messages_snapshot: list[dict[str, Any]] = []

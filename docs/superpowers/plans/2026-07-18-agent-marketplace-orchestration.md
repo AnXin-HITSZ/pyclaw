@@ -353,7 +353,7 @@ disabled Agent Instance 不可被选中
 **Produces:**
 - FastAPI 日志、审批上下文和请求模型携带 `conversation_id` / `agent_instance_id`
 
-- [ ] **Step 1: 扩展 AgentRunRequest / AgentResumeRequest**
+- [x] **Step 1: 扩展 AgentRunRequest / AgentResumeRequest**
 
 新增字段：
 
@@ -362,7 +362,7 @@ conversation_id
 agent_instance_id
 ```
 
-- [ ] **Step 2: 扩展 ApprovalRuntimeContext**
+- [x] **Step 2: 扩展 ApprovalRuntimeContext**
 
 审批 pending state 必须保存：
 
@@ -371,7 +371,7 @@ conversation_id
 agent_instance_id
 ```
 
-- [ ] **Step 3: 扩展诊断日志**
+- [x] **Step 3: 扩展诊断日志**
 
 日志必须包含：
 
@@ -384,7 +384,7 @@ resolved_tools
 denied_tools
 ```
 
-- [ ] **Step 4: 补测试**
+- [x] **Step 4: 补测试**
 
 覆盖：
 

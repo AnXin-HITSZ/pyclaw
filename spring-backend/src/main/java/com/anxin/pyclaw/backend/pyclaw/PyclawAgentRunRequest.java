@@ -21,7 +21,9 @@ public record PyclawAgentRunRequest(
         @JsonProperty("claw_name") String clawName,
         @JsonProperty("role_key") String roleKey,
         @JsonProperty("agent_key") String agentKey,
-        @JsonProperty("sandbox_base_url") String sandboxBaseUrl
+        @JsonProperty("sandbox_base_url") String sandboxBaseUrl,
+        @JsonProperty("conversation_id") String conversationId,
+        @JsonProperty("agent_instance_id") String agentInstanceId
 ) {
     public PyclawAgentRunRequest {
         if (toolProfile == null || toolProfile.isBlank()) {
@@ -50,6 +52,6 @@ public record PyclawAgentRunRequest(
     ) {
         this(prompt, provider, sessionId, toolProfile, model, apiMode, baseUrl, apiKey,
                 null, null, null, null, null,
-                null, null, null, null, null);
+                null, null, null, null, null, null, null);
     }
 }

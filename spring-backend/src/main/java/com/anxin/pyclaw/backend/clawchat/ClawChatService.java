@@ -160,7 +160,9 @@ public class ClawChatService {
                 claw.getName(),
                 resolved.roleKey(),
                 agent.getAgentKey(),
-                sandboxBaseUrl
+                sandboxBaseUrl,
+                conversationId,
+                resolved.agentInstanceId()
         );
 
         long started = System.nanoTime();
@@ -318,7 +320,9 @@ public class ClawChatService {
                 agentConfigService.readListOrNull(policy.getToolsAllowJson()),
                 agentConfigService.readList(policy.getToolsDenyJson()),
                 agentConfigService.readList(policy.getToolsAlsoAllowJson()),
-                sandboxBaseUrl
+                sandboxBaseUrl,
+                null,   // conversation_id (pending approval store enhancement in Task 7)
+                null    // agent_instance_id
         );
     }
 

@@ -22,6 +22,8 @@ class PendingToolApproval:
     claw_name: str | None = None
     role_key: str | None = None
     agent_key: str | None = None
+    conversation_id: str | None = None
+    agent_instance_id: str | None = None
 
 
 class PendingToolApprovalError(Exception):
@@ -62,6 +64,8 @@ class ApprovalRuntimeContext:
     role_key: str | None = None
     agent_key: str | None = None
     sandbox_base_url: str | None = None
+    conversation_id: str | None = None
+    agent_instance_id: str | None = None
     provider_name: str | None = None
     model: str | None = None
     system_prompt: str | None = None
