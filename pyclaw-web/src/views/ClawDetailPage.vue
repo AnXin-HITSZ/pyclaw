@@ -126,10 +126,10 @@
         </div>
         <div class="form-group">
           <label>默认 Agent</label>
-          <select v-model="editForm.defaultAgentId">
-            <option value="">不选择</option>
-            <option v-for="a in allAgents" :key="a.id" :value="a.id">{{ a.name }}</option>
-          </select>
+          <AppSelect
+            v-model="editForm.defaultAgentId"
+            :options="[{value:'',label:'不选择'}, ...allAgents.map(a => ({value:a.id, label:a.name}))]"
+          />
         </div>
         <label class="switch-line">
           <span class="switch-label">启用飞书</span>
@@ -152,10 +152,12 @@
       <form @submit.prevent="handleSaveRole">
         <div class="form-group">
           <label>Agent *</label>
-          <select v-model="roleForm.agentId" required @change="syncSelectedAgent">
-            <option value="">请选择 Agent</option>
-            <option v-for="a in allAgents" :key="a.id" :value="a.id">{{ a.name }} ({{ a.agentKey }})</option>
-          </select>
+          <AppSelect
+            v-model="roleForm.agentId"
+            required
+            @change="syncSelectedAgent"
+            :options="[{value:'',label:'请选择 Agent'}, ...allAgents.map(a => ({value:a.id, label:a.name + ' (' + a.agentKey + ')'}))]"
+          />
         </div>
         <div class="form-group">
           <label class="label-with-help">
@@ -215,6 +217,7 @@ import AppSkeleton from "../components/ui/AppSkeleton.vue";
 import AppTag from "../components/ui/AppTag.vue";
 import AppCard from "../components/ui/AppCard.vue";
 import AppModal from "../components/ui/AppModal.vue";
+import AppSelect from "../components/ui/AppSelect.vue";
 import PageHeader from "../components/ui/PageHeader.vue";
 
 const { toast } = useToast();

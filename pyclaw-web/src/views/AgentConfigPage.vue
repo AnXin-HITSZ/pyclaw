@@ -81,10 +81,10 @@
         <div class="form-row">
           <div class="form-group">
             <label>Provider</label>
-            <select v-model="form.providerId">
-              <option value="">默认</option>
-              <option v-for="p in providers" :key="p.id" :value="p.id">{{ p.name }} ({{ p.model }})</option>
-            </select>
+            <AppSelect
+              v-model="form.providerId"
+              :options="[{value:'',label:'默认'}, ...providers.map(p => ({value:p.id, label:p.name + ' (' + p.model + ')'}))]"
+            />
           </div>
           <div class="form-group">
             <label>Model（可选，覆盖 Provider 默认）</label>
@@ -98,13 +98,10 @@
         <div class="form-row">
           <div class="form-group">
             <label>Tool Profile</label>
-            <select v-model="form.toolProfile">
-              <option value="minimal">minimal</option>
-              <option value="readonly">readonly</option>
-              <option value="coding">coding</option>
-              <option value="messaging">messaging</option>
-              <option value="full">full</option>
-            </select>
+            <AppSelect
+              v-model="form.toolProfile"
+              :options="[{value:'minimal',label:'minimal'},{value:'readonly',label:'readonly'},{value:'coding',label:'coding'},{value:'messaging',label:'messaging'},{value:'full',label:'full'}]"
+            />
           </div>
         </div>
         <div class="form-row">
@@ -141,6 +138,7 @@ import AppSkeleton from "../components/ui/AppSkeleton.vue";
 import AppTag from "../components/ui/AppTag.vue";
 import AppEmpty from "../components/ui/AppEmpty.vue";
 import AppModal from "../components/ui/AppModal.vue";
+import AppSelect from "../components/ui/AppSelect.vue";
 import PageHeader from "../components/ui/PageHeader.vue";
 
 const { toast } = useToast();

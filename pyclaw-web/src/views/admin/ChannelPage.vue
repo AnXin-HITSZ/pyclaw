@@ -41,10 +41,12 @@
       <form @submit.prevent="handleSave">
         <div class="form-group">
           <label>渠道类型 *</label>
-          <select v-model="form.channelType" required :disabled="!!editing">
-            <option value="wechat">微信</option>
-            <option value="feishu">飞书</option>
-          </select>
+          <AppSelect
+            v-model="form.channelType"
+            :options="[{value:'wechat',label:'微信'},{value:'feishu',label:'飞书'}]"
+            :disabled="!!editing"
+            required
+          />
         </div>
         <div class="form-group">
           <label>名称 *</label>
@@ -106,6 +108,7 @@ import AppSkeleton from "../../components/ui/AppSkeleton.vue";
 import AppTag from "../../components/ui/AppTag.vue";
 import AppEmpty from "../../components/ui/AppEmpty.vue";
 import AppModal from "../../components/ui/AppModal.vue";
+import AppSelect from "../../components/ui/AppSelect.vue";
 import PageHeader from "../../components/ui/PageHeader.vue";
 
 const { toast } = useToast();

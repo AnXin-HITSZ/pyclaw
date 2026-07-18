@@ -6,11 +6,11 @@
       <h1>{{ claw?.name || "对话" }}</h1>
       <span v-if="claw" class="status-tag" :class="claw.status">{{ claw.status }}</span>
       <div class="role-picker" v-if="roles.length > 1">
-        <select v-model="selectedRoleKey" class="role-select">
-          <option v-for="r in roles" :key="r.roleKey" :value="r.roleKey">
-            {{ r.displayName }}{{ r.defaultRole ? ' · 默认' : '' }}
-          </option>
-        </select>
+        <AppSelect
+          v-model="selectedRoleKey"
+          class="role-select"
+          :options="roles.map(r => ({value:r.roleKey, label: r.defaultRole ? r.displayName + ' · 默认' : r.displayName}))"
+        />
       </div>
     </div>
 
@@ -148,6 +148,7 @@ import AppModal from "../components/ui/AppModal.vue";
 import AppTag from "../components/ui/AppTag.vue";
 import AppButton from "../components/ui/AppButton.vue";
 import AppSpinner from "../components/ui/AppSpinner.vue";
+import AppSelect from "../components/ui/AppSelect.vue";
 import AppSkeleton from "../components/ui/AppSkeleton.vue";
 
 const { toast } = useToast();
@@ -366,12 +367,7 @@ onMounted(load);
 .status-tag.inactive, .status-tag.disabled { background: rgba(255, 92, 92, 0.1); color: var(--danger); }
 
 .role-picker { margin-left: auto; }
-.role-select {
-  padding: 6px 12px; background: var(--bg-deep); border: 1px solid var(--border);
-  border-radius: var(--radius-sm); color: var(--text-primary); font-size: 13px;
-  transition: border-color 0.2s var(--ease-out);
-}
-.role-select:focus { outline: none; border-color: var(--accent); }
+.role-select { width: auto; min-width: 160px; }
 
 /* Body */
 .chat-body { display: flex; flex: 1; overflow: hidden; }

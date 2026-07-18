@@ -144,12 +144,10 @@
 
         <div class="form-group">
           <label>默认 Agent</label>
-          <select v-model="createForm.defaultAgentId">
-            <option value="">不选择</option>
-            <option v-for="agent in agents" :key="agent.id" :value="agent.id">
-              {{ agent.name }} ({{ agent.agentKey }})
-            </option>
-          </select>
+          <AppSelect
+            v-model="createForm.defaultAgentId"
+            :options="[{value:'',label:'不选择'}, ...agents.map(a => ({value:a.id, label:a.name + ' (' + a.agentKey + ')'}))]"
+          />
           <p v-if="createForm.defaultAgentId" class="field-hint">该 Agent 会自动作为新 Claw 的第一个默认角色。</p>
         </div>
 
@@ -176,12 +174,12 @@
       <form @submit.prevent="handleAddRole">
         <div class="form-group">
           <label>Agent *</label>
-          <select v-model="roleForm.agentId" required @change="syncSelectedAgent">
-            <option value="">请选择 Agent</option>
-            <option v-for="agent in agents" :key="agent.id" :value="agent.id">
-              {{ agent.name }} ({{ agent.agentKey }})
-            </option>
-          </select>
+          <AppSelect
+            v-model="roleForm.agentId"
+            required
+            @change="syncSelectedAgent"
+            :options="[{value:'',label:'请选择 Agent'}, ...agents.map(a => ({value:a.id, label:a.name + ' (' + a.agentKey + ')'}))]"
+          />
         </div>
         <div class="form-group">
           <label class="label-with-help">
@@ -239,6 +237,7 @@ import AppSkeleton from "../components/ui/AppSkeleton.vue";
 import AppTag from "../components/ui/AppTag.vue";
 import AppEmpty from "../components/ui/AppEmpty.vue";
 import AppModal from "../components/ui/AppModal.vue";
+import AppSelect from "../components/ui/AppSelect.vue";
 import PageHeader from "../components/ui/PageHeader.vue";
 
 const { toast } = useToast();

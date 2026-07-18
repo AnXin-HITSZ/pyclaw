@@ -62,10 +62,11 @@
           </div>
           <div class="form-group">
             <label>Provider 类型 *</label>
-            <select v-model="form.providerType" required>
-              <option value="openai">openai</option>
-              <option value="openai-compatible">openai-compatible</option>
-            </select>
+            <AppSelect
+              v-model="form.providerType"
+              required
+              :options="[{value:'openai',label:'openai'},{value:'openai-compatible',label:'openai-compatible'}]"
+            />
           </div>
         </div>
         <div class="form-group">
@@ -79,10 +80,11 @@
           </div>
           <div class="form-group">
             <label>API 模式 *</label>
-            <select v-model="form.apiMode" required>
-              <option value="chat_completions">chat_completions</option>
-              <option value="responses">responses</option>
-            </select>
+            <AppSelect
+              v-model="form.apiMode"
+              required
+              :options="[{value:'chat_completions',label:'chat_completions'},{value:'responses',label:'responses'}]"
+            />
           </div>
         </div>
         <div class="form-group">
@@ -123,6 +125,7 @@ import AppSkeleton from "../components/ui/AppSkeleton.vue";
 import AppTag from "../components/ui/AppTag.vue";
 import AppEmpty from "../components/ui/AppEmpty.vue";
 import AppModal from "../components/ui/AppModal.vue";
+import AppSelect from "../components/ui/AppSelect.vue";
 import PageHeader from "../components/ui/PageHeader.vue";
 
 const { isAdmin } = useAuth();

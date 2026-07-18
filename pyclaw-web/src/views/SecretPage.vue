@@ -62,25 +62,25 @@
         </div>
         <div class="form-group">
           <label>类型</label>
-          <select v-model="createForm.type">
-            <option value="provider">Provider</option>
-            <option value="feishu">飞书</option>
-            <option value="custom">自定义</option>
-          </select>
+          <AppSelect
+            v-model="createForm.type"
+            :options="[{value:'provider',label:'Provider'},{value:'feishu',label:'飞书'},{value:'custom',label:'自定义'}]"
+          />
         </div>
         <div class="form-group">
           <label>范围</label>
-          <select v-model="createForm.scope">
-            <option value="user">用户级</option>
-            <option value="claw">Claw 级</option>
-          </select>
+          <AppSelect
+            v-model="createForm.scope"
+            :options="[{value:'user',label:'用户级'},{value:'claw',label:'Claw 级'}]"
+          />
         </div>
         <div v-if="createForm.scope === 'claw'" class="form-group">
           <label>Claw *</label>
-          <select v-model="createForm.clawId" required>
-            <option value="">选择 Claw</option>
-            <option v-for="claw in claws" :key="claw.id" :value="claw.id">{{ claw.name }}</option>
-          </select>
+          <AppSelect
+            v-model="createForm.clawId"
+            required
+            :options="[{value:'',label:'选择 Claw'}, ...claws.map(c => ({value:c.id, label:c.name}))]"
+          />
         </div>
         <div class="form-group">
           <label>键值对 (每行: KEY=VALUE)</label>
@@ -104,6 +104,7 @@ import AppSkeleton from "../components/ui/AppSkeleton.vue";
 import AppTag from "../components/ui/AppTag.vue";
 import AppEmpty from "../components/ui/AppEmpty.vue";
 import AppModal from "../components/ui/AppModal.vue";
+import AppSelect from "../components/ui/AppSelect.vue";
 import PageHeader from "../components/ui/PageHeader.vue";
 
 const { toast } = useToast();
