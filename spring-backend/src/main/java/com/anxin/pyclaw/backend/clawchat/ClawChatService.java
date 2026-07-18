@@ -14,9 +14,9 @@ import com.anxin.pyclaw.backend.claw.ClawAgentRepository;
 import com.anxin.pyclaw.backend.claw.ClawEntity;
 import com.anxin.pyclaw.backend.claw.ClawRepository;
 import com.anxin.pyclaw.backend.common.ApiException;
-import com.anxin.pyclaw.backend.conversation.AgentMemorySessionResolver;
-import com.anxin.pyclaw.backend.conversation.ConversationEntity;
 import com.anxin.pyclaw.backend.conversation.ConversationService;
+import com.anxin.pyclaw.backend.orchestrator.ConversationOrchestratorService;
+import com.anxin.pyclaw.backend.orchestrator.OrchestratorResult;
 import com.anxin.pyclaw.backend.config.PyclawSandboxProperties;
 import com.anxin.pyclaw.backend.provider.ProviderConfigEntity;
 import com.anxin.pyclaw.backend.provider.ProviderConfigService;
@@ -63,7 +63,7 @@ public class ClawChatService {
     private final AuditLogService auditLogService;
     private final ToolApprovalService approvalService;
     private final ConversationService conversationService;
-    private final AgentMemorySessionResolver memorySessionResolver;
+    private final ConversationOrchestratorService orchestrator;
 
     public ClawChatService(
             ClawRepository claws,
@@ -80,7 +80,7 @@ public class ClawChatService {
             AuditLogService auditLogService,
             ToolApprovalService approvalService,
             ConversationService conversationService,
-            AgentMemorySessionResolver memorySessionResolver
+            ConversationOrchestratorService orchestrator
     ) {
         this.claws = claws;
         this.clawAgents = clawAgents;
@@ -96,7 +96,7 @@ public class ClawChatService {
         this.auditLogService = auditLogService;
         this.approvalService = approvalService;
         this.conversationService = conversationService;
-        this.memorySessionResolver = memorySessionResolver;
+        this.orchestrator = orchestrator;
     }
 
     // ---- Run Chat ----
@@ -107,15 +107,10 @@ public class ClawChatService {
         requireClawActive(claw);
         requireRunnerHealthy(claw);
 
-        // Resolve agent: agentInstanceId from request takes priority, else resolve from roleKey
-        ResolvedRole resolved;
-        if (request.agentInstanceId() != null && !request.agentInstanceId().isBlank()) {
-            resolved = resolveRoleByInstanceId(claw, request.agentInstanceId());
-        } else {
-            resolved = resolveRole(claw, request.roleKey());
-        }
+        // Orchestrator resolves: conversation, agent instance, memory session
+        OrchestratorResult ctx = orchestrator.resolveTurnAgent(clawId, request, authentication);
 
-        AgentConfigEntity agent = requireAgentAccessible(resolved.agentId(), claw.getOwnerUserId());
+        AgentConfigEntity agent = requireAgentAccessible(ctx.agentId(), claw.getOwnerUserId());
         AgentToolPolicyEntity policy = agentConfigService.requirePolicy(agent.getId());
         ProviderConfigEntity provider = providerConfigService.resolveForAgentAndUser(agent, claw.getOwnerUserId());
         if (provider == null) {
@@ -124,22 +119,18 @@ public class ClawChatService {
 
         String model = firstNonBlank(agent.getModel(), provider.getModel());
         String providerName = provider.getName();
-
-        // Conversation Thread: create if not provided
-        ConversationEntity conversation = conversationService.getOrCreate(
-                request.conversationId(), clawId, authentication);
-
-        // Agent Memory Session: private per-agent-instance session for Runtime
-        String memorySessionId = memorySessionResolver.resolve(
-                conversation.getId(), resolved.agentInstanceId());
+        String memorySessionId = ctx.runtimeSessionId();
+        String conversationId = ctx.conversationId();
 
         // Legacy Redis session (backward compat for session list)
         String sessionId = resolveSessionId(request.sessionId(), claw, principal);
 
+        ResolvedRole resolved = new ResolvedRole(ctx.agentId(), ctx.roleKey(), ctx.displayName(), ctx.agentInstanceId());
+
         long now = System.currentTimeMillis();
 
         // Save user message to both conversation_messages (new) and Redis session (legacy)
-        saveUserMessages(conversation.getId(), principal.userId(), claw, agent, resolved,
+        saveUserMessages(conversationId, principal.userId(), claw, agent, resolved,
                 providerName, model, request.prompt(), now, sessionId);
 
         String sandboxBaseUrl = sandboxProperties.isEnabled()
@@ -180,14 +171,14 @@ public class ClawChatService {
             if ("PENDING_APPROVAL".equals(pyResponse.status())) {
                 return handlePendingApproval(
                         pyResponse, claw, memorySessionId, sessionId, agent, resolved,
-                        providerName, model, principal, authentication, latencyMs, conversation.getId()
+                        providerName, model, principal, authentication, latencyMs, conversationId
                 );
             }
 
             return finaliseCompletedRun(
                     pyResponse, claw, memorySessionId, sessionId, agent, resolved,
                     providerName, model, principal, authentication, latencyMs,
-                    "claw.chat.run", conversation.getId()
+                    "claw.chat.run", conversationId
             );
         } catch (Exception exc) {
             String failMsg = FAILED_ASSISTANT_MESSAGE;
@@ -195,24 +186,12 @@ public class ClawChatService {
                     agent.getAgentKey(), resolved.roleKey(), agent.getId(),
                     providerName, model, "assistant", failMsg, System.currentTimeMillis());
             conversationService.saveMessage(
-                    conversation.getId(), principal.userId(), claw.getId(),
+                    conversationId, principal.userId(), claw.getId(),
                     resolved.agentInstanceId(), agent.getId(), agent.getAgentKey(),
                     resolved.roleKey(), providerName, model, "assistant", failMsg);
             audit(authentication, "claw.chat.run", claw.getId(), false, exc.getMessage());
             throw exc;
         }
-    }
-
-    private ResolvedRole resolveRoleByInstanceId(ClawEntity claw, String agentInstanceId) {
-        ClawAgentEntity instance = clawAgents.findById(agentInstanceId)
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Agent instance not found in this Claw"));
-        if (!Objects.equals(instance.getClawId(), claw.getId())) {
-            throw new ApiException(HttpStatus.NOT_FOUND, "Agent instance not found in this Claw");
-        }
-        if (!instance.isEnabled()) {
-            throw new ApiException(HttpStatus.CONFLICT, "Agent instance is disabled");
-        }
-        return new ResolvedRole(instance.getAgentId(), instance.getRoleKey(), instance.getDisplayName(), instance.getId());
     }
 
     private void saveUserMessages(String conversationId, String userId, ClawEntity claw,

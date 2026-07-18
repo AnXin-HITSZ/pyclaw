@@ -304,7 +304,7 @@ roleKey 改名不影响已有 Agent Memory Session
 **Produces:**
 - 本轮 Agent 选择统一由 Spring Orchestrator 决定
 
-- [ ] **Step 1: 实现 ConversationOrchestratorService.resolveTurnAgent**
+- [x] **Step 1: 实现 ConversationOrchestratorService.resolveTurnAgent**
 
 优先级：
 
@@ -316,7 +316,7 @@ defaultRole
 自动路由
 ```
 
-- [ ] **Step 2: 将 ClawChatService 改为调用 Orchestrator**
+- [x] **Step 2: 将 ClawChatService 改为调用 Orchestrator**
 
 `ClawChatService` 不直接解析 role，而是请求 Orchestrator 返回：
 
@@ -330,7 +330,7 @@ toolProfile
 runtimeSessionId
 ```
 
-- [ ] **Step 3: 补测试**
+- [x] **Step 3: 补测试**
 
 覆盖：
 
