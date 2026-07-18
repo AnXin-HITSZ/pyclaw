@@ -124,6 +124,9 @@ secret:
     # secret.values.PYCLAW_INTERNAL_API_TOKEN.
     OPENCLAW_RUNTIME_CONFIG_TOKEN: ""
     OPENCLAW_INTERNAL_API_TOKEN: ""
+    # Redis-backed pending approval store. Required when tool approval is enabled.
+    # Example: redis://:password@redis-master.pyclaw.svc.cluster.local:6379/0
+    OPENCLAW_REDIS_URL: ""
 
     # WeChat channel secrets.
     OPENCLAW_WECHAT_ACCOUNT_ID: ""

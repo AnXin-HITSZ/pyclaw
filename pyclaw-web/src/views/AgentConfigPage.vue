@@ -42,7 +42,16 @@
         <form @submit.prevent="handleSave">
           <div class="form-row">
             <div class="form-group">
-              <label>Agent Key *</label>
+              <label class="label-with-help">
+                <span>Agent Key *</span>
+                <span
+                  class="help-dot"
+                  tabindex="0"
+                  role="img"
+                  aria-label="Agent Key 是 Agent 本体的唯一标识，用于运行时查找这套模型、提示词和工具配置。"
+                  data-tooltip="Agent 本体的唯一标识。它定义“这个 Agent 是谁”，会绑定模型、System Prompt、工具策略和工作目录。"
+                >?</span>
+              </label>
               <input v-model="form.agentKey" required placeholder="my-agent" />
             </div>
             <div class="form-group">
@@ -236,6 +245,54 @@ onMounted(load);
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .form-group { margin-bottom: 16px; }
 .form-group label { display: block; margin-bottom: 4px; font-size: 13px; color: var(--text-secondary); }
+.form-group .label-with-help { display: inline-flex; align-items: center; gap: 6px; }
+.help-dot {
+  position: relative;
+  width: 16px;
+  height: 16px;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  color: var(--text-muted);
+  background: var(--bg-primary);
+  font-size: 11px;
+  line-height: 1;
+  cursor: help;
+}
+.help-dot:hover,
+.help-dot:focus-visible {
+  color: var(--accent);
+  border-color: var(--accent);
+  outline: none;
+}
+.help-dot::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  z-index: 120;
+  width: min(300px, 72vw);
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  background: var(--bg-surface);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.28);
+  font-size: 12px;
+  line-height: 1.45;
+  font-weight: 500;
+  white-space: normal;
+  transform: translateX(-50%) translateY(4px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s var(--ease-out), transform 0.15s var(--ease-out);
+}
+.help-dot:hover::after,
+.help-dot:focus-visible::after {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
 .form-group input, .form-group textarea, .form-group select {
   width: 100%; padding: 8px 12px; background: var(--bg-primary); border: 1px solid var(--border-color);
   border-radius: 6px; color: var(--text-primary); font-size: 14px;

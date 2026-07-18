@@ -128,7 +128,16 @@
             </select>
           </div>
           <div class="form-group">
-            <label>角色 Key *</label>
+            <label class="label-with-help">
+              <span>角色 Key *</span>
+              <span
+                class="help-dot"
+                tabindex="0"
+                role="img"
+                aria-label="角色 Key 是这个 Agent 在当前 Claw 里的路由身份，例如 default、frontend 或 ops。"
+                data-tooltip="当前 Claw 内的路由身份。它定义“在这个 Claw 里怎么调用该 Agent”，可与 Mention Aliases 和 Command Prefixes 配合使用。"
+              >?</span>
+            </label>
             <input v-model="roleForm.roleKey" required placeholder="default / frontend / ops" />
           </div>
           <div class="form-group">
@@ -434,6 +443,63 @@ onMounted(load);
 .card-title-row h3 { margin: 0; }
 
 .btn-secondary.compact { padding: 6px 10px; font-size: 12px; }
+
+.label-with-help {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.help-dot {
+  position: relative;
+  width: 16px;
+  height: 16px;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  color: var(--text-muted);
+  background: var(--bg-primary);
+  font-size: 11px;
+  line-height: 1;
+  cursor: help;
+}
+
+.help-dot:hover,
+.help-dot:focus-visible {
+  color: var(--accent);
+  border-color: var(--accent);
+  outline: none;
+}
+
+.help-dot::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  z-index: 120;
+  width: min(320px, 72vw);
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  background: var(--bg-surface);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.28);
+  font-size: 12px;
+  line-height: 1.45;
+  font-weight: 500;
+  white-space: normal;
+  transform: translateX(-50%) translateY(4px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s var(--ease-out), transform 0.15s var(--ease-out);
+}
+
+.help-dot:hover::after,
+.help-dot:focus-visible::after {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
 
 .switch-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
 .switch-grid .switch-line { margin: 0; }

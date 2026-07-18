@@ -13,9 +13,12 @@ imagePullSecrets:
 secret:
   create: false
   existingSecret: pyclaw-provider-secret
-  # The existing Secret should include OPENAI_API_KEY/PYCLAW_API_TOKEN and,
-  # for routed multi-agent runtime config, OPENCLAW_RUNTIME_CONFIG_TOKEN.
+  # The existing Secret should include OPENAI_API_KEY/PYCLAW_API_TOKEN,
+  # OPENCLAW_REDIS_URL, and, for routed multi-agent runtime config,
+  # OPENCLAW_RUNTIME_CONFIG_TOKEN.
   # OPENCLAW_RUNTIME_CONFIG_TOKEN must equal Spring Backend PYCLAW_INTERNAL_API_TOKEN.
+  # OPENCLAW_REDIS_URL is required by the pending tool approval store.
+  # Example: redis://:password@redis-master.pyclaw.svc.cluster.local:6379/0
 
 env:
   OPENCLAW_CHATDATA_DIR: /app/chatdata
