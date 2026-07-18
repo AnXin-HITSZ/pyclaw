@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hmac
 from dataclasses import asdict, dataclass
+import logging
 import os
 from pathlib import Path
 from typing import Any, Literal
@@ -63,6 +64,8 @@ from openclaw.tools.resolver import ToolResolveInput, ToolResolveResult, resolve
 ApiProviderName = Literal["openai", "mock"]
 ApiMode = Literal["auto", "responses", "chat_completions", "chat-completions"]
 ToolProfileName = Literal["minimal", "readonly", "coding", "messaging", "full"]
+
+LOGGER = logging.getLogger(__name__)
 
 
 class HealthResponse(BaseModel):
@@ -380,6 +383,13 @@ async def run_agent_request(request: AgentRunRequest) -> "AgentRunOutcome":
     provider = build_provider(request, model=model)
     policy = build_policy(request)
     resolved_tools = resolve_runtime_tools(policy)
+    log_runtime_tool_resolution(
+        phase="run",
+        request=request,
+        model=model,
+        policy=policy,
+        resolved_tools=resolved_tools,
+    )
 
     request_context = ApprovalRuntimeContext(
         session_id=session_id,
@@ -548,6 +558,13 @@ async def resume_agent_request(request: AgentResumeRequest) -> AgentRunOutcome:
         provider = build_provider(run_request, model=model)
         policy = build_policy(run_request)
         resolved_tools = resolve_runtime_tools(policy)
+        log_runtime_tool_resolution(
+            phase="resume",
+            request=run_request,
+            model=model,
+            policy=policy,
+            resolved_tools=resolved_tools,
+        )
 
         request_context = ApprovalRuntimeContext(
             session_id=session_id,
@@ -775,6 +792,37 @@ def resolve_runtime_tools(policy: ToolPolicy) -> ToolResolveResult:
             also_allow=policy.also_allow,
             readonly=policy.readonly,
         )
+    )
+
+
+def log_runtime_tool_resolution(
+    *,
+    phase: str,
+    request: AgentRunRequest,
+    model: str,
+    policy: ToolPolicy,
+    resolved_tools: ToolResolveResult,
+) -> None:
+    LOGGER.info(
+        "Resolved Agent runtime tools phase=%s provider=%s model=%s api_mode=%s session_id=%s "
+        "claw_id=%s role_key=%s agent_key=%s requested_profile=%s resolved_profile=%s readonly=%s "
+        "tools_allow=%s tools_also_allow=%s tools_deny=%s resolved_tools=%s denied_tools=%s",
+        phase,
+        request.provider,
+        model,
+        request.api_mode,
+        request.session_id,
+        request.claw_id,
+        request.role_key,
+        request.agent_key,
+        request.tool_profile,
+        resolved_tools.profile,
+        policy.readonly,
+        sorted(policy.allow) if policy.allow is not None else None,
+        sorted(policy.also_allow),
+        sorted(policy.deny),
+        [tool.name for tool in resolved_tools.tools],
+        [f"{tool.name}:{tool.reason}" for tool in resolved_tools.denied_tools],
     )
 
 

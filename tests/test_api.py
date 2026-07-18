@@ -100,6 +100,45 @@ class ApiTests(unittest.TestCase):
 
             self.assertEqual(allowed.status_code, 200, allowed.text)
 
+    def test_runtime_tool_resolution_log_includes_effective_tools(self) -> None:
+        from openclaw.api import (
+            AgentRunRequest,
+            build_policy,
+            log_runtime_tool_resolution,
+            resolve_runtime_tools,
+        )
+
+        request = AgentRunRequest(
+            prompt="hello",
+            provider="mock",
+            model="mock-model",
+            tool_profile="coding",
+            tools_deny=["shell"],
+            sandbox_base_url="http://sandbox.local",
+            claw_id="claw-1",
+            role_key="writer",
+            agent_key="agent-a",
+        )
+        policy = build_policy(request)
+        resolved_tools = resolve_runtime_tools(policy)
+
+        with self.assertLogs("openclaw.api", level="INFO") as logs:
+            log_runtime_tool_resolution(
+                phase="run",
+                request=request,
+                model="mock-model",
+                policy=policy,
+                resolved_tools=resolved_tools,
+            )
+
+        output = "\n".join(logs.output)
+        self.assertIn("phase=run", output)
+        self.assertIn("provider=mock", output)
+        self.assertIn("requested_profile=coding", output)
+        self.assertIn("workspace_info", output)
+        self.assertIn("read_file", output)
+        self.assertIn("tools_deny=['shell']", output)
+
 
 if __name__ == "__main__":
     unittest.main()
