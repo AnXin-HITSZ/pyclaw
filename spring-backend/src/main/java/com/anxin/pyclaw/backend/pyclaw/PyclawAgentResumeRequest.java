@@ -17,7 +17,9 @@ public record PyclawAgentResumeRequest(
         @JsonProperty("tools_allow") List<String> toolsAllow,
         @JsonProperty("tools_deny") List<String> toolsDeny,
         @JsonProperty("tools_also_allow") List<String> toolsAlsoAllow,
-        @JsonProperty("sandbox_base_url") String sandboxBaseUrl
+        @JsonProperty("sandbox_base_url") String sandboxBaseUrl,
+        @JsonProperty("conversation_id") String conversationId,
+        @JsonProperty("agent_instance_id") String agentInstanceId
 ) {
     public PyclawAgentResumeRequest {
         if (toolProfile == null || toolProfile.isBlank()) {

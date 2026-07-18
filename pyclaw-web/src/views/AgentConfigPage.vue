@@ -42,6 +42,7 @@
         <p v-if="agent.systemPrompt" class="agent-prompt">System Prompt: {{ truncate(agent.systemPrompt, 100) }}</p>
         <div class="agent-actions">
           <AppButton variant="ghost" @click="openEdit(agent)">编辑</AppButton>
+          <AppButton variant="ghost" class="btn-publish" @click="openPublish(agent)">发布</AppButton>
           <AppButton
             variant="danger"
             :loading="deletingId === agent.id"
@@ -119,6 +120,43 @@
         <div class="modal-actions">
           <AppButton variant="ghost" type="button" @click="showModal = false">取消</AppButton>
           <AppButton variant="primary" type="submit" :loading="submitting" loading-text="保存中...">保存</AppButton>
+        </div>
+      </form>
+    </AppModal>
+
+    <!-- Publish Modal -->
+    <AppModal :show="showPublishModal" title="发布 Agent: {{ publishTarget?.name }}" @close="showPublishModal = false">
+      <form @submit.prevent="handlePublish">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Package Key *</label>
+            <input v-model="publishForm.packageKey" required placeholder="my-agent-package" />
+          </div>
+          <div class="form-group">
+            <label>版本 *</label>
+            <input v-model="publishForm.version" required placeholder="1.0.0" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label>可见性</label>
+          <AppSelect v-model="publishForm.visibility" :options="[
+            {value:'public',label:'public — 市场可见'},
+            {value:'unlisted',label:'unlisted — 有链接可见'},
+            {value:'private',label:'private — 仅自己可见'},
+          ]" />
+        </div>
+        <div class="form-group">
+          <label>简介</label>
+          <input v-model="publishForm.summary" placeholder="简要描述 Agent 的用途" />
+        </div>
+        <div class="form-group">
+          <label>更新日志</label>
+          <input v-model="publishForm.changelog" placeholder="本次发布的变更说明" />
+        </div>
+        <p v-if="publishError" class="chat-error">{{ publishError }}</p>
+        <div class="modal-actions">
+          <AppButton variant="ghost" type="button" @click="showPublishModal = false">取消</AppButton>
+          <AppButton variant="primary" type="submit" :loading="publishLoading" loading-text="发布中...">发布</AppButton>
         </div>
       </form>
     </AppModal>
@@ -242,6 +280,46 @@ function truncate(text, max) {
   return text.length > max ? text.slice(0, max) + "..." : text;
 }
 
+const showPublishModal = ref(false);
+const publishTarget = ref(null);
+const publishLoading = ref(false);
+const publishError = ref("");
+const publishForm = ref({ packageKey: "", version: "", visibility: "public", summary: "", changelog: "" });
+
+function openPublish(agent) {
+  publishTarget.value = agent;
+  publishForm.value = {
+    packageKey: agent.agentKey,
+    version: "1.0.0",
+    visibility: "public",
+    summary: agent.description || "",
+    changelog: "",
+  };
+  publishError.value = "";
+  showPublishModal.value = true;
+}
+
+async function handlePublish() {
+  publishLoading.value = true;
+  publishError.value = "";
+  try {
+    await api.post(`/api/agents/${publishTarget.value.id}/publish`, {
+      packageKey: publishForm.value.packageKey,
+      version: publishForm.value.version,
+      visibility: publishForm.value.visibility,
+      summary: publishForm.value.summary || undefined,
+      changelog: publishForm.value.changelog || undefined,
+    });
+    showPublishModal.value = false;
+    toast.success("已发布");
+    await load();
+  } catch (e) {
+    publishError.value = e.message;
+  } finally {
+    publishLoading.value = false;
+  }
+}
+
 onMounted(load);
 </script>
 
@@ -266,6 +344,9 @@ onMounted(load);
 .agent-detail { display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: 12px; color: var(--text-muted); margin-top: 8px; }
 .agent-prompt { font-size: 12px; color: var(--text-muted); background: var(--bg-primary); padding: 8px; border-radius: 6px; margin: 4px 0 0; font-family: var(--font-mono); }
 .agent-actions { display: flex; gap: 8px; margin-top: auto; padding-top: 14px; }
+.btn-publish { color: var(--accent); }
+.publish-status { font-size: 11px; color: var(--success); margin-top: 4px; }
+.chat-error { color: var(--danger); font-size: 13px; margin-top: 8px; }
 .empty-state-wrap { margin-top: 24px; }
 
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }

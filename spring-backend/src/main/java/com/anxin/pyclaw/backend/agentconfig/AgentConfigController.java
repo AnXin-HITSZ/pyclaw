@@ -1,5 +1,8 @@
 package com.anxin.pyclaw.backend.agentconfig;
 
+import com.anxin.pyclaw.backend.agentpackage.AgentPackageService;
+import com.anxin.pyclaw.backend.agentpackage.AgentPackageVersionResponse;
+import com.anxin.pyclaw.backend.agentpackage.AgentPublishRequest;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -17,9 +20,17 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/agents")
 public class AgentConfigController {
     private final AgentConfigService service;
+    private final AgentPackageService packageService;
 
-    public AgentConfigController(AgentConfigService service) {
+    public AgentConfigController(AgentConfigService service, AgentPackageService packageService) {
         this.service = service;
+        this.packageService = packageService;
+    }
+
+    @PostMapping("/{id}/publish")
+    @PreAuthorize("hasAuthority('agent:create')")
+    public AgentPackageVersionResponse publish(@PathVariable String id, @Valid @RequestBody AgentPublishRequest request, Authentication authentication) {
+        return packageService.publish(id, request, authentication);
     }
 
     @GetMapping

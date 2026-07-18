@@ -103,6 +103,9 @@ class AgentRunRequest(BaseModel):
     role_key: str | None = None
     agent_key: str | None = None
     sandbox_base_url: str | None = None
+    # Agent instance / conversation (ARCHITECTURE.md)
+    conversation_id: str | None = None
+    agent_instance_id: str | None = None
 
 
 class ApprovalResponse(BaseModel):
@@ -425,6 +428,8 @@ async def run_agent_request(request: AgentRunRequest) -> "AgentRunOutcome":
         role_key=request.role_key,
         agent_key=request.agent_key,
         sandbox_base_url=request.sandbox_base_url,
+        conversation_id=request.conversation_id,
+        agent_instance_id=request.agent_instance_id,
         provider_name=request.provider,
         model=model,
         system_prompt=request.system,
@@ -537,6 +542,8 @@ class AgentResumeRequest(BaseModel):
     disable_compaction: bool = False
     mock_response: str | None = None
     sandbox_base_url: str | None = None
+    conversation_id: str | None = None
+    agent_instance_id: str | None = None
 
 
 @app.post("/v1/agent/resume", response_model=AgentRunResponse)
@@ -600,6 +607,8 @@ async def resume_agent_request(request: AgentResumeRequest) -> AgentRunOutcome:
             role_key=state.get("role_key"),
             agent_key=state.get("agent_key"),
             sandbox_base_url=request.sandbox_base_url,
+            conversation_id=state.get('conversation_id'),
+            agent_instance_id=state.get('agent_instance_id'),
             provider_name=run_request.provider,
             model=model,
             system_prompt=run_request.system,
@@ -710,6 +719,8 @@ def _resume_request_to_run_request(
         disable_compaction=request.disable_compaction,
         mock_response=request.mock_response,
         sandbox_base_url=request.sandbox_base_url,
+        conversation_id=request.conversation_id,
+        agent_instance_id=request.agent_instance_id,
     )
 
 
@@ -734,6 +745,8 @@ def _build_tool_metadata_source(run_request: AgentRunRequest, state: dict[str, A
         claw_name=state.get("claw_name"),
         role_key=state.get("role_key"),
         agent_key=state.get("agent_key"),
+        conversation_id=state.get("conversation_id"),
+        agent_instance_id=state.get("agent_instance_id"),
     )
 
 
@@ -830,7 +843,7 @@ def log_runtime_tool_resolution(
     resolved_tools: ToolResolveResult,
 ) -> None:
     LOGGER.info(
-        "Resolved Agent runtime tools phase=%s provider=%s model=%s api_mode=%s session_id=%s "
+        "Resolved Agent runtime tools phase=%s provider=%s model=%s api_mode=%s session_id=%s conversation_id=%s agent_instance_id=%s "
         "claw_id=%s role_key=%s agent_key=%s requested_profile=%s resolved_profile=%s readonly=%s "
         "tools_allow=%s tools_also_allow=%s tools_deny=%s resolved_tools=%s denied_tools=%s",
         phase,
@@ -838,6 +851,8 @@ def log_runtime_tool_resolution(
         model,
         request.api_mode,
         request.session_id,
+        request.conversation_id,
+        request.agent_instance_id,
         request.claw_id,
         request.role_key,
         request.agent_key,
@@ -883,6 +898,8 @@ def build_tool_metadata(request: AgentRunRequest) -> dict[str, Any]:
         meta["claw_name"] = request.claw_name
         meta["role_key"] = request.role_key
         meta["agent_key"] = request.agent_key
+        meta["conversation_id"] = request.conversation_id
+        meta["agent_instance_id"] = request.agent_instance_id
     return meta
 
 

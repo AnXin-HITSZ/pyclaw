@@ -163,6 +163,8 @@ const messages = ref([]);
 const prompt = ref("");
 const sending = ref(false);
 const selectedRoleKey = ref("");
+const selectedAgentInstanceId = ref("");
+const conversationId = ref(null);
 const messagesEl = ref(null);
 const inputEl = ref(null);
 const showScrollHint = ref(false);
@@ -236,6 +238,8 @@ async function sendMessage() {
       prompt: text,
       roleKey: selectedRoleKey.value || undefined,
       sessionId: activeSessionId.value || undefined,
+      conversationId: conversationId.value || undefined,
+      agentInstanceId: selectedAgentInstanceId.value || undefined,
     });
     await handleChatResponse(res);
   } catch (e) {
@@ -250,6 +254,8 @@ async function sendMessage() {
 async function handleChatResponse(res) {
   if (!res) return;
   activeSessionId.value = res.sessionId || activeSessionId.value;
+  if (res.conversationId) conversationId.value = res.conversationId;
+  if (res.agentInstanceId) selectedAgentInstanceId.value = res.agentInstanceId;
   if (res.status === "PENDING_APPROVAL") {
     const assistantText = res.text || "该操作需要你确认后继续执行。";
     messages.value.push({ role: "assistant", content: assistantText });

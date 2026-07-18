@@ -14,6 +14,9 @@ import com.anxin.pyclaw.backend.claw.ClawAgentRepository;
 import com.anxin.pyclaw.backend.claw.ClawEntity;
 import com.anxin.pyclaw.backend.claw.ClawRepository;
 import com.anxin.pyclaw.backend.common.ApiException;
+import com.anxin.pyclaw.backend.conversation.ConversationService;
+import com.anxin.pyclaw.backend.orchestrator.ConversationOrchestratorService;
+import com.anxin.pyclaw.backend.orchestrator.OrchestratorResult;
 import com.anxin.pyclaw.backend.config.PyclawSandboxProperties;
 import com.anxin.pyclaw.backend.provider.ProviderConfigEntity;
 import com.anxin.pyclaw.backend.provider.ProviderConfigService;
@@ -59,6 +62,8 @@ public class ClawChatService {
     private final UsageRecordRepository usageRecords;
     private final AuditLogService auditLogService;
     private final ToolApprovalService approvalService;
+    private final ConversationService conversationService;
+    private final ConversationOrchestratorService orchestrator;
 
     public ClawChatService(
             ClawRepository claws,
@@ -73,7 +78,9 @@ public class ClawChatService {
             PyclawClient pyclawClient,
             UsageRecordRepository usageRecords,
             AuditLogService auditLogService,
-            ToolApprovalService approvalService
+            ToolApprovalService approvalService,
+            ConversationService conversationService,
+            ConversationOrchestratorService orchestrator
     ) {
         this.claws = claws;
         this.clawAgents = clawAgents;
@@ -88,6 +95,8 @@ public class ClawChatService {
         this.usageRecords = usageRecords;
         this.auditLogService = auditLogService;
         this.approvalService = approvalService;
+        this.conversationService = conversationService;
+        this.orchestrator = orchestrator;
     }
 
     // ---- Run Chat ----
@@ -98,8 +107,10 @@ public class ClawChatService {
         requireClawActive(claw);
         requireRunnerHealthy(claw);
 
-        ResolvedRole resolved = resolveRole(claw, request.roleKey());
-        AgentConfigEntity agent = requireAgentAccessible(resolved.agentId(), claw.getOwnerUserId());
+        // Orchestrator resolves: conversation, agent instance, memory session
+        OrchestratorResult ctx = orchestrator.resolveTurnAgent(clawId, request, authentication);
+
+        AgentConfigEntity agent = requireAgentAccessible(ctx.agentId(), claw.getOwnerUserId());
         AgentToolPolicyEntity policy = agentConfigService.requirePolicy(agent.getId());
         ProviderConfigEntity provider = providerConfigService.resolveForAgentAndUser(agent, claw.getOwnerUserId());
         if (provider == null) {
@@ -108,13 +119,19 @@ public class ClawChatService {
 
         String model = firstNonBlank(agent.getModel(), provider.getModel());
         String providerName = provider.getName();
+        String memorySessionId = ctx.runtimeSessionId();
+        String conversationId = ctx.conversationId();
+
+        // Legacy Redis session (backward compat for session list)
         String sessionId = resolveSessionId(request.sessionId(), claw, principal);
+
+        ResolvedRole resolved = new ResolvedRole(ctx.agentId(), ctx.roleKey(), ctx.displayName(), ctx.agentInstanceId());
 
         long now = System.currentTimeMillis();
 
-        sessionService.saveMessage(sessionId, principal.userId(), claw.getId(), claw.getName(),
-                agent.getAgentKey(), resolved.roleKey(), agent.getId(),
-                providerName, model, "user", request.prompt(), now);
+        // Save user message to both conversation_messages (new) and Redis session (legacy)
+        saveUserMessages(conversationId, principal.userId(), claw, agent, resolved,
+                providerName, model, request.prompt(), now, sessionId);
 
         String sandboxBaseUrl = sandboxProperties.isEnabled()
                 ? namingService.serviceBaseUrl(claw.getOwnerUserId(), claw.getId())
@@ -128,7 +145,7 @@ public class ClawChatService {
         PyclawAgentRunRequest pyRequest = new PyclawAgentRunRequest(
                 request.prompt(),
                 pyclawProvider(provider.getProviderType()),
-                sessionId,
+                memorySessionId,       // Use agent-private memory session for Runtime
                 policy.getProfile() != null ? policy.getProfile() : "minimal",
                 model,
                 provider.getApiMode(),
@@ -143,7 +160,9 @@ public class ClawChatService {
                 claw.getName(),
                 resolved.roleKey(),
                 agent.getAgentKey(),
-                sandboxBaseUrl
+                sandboxBaseUrl,
+                conversationId,
+                resolved.agentInstanceId()
         );
 
         long started = System.nanoTime();
@@ -153,23 +172,41 @@ public class ClawChatService {
 
             if ("PENDING_APPROVAL".equals(pyResponse.status())) {
                 return handlePendingApproval(
-                        pyResponse, claw, sessionId, agent, resolved, providerName, model,
-                        principal, authentication, latencyMs
+                        pyResponse, claw, memorySessionId, sessionId, agent, resolved,
+                        providerName, model, principal, authentication, latencyMs, conversationId
                 );
             }
 
             return finaliseCompletedRun(
-                    pyResponse, claw, sessionId, agent, resolved,
-                    providerName, model, principal, authentication, latencyMs, "claw.chat.run"
+                    pyResponse, claw, memorySessionId, sessionId, agent, resolved,
+                    providerName, model, principal, authentication, latencyMs,
+                    "claw.chat.run", conversationId
             );
         } catch (Exception exc) {
+            String failMsg = FAILED_ASSISTANT_MESSAGE;
             sessionService.saveMessage(sessionId, principal.userId(), claw.getId(), claw.getName(),
                     agent.getAgentKey(), resolved.roleKey(), agent.getId(),
-                    providerName, model, "assistant",
-                    FAILED_ASSISTANT_MESSAGE, System.currentTimeMillis());
+                    providerName, model, "assistant", failMsg, System.currentTimeMillis());
+            conversationService.saveMessage(
+                    conversationId, principal.userId(), claw.getId(),
+                    resolved.agentInstanceId(), agent.getId(), agent.getAgentKey(),
+                    resolved.roleKey(), providerName, model, "assistant", failMsg);
             audit(authentication, "claw.chat.run", claw.getId(), false, exc.getMessage());
             throw exc;
         }
+    }
+
+    private void saveUserMessages(String conversationId, String userId, ClawEntity claw,
+                                  AgentConfigEntity agent, ResolvedRole resolved,
+                                  String providerName, String model, String prompt,
+                                  long timestamp, String sessionId) {
+        sessionService.saveMessage(sessionId, userId, claw.getId(), claw.getName(),
+                agent.getAgentKey(), resolved.roleKey(), agent.getId(),
+                providerName, model, "user", prompt, timestamp);
+        conversationService.saveMessage(
+                conversationId, userId, claw.getId(),
+                resolved.agentInstanceId(), agent.getId(), agent.getAgentKey(),
+                resolved.roleKey(), providerName, model, "user", prompt);
     }
 
     // ---- Approve / Reject ----
@@ -237,14 +274,14 @@ public class ClawChatService {
 
             if ("PENDING_APPROVAL".equals(pyResponse.status())) {
                 return handlePendingApproval(
-                        pyResponse, claw, approval.getSessionId(), agent, resolved,
-                        providerName, model, principal, authentication, latencyMs
+                        pyResponse, claw, approval.getSessionId(), approval.getSessionId(), agent, resolved,
+                        providerName, model, principal, authentication, latencyMs, null
                 );
             }
 
             return finaliseCompletedRun(
-                    pyResponse, claw, approval.getSessionId(), agent, resolved,
-                    providerName, model, principal, authentication, latencyMs, "claw.chat.resume"
+                    pyResponse, claw, approval.getSessionId(), approval.getSessionId(), agent, resolved,
+                    providerName, model, principal, authentication, latencyMs, "claw.chat.resume", null
             );
         } catch (Exception exc) {
             sessionService.saveMessage(approval.getSessionId(), principal.userId(), claw.getId(), claw.getName(),
@@ -283,13 +320,16 @@ public class ClawChatService {
                 agentConfigService.readListOrNull(policy.getToolsAllowJson()),
                 agentConfigService.readList(policy.getToolsDenyJson()),
                 agentConfigService.readList(policy.getToolsAlsoAllowJson()),
-                sandboxBaseUrl
+                sandboxBaseUrl,
+                null,   // conversation_id (pending approval store enhancement in Task 7)
+                null    // agent_instance_id
         );
     }
 
     private ClawChatRunResponse handlePendingApproval(
             PyclawAgentRunResponse pyResponse,
             ClawEntity claw,
+            String memorySessionId,
             String sessionId,
             AgentConfigEntity agent,
             ResolvedRole resolved,
@@ -297,7 +337,8 @@ public class ClawChatService {
             String model,
             AuthenticatedPrincipal principal,
             Authentication authentication,
-            long latencyMs
+            long latencyMs,
+            String conversationId
     ) {
         PyclawApprovalResponse payload = pyResponse.approval();
         ToolApprovalResponse approvalResponse = approvalService.createFromPyclaw(
@@ -307,17 +348,23 @@ public class ClawChatService {
         sessionService.saveMessage(sessionId, principal.userId(), claw.getId(), claw.getName(),
                 agent.getAgentKey(), resolved.roleKey(), agent.getId(),
                 providerName, model, "assistant", pendingMessage, System.currentTimeMillis());
+        conversationService.saveMessage(
+                conversationId, principal.userId(), claw.getId(),
+                resolved.agentInstanceId(), agent.getId(), agent.getAgentKey(),
+                resolved.roleKey(), providerName, model, "assistant", pendingMessage);
         audit(authentication, "claw.chat.pending_approval", claw.getId(), true, null);
         return new ClawChatRunResponse(
                 "PENDING_APPROVAL",
                 sessionId, claw.getId(), resolved.roleKey(), agent.getId(), agent.getAgentKey(),
-                pendingMessage, null, latencyMs, approvalResponse
+                pendingMessage, null, latencyMs, approvalResponse,
+                conversationId, resolved.agentInstanceId()
         );
     }
 
     private ClawChatRunResponse finaliseCompletedRun(
             PyclawAgentRunResponse pyResponse,
             ClawEntity claw,
+            String memorySessionId,
             String sessionId,
             AgentConfigEntity agent,
             ResolvedRole resolved,
@@ -326,13 +373,19 @@ public class ClawChatService {
             AuthenticatedPrincipal principal,
             Authentication authentication,
             long latencyMs,
-            String auditAction
+            String auditAction,
+            String conversationId
     ) {
         String text = pyResponse.text() != null ? pyResponse.text() : "";
         sessionService.saveMessage(sessionId, principal.userId(), claw.getId(), claw.getName(),
                 agent.getAgentKey(), resolved.roleKey(), agent.getId(),
                 providerName, model, "assistant",
                 text.isBlank() ? REJECTED_ASSISTANT_MESSAGE : text, System.currentTimeMillis());
+        conversationService.saveMessage(
+                conversationId, principal.userId(), claw.getId(),
+                resolved.agentInstanceId(), agent.getId(), agent.getAgentKey(),
+                resolved.roleKey(), providerName, model, "assistant",
+                text.isBlank() ? REJECTED_ASSISTANT_MESSAGE : text);
 
         recordUsage(principal.userId(), claw.getId(), agent.getId(), agent.getAgentKey(),
                 resolved.roleKey(), sessionId, providerName, model, pyResponse, latencyMs);
@@ -342,7 +395,8 @@ public class ClawChatService {
         return new ClawChatRunResponse(
                 "COMPLETED",
                 sessionId, claw.getId(), resolved.roleKey(), agent.getId(), agent.getAgentKey(),
-                text, pyResponse.message(), latencyMs, null
+                text, pyResponse.message(), latencyMs, null,
+                conversationId, resolved.agentInstanceId()
         );
     }
 
@@ -407,7 +461,7 @@ public class ClawChatService {
                     .orElse(enabled.get(0));
         }
 
-        return new ResolvedRole(role.getAgentId(), role.getRoleKey(), role.getDisplayName());
+        return new ResolvedRole(role.getAgentId(), role.getRoleKey(), role.getDisplayName(), role.getId());
     }
 
     private ResolvedRole resolveRoleForApproval(ClawEntity claw, String storedRoleKey) {
@@ -512,6 +566,6 @@ public class ClawChatService {
         return null;
     }
 
-    private record ResolvedRole(String agentId, String roleKey, String displayName) {
+    private record ResolvedRole(String agentId, String roleKey, String displayName, String agentInstanceId) {
     }
 }

@@ -15,6 +15,9 @@ public record ClawChatRunResponse(
         String text,
         Map<String, Object> message,
         long latencyMs,
-        ToolApprovalResponse approval
+        ToolApprovalResponse approval,
+        // Task 4 additions (ARCHITECTURE.md)
+        String conversationId,
+        String agentInstanceId
 ) {
 }
