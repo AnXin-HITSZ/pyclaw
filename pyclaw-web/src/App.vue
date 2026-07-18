@@ -1,4 +1,5 @@
 <template>
+  <RouteProgress />
   <router-view v-slot="{ Component }">
     <transition name="page" mode="out-in">
       <component :is="Component" />
@@ -9,6 +10,7 @@
 
 <script setup>
 import AppToast from "./components/ui/AppToast.vue";
+import RouteProgress from "./components/ui/RouteProgress.vue";
 </script>
 
 <style>
