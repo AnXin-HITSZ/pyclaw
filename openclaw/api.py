@@ -692,6 +692,10 @@ async def resume_agent_request(request: AgentResumeRequest) -> AgentRunOutcome:
             )
         store.delete(request.approval_id)
         return AgentRunOutcome(status="COMPLETED", session_id=session_id, message=message)
+    except Exception:
+        # Keep the Redis pending state on resume failure so Spring can mark the
+        # approval as RESUME_FAILED and the same approval can be retried.
+        raise
 
 
 def _resume_request_to_run_request(
