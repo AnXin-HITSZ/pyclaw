@@ -2,9 +2,20 @@
 FROM maven:3.9.9-eclipse-temurin-17 AS build
 ARG SERVICE_NAME
 WORKDIR /workspace
+
+# Copy all POMs first so Maven can resolve the full multi-module reactor
 COPY pom.xml .
-COPY ${SERVICE_NAME}/pom.xml ${SERVICE_NAME}/
+COPY gateway/pom.xml gateway/
+COPY backend-for-frontend/pom.xml backend-for-frontend/
+COPY claw-service/pom.xml claw-service/
+COPY runtime-service/pom.xml runtime-service/
+COPY agent-marketplace-service/pom.xml agent-marketplace-service/
+COPY billing-service/pom.xml billing-service/
+COPY skill-marketplace-service/pom.xml skill-marketplace-service/
+
 RUN mvn -q dependency:go-offline -pl ${SERVICE_NAME}
+
+# Copy sources and build the target module
 COPY . .
 RUN mvn -q -DskipTests package -pl ${SERVICE_NAME}
 
