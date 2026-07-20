@@ -26,36 +26,36 @@ jobs:
             -i ~/.ssh/id_ed25519 \
             ${{ secrets.ECS_USER }}@${{ secrets.ECS_HOST }} \
             "REF_NAME='${REF_NAME}' COMMIT_SHA='${COMMIT_SHA}' bash -se" <<'REMOTE_SCRIPT'
-          cd /opt/pyclaw
+          cd /opt/claw-saas
           rm -f .git/index.lock
           git fetch origin "${REF_NAME}"
           git reset --hard "${COMMIT_SHA}"
-          test -f pyclaw-mysql-values-k3s.yaml
+          test -f claw-saas-mysql-values-k3s.example.yaml
 
           echo "== MySQL chart template =="
-          grep -n "CREATE DATABASE\|GRANT ALL" helm/pyclaw-mysql/templates/bootstrap-databases-job.yaml
+          grep -n "CREATE DATABASE\|GRANT ALL" deploy/helm/claw-saas-mysql/templates/bootstrap-databases-job.yaml
 
           echo "== Cleanup previous bootstrap job =="
-          sudo /usr/local/bin/k3s kubectl -n pyclaw delete job pyclaw-mysql-bootstrap-databases --ignore-not-found
+          sudo /usr/local/bin/k3s kubectl -n claw-saas delete job claw-saas-mysql-bootstrap-databases --ignore-not-found
 
           echo "== Deploy pyclaw-mysql =="
           set +e
-          sudo helm --kubeconfig /etc/rancher/k3s/k3s.yaml upgrade --install pyclaw-mysql ./helm/pyclaw-mysql \
-            -n pyclaw \
+          sudo helm --kubeconfig /etc/rancher/k3s/k3s.yaml upgrade --install claw-saas-mysql ./deploy/helm/claw-saas-mysql \
+            -n claw-saas \
             --create-namespace \
-            -f pyclaw-mysql-values-k3s.yaml \
+            -f claw-saas-mysql-values-k3s.example.yaml \
             --timeout 15m &
           helm_pid=$!
           set -e
 
           while kill -0 "${helm_pid}" 2>/dev/null; do
-            echo "$(date -Is) waiting for pyclaw-mysql helm upgrade..."
+            echo "$(date -Is) waiting for claw-saas-mysql helm upgrade..."
             sleep 30
           done
 
           wait "${helm_pid}"
 
           echo "== Verify MySQL databases =="
-          sudo /usr/local/bin/k3s kubectl -n pyclaw exec statefulset/pyclaw-mysql -- \
+          sudo /usr/local/bin/k3s kubectl -n claw-saas exec statefulset/claw-saas-mysql -- \
             sh -c 'mysql -h 127.0.0.1 -upyclaw -p"$MYSQL_PASSWORD" -e "show databases;"'
           REMOTE_SCRIPT
