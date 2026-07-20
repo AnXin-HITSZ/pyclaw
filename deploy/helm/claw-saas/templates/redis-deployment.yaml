@@ -4,7 +4,7 @@ metadata:
   name: {{ .Release.Name }}-redis-data
   labels:
     app.kubernetes.io/name: redis
-    app.kubernetes.io/part-of: claw-saas
+    app.kubernetes.io/part-of: saas-claw
 spec:
   accessModes:
     - ReadWriteOnce
@@ -18,7 +18,7 @@ metadata:
   name: {{ .Release.Name }}-redis
   labels:
     app.kubernetes.io/name: redis
-    app.kubernetes.io/part-of: claw-saas
+    app.kubernetes.io/part-of: saas-claw
 spec:
   replicas: 1
   selector:
@@ -28,7 +28,7 @@ spec:
     metadata:
       labels:
         app.kubernetes.io/name: redis
-        app.kubernetes.io/part-of: claw-saas
+        app.kubernetes.io/part-of: saas-claw
     spec:
       containers:
         - name: redis

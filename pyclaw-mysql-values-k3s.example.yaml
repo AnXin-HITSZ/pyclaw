@@ -1,6 +1,6 @@
 # Example K3s values for Claw SaaS MySQL.
-# Copy to claw-saas-mysql-values-k3s.yaml on the server and replace placeholders there.
-# Do not put real root/user passwords in this file; keep them in claw-saas-mysql-secret.
+# Copy to saas-claw-mysql-values-k3s.yaml on the server and replace placeholders there.
+# Do not put real root/user passwords in this file; keep them in saas-claw-mysql-secret.
 
 image:
   repository: mysql
@@ -20,7 +20,7 @@ mysql:
   user: claw_saas
   auth:
     createSecret: false
-    existingSecret: claw-saas-mysql-secret
+    existingSecret: saas-claw-mysql-secret
     rootPasswordKey: MYSQL_ROOT_PASSWORD
     databaseKey: MYSQL_DATABASE
     userKey: MYSQL_USER

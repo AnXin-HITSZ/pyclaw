@@ -1,16 +1,16 @@
 {{/*
 Common labels for all Claw SaaS resources.
 */}}
-{{- define "claw-saas.labels" -}}
+{{- define "saas-claw.labels" -}}
 helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
-app.kubernetes.io/part-of: claw-saas
+app.kubernetes.io/part-of: saas-claw
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end -}}
 
 {{/*
 Selector labels.
 */}}
-{{- define "claw-saas.selectorLabels" -}}
+{{- define "saas-claw.selectorLabels" -}}
 app.kubernetes.io/name: {{ .name }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end -}}

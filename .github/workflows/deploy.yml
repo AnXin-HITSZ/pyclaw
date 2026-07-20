@@ -156,11 +156,11 @@ jobs:
           }
 
           deploy() {
-            sudo helm --kubeconfig "$KUBECONFIG_PATH" upgrade --install claw-saas ./deploy/helm/claw-saas \
+            sudo helm --kubeconfig "$KUBECONFIG_PATH" upgrade --install saas-claw ./deploy/helm/saas-claw \
               -n "$NAMESPACE" \
               --create-namespace \
               --set global.imagePullSecret=aliyun-acr-pull-secret \
-              --set global.secretName=claw-saas-secret \
+              --set global.secretName=saas-claw-secret \
               --set gateway.image.tag="$IMAGE_TAG" \
               --set backend-for-frontend.image.tag="$IMAGE_TAG" \
               --set claw-service.image.tag="$IMAGE_TAG" \

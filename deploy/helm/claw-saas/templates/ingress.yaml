@@ -4,7 +4,7 @@ kind: Ingress
 metadata:
   name: {{ .Release.Name }}-ingress
   labels:
-    {{- include "claw-saas.labels" . | nindent 4 }}
+    {{- include "saas-claw.labels" . | nindent 4 }}
 spec:
   ingressClassName: {{ .Values.ingress.className }}
   {{- if .Values.ingress.tls }}

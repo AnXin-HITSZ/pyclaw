@@ -4,7 +4,7 @@ metadata:
   name: redis-master
   labels:
     app.kubernetes.io/name: redis
-    app.kubernetes.io/part-of: claw-saas
+    app.kubernetes.io/part-of: saas-claw
 spec:
   type: ClusterIP
   ports:

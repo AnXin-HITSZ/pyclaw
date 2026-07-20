@@ -3,7 +3,7 @@ kind: ConfigMap
 metadata:
   name: {{ .Release.Name }}-shared-config
   labels:
-    {{- include "claw-saas.labels" . | nindent 4 }}
+    {{- include "saas-claw.labels" . | nindent 4 }}
 data:
   SPRING_DATASOURCE_URL: {{ .Values.shared.datasourceUrl | quote }}
   SPRING_DATASOURCE_USERNAME: {{ .Values.shared.datasourceUsername | quote }}

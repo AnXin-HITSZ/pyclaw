@@ -4,7 +4,7 @@ kind: Deployment
 metadata:
   name: {{ .Release.Name }}-skill-marketplace-service
   labels:
-    {{- include "claw-saas.labels" . | nindent 4 }}
+    {{- include "saas-claw.labels" . | nindent 4 }}
     app.kubernetes.io/name: skill-marketplace-service
 spec:
   replicas: 1
@@ -15,7 +15,7 @@ spec:
     metadata:
       labels:
         app.kubernetes.io/name: skill-marketplace-service
-        app.kubernetes.io/part-of: claw-saas
+        app.kubernetes.io/part-of: saas-claw
     spec:
       imagePullSecrets:
         - name: {{ .Values.global.imagePullSecret }}

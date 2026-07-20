@@ -2,7 +2,7 @@ Claw SaaS MySQL has been installed.
 
 Release: {{ .Release.Name }}
 Namespace: {{ .Release.Namespace }}
-Service: {{ include "claw-saas-mysql.fullname" . }}:{{ .Values.service.port }}
+Service: {{ include "saas-claw-mysql.fullname" . }}:{{ .Values.service.port }}
 
 Databases managed by this release:
   runtime: {{ .Values.mysql.databases.runtime }}
@@ -12,7 +12,7 @@ Check pod status:
   kubectl -n {{ .Release.Namespace }} get pods -l app.kubernetes.io/instance={{ .Release.Name }}
 
 Check MySQL inside the pod:
-  kubectl -n {{ .Release.Namespace }} exec statefulset/{{ include "claw-saas-mysql.fullname" . }} -- sh -c 'mysqladmin ping -h 127.0.0.1 -uroot -p"$MYSQL_ROOT_PASSWORD"'
+  kubectl -n {{ .Release.Namespace }} exec statefulset/{{ include "saas-claw-mysql.fullname" . }} -- sh -c 'mysqladmin ping -h 127.0.0.1 -uroot -p"$MYSQL_ROOT_PASSWORD"'
 
 Check databases:
-  kubectl -n {{ .Release.Namespace }} exec statefulset/{{ include "claw-saas-mysql.fullname" . }} -- sh -c 'mysql -h 127.0.0.1 -uclaw_saas -p"$MYSQL_PASSWORD" -e "show databases;"'
+  kubectl -n {{ .Release.Namespace }} exec statefulset/{{ include "saas-claw-mysql.fullname" . }} -- sh -c 'mysql -h 127.0.0.1 -uclaw_saas -p"$MYSQL_PASSWORD" -e "show databases;"'

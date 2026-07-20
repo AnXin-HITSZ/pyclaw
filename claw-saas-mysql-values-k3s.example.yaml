@@ -15,7 +15,7 @@ mysql:
   user: clawsaas
   auth:
     createSecret: false
-    existingSecret: claw-saas-mysql-secret
+    existingSecret: saas-claw-mysql-secret
     rootPasswordKey: MYSQL_ROOT_PASSWORD
     databaseKey: MYSQL_DATABASE
     userKey: MYSQL_USER

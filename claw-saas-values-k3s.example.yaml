@@ -1,16 +1,16 @@
 # Example K3s values for Claw SaaS production deployment.
-# Copy to claw-saas-values-k3s.yaml on the ECS server at /opt/claw-saas/
+# Copy to saas-claw-values-k3s.yaml on the ECS server at /opt/saas-claw/
 # and replace placeholders with actual values.
 # Do NOT commit real secrets to this file.
 
 global:
   imagePullSecret: aliyun-acr-pull-secret
-  # Secret named claw-saas-secret must be created in the saas-claw namespace
+  # Secret named saas-claw-secret must be created in the saas-claw namespace
   # with keys: SPRING_DATASOURCE_PASSWORD, SPRING_DATA_REDIS_PASSWORD, etc.
-  secretName: claw-saas-secret
+  secretName: saas-claw-secret
 
 shared:
-  datasourceUrl: "jdbc:mysql://claw-saas-mysql:3306/claw_saas_control?useUnicode=true&characterEncoding=utf8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai"
+  datasourceUrl: "jdbc:mysql://saas-claw-mysql:3306/claw_saas_control?useUnicode=true&characterEncoding=utf8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai"
   datasourceUsername: claw_saas
   jpaDdlAuto: update
   redisHost: redis-master

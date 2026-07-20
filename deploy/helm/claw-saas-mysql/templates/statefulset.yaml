@@ -1,19 +1,19 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: {{ include "claw-saas-mysql.fullname" . }}
+  name: {{ include "saas-claw-mysql.fullname" . }}
   labels:
-    {{- include "claw-saas-mysql.labels" . | nindent 4 }}
+    {{- include "saas-claw-mysql.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.replicaCount }}
-  serviceName: {{ include "claw-saas-mysql.fullname" . }}
+  serviceName: {{ include "saas-claw-mysql.fullname" . }}
   selector:
     matchLabels:
-      {{- include "claw-saas-mysql.selectorLabels" . | nindent 6 }}
+      {{- include "saas-claw-mysql.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
-        {{- include "claw-saas-mysql.selectorLabels" . | nindent 8 }}
+        {{- include "saas-claw-mysql.selectorLabels" . | nindent 8 }}
         {{- with .Values.podLabels }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
@@ -46,29 +46,29 @@ spec:
             - name: MYSQL_ROOT_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "claw-saas-mysql.secretName" . }}
+                  name: {{ include "saas-claw-mysql.secretName" . }}
                   key: {{ .Values.mysql.auth.rootPasswordKey }}
             - name: MYSQL_DATABASE
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "claw-saas-mysql.secretName" . }}
+                  name: {{ include "saas-claw-mysql.secretName" . }}
                   key: {{ .Values.mysql.auth.databaseKey }}
             - name: MYSQL_USER
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "claw-saas-mysql.secretName" . }}
+                  name: {{ include "saas-claw-mysql.secretName" . }}
                   key: {{ .Values.mysql.auth.userKey }}
             - name: MYSQL_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "claw-saas-mysql.secretName" . }}
+                  name: {{ include "saas-claw-mysql.secretName" . }}
                   key: {{ .Values.mysql.auth.passwordKey }}
           volumeMounts:
             - name: data
               mountPath: {{ .Values.persistence.mountPath }}
             - name: config
-              mountPath: /etc/mysql/conf.d/claw-saas.cnf
-              subPath: claw-saas.cnf
+              mountPath: /etc/mysql/conf.d/saas-claw.cnf
+              subPath: saas-claw.cnf
           {{- if .Values.startupProbe.enabled }}
           startupProbe:
             exec:
@@ -110,7 +110,7 @@ spec:
       volumes:
         - name: config
           configMap:
-            name: {{ include "claw-saas-mysql.fullname" . }}-config
+            name: {{ include "saas-claw-mysql.fullname" . }}-config
         {{- if not .Values.persistence.enabled }}
         - name: data
           emptyDir: {}
@@ -132,7 +132,7 @@ spec:
     - metadata:
         name: data
         labels:
-          {{- include "claw-saas-mysql.labels" . | nindent 10 }}
+          {{- include "saas-claw-mysql.labels" . | nindent 10 }}
       spec:
         accessModes:
           {{- toYaml .Values.persistence.accessModes | nindent 10 }}

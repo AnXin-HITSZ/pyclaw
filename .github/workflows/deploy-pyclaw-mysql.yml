@@ -30,32 +30,32 @@ jobs:
           rm -f .git/index.lock
           git fetch origin "${REF_NAME}"
           git reset --hard "${COMMIT_SHA}"
-          test -f claw-saas-mysql-values-k3s.example.yaml
+          test -f saas-claw-mysql-values-k3s.example.yaml
 
           echo "== MySQL chart template =="
-          grep -n "CREATE DATABASE\|GRANT ALL" deploy/helm/claw-saas-mysql/templates/bootstrap-databases-job.yaml
+          grep -n "CREATE DATABASE\|GRANT ALL" deploy/helm/saas-claw-mysql/templates/bootstrap-databases-job.yaml
 
           echo "== Cleanup previous bootstrap job =="
-          sudo /usr/local/bin/k3s kubectl -n saas-claw delete job claw-saas-mysql-bootstrap-databases --ignore-not-found
+          sudo /usr/local/bin/k3s kubectl -n saas-claw delete job saas-claw-mysql-bootstrap-databases --ignore-not-found
 
           echo "== Deploy pyclaw-mysql =="
           set +e
-          sudo helm --kubeconfig /etc/rancher/k3s/k3s.yaml upgrade --install claw-saas-mysql ./deploy/helm/claw-saas-mysql \
+          sudo helm --kubeconfig /etc/rancher/k3s/k3s.yaml upgrade --install saas-claw-mysql ./deploy/helm/saas-claw-mysql \
             -n saas-claw \
             --create-namespace \
-            -f claw-saas-mysql-values-k3s.example.yaml \
+            -f saas-claw-mysql-values-k3s.example.yaml \
             --timeout 15m &
           helm_pid=$!
           set -e
 
           while kill -0 "${helm_pid}" 2>/dev/null; do
-            echo "$(date -Is) waiting for claw-saas-mysql helm upgrade..."
+            echo "$(date -Is) waiting for saas-claw-mysql helm upgrade..."
             sleep 30
           done
 
           wait "${helm_pid}"
 
           echo "== Verify MySQL databases =="
-          sudo /usr/local/bin/k3s kubectl -n saas-claw exec statefulset/claw-saas-mysql -- \
+          sudo /usr/local/bin/k3s kubectl -n saas-claw exec statefulset/saas-claw-mysql -- \
             sh -c 'mysql -h 127.0.0.1 -upyclaw -p"$MYSQL_PASSWORD" -e "show databases;"'
           REMOTE_SCRIPT
