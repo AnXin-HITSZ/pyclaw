@@ -1,0 +1,12 @@
+spring:
+  application:
+    name: agent-marketplace-service
+server:
+  port: 8084
+
+clawsaas:
+  oss:
+    endpoint: ${OSS_ENDPOINT:}
+    access-key-id: ${OSS_ACCESS_KEY_ID:}
+    access-key-secret: ${OSS_ACCESS_KEY_SECRET:}
+    bucket: ${OSS_BUCKET:claw-saas-artifacts}
