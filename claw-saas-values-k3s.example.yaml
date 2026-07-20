@@ -5,7 +5,7 @@
 
 global:
   imagePullSecret: aliyun-acr-pull-secret
-  # Secret named claw-saas-secret must be created in the claw-saas namespace
+  # Secret named claw-saas-secret must be created in the saas-claw namespace
   # with keys: SPRING_DATASOURCE_PASSWORD, SPRING_DATA_REDIS_PASSWORD, etc.
   secretName: claw-saas-secret
 

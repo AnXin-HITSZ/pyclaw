@@ -36,12 +36,12 @@ jobs:
           grep -n "CREATE DATABASE\|GRANT ALL" deploy/helm/claw-saas-mysql/templates/bootstrap-databases-job.yaml
 
           echo "== Cleanup previous bootstrap job =="
-          sudo /usr/local/bin/k3s kubectl -n claw-saas delete job claw-saas-mysql-bootstrap-databases --ignore-not-found
+          sudo /usr/local/bin/k3s kubectl -n saas-claw delete job claw-saas-mysql-bootstrap-databases --ignore-not-found
 
           echo "== Deploy pyclaw-mysql =="
           set +e
           sudo helm --kubeconfig /etc/rancher/k3s/k3s.yaml upgrade --install claw-saas-mysql ./deploy/helm/claw-saas-mysql \
-            -n claw-saas \
+            -n saas-claw \
             --create-namespace \
             -f claw-saas-mysql-values-k3s.example.yaml \
             --timeout 15m &
@@ -56,6 +56,6 @@ jobs:
           wait "${helm_pid}"
 
           echo "== Verify MySQL databases =="
-          sudo /usr/local/bin/k3s kubectl -n claw-saas exec statefulset/claw-saas-mysql -- \
+          sudo /usr/local/bin/k3s kubectl -n saas-claw exec statefulset/claw-saas-mysql -- \
             sh -c 'mysql -h 127.0.0.1 -upyclaw -p"$MYSQL_PASSWORD" -e "show databases;"'
           REMOTE_SCRIPT
