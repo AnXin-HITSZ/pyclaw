@@ -1,14 +1,14 @@
 {{/*
 Expand the chart name.
 */}}
-{{- define "pyclaw-mysql.name" -}}
+{{- define "claw-saas-mysql.name" -}}
 {{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
 
 {{/*
 Create a default fully qualified app name.
 */}}
-{{- define "pyclaw-mysql.fullname" -}}
+{{- define "claw-saas-mysql.fullname" -}}
 {{- if .Values.fullnameOverride -}}
 {{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" -}}
 {{- else -}}
@@ -24,34 +24,34 @@ Create a default fully qualified app name.
 {{/*
 Create chart name and version as used by the chart label.
 */}}
-{{- define "pyclaw-mysql.chart" -}}
+{{- define "claw-saas-mysql.chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
 
 {{/*
 Common labels.
 */}}
-{{- define "pyclaw-mysql.labels" -}}
-helm.sh/chart: {{ include "pyclaw-mysql.chart" . }}
-{{ include "pyclaw-mysql.selectorLabels" . }}
+{{- define "claw-saas-mysql.labels" -}}
+helm.sh/chart: {{ include "claw-saas-mysql.chart" . }}
+{{ include "claw-saas-mysql.selectorLabels" . }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end -}}
 
 {{/*
 Selector labels.
 */}}
-{{- define "pyclaw-mysql.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "pyclaw-mysql.name" . }}
+{{- define "claw-saas-mysql.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "claw-saas-mysql.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end -}}
 
 {{/*
 Secret containing MYSQL_* bootstrap credentials.
 */}}
-{{- define "pyclaw-mysql.secretName" -}}
+{{- define "claw-saas-mysql.secretName" -}}
 {{- if .Values.mysql.auth.existingSecret -}}
 {{- .Values.mysql.auth.existingSecret -}}
 {{- else -}}
-{{- printf "%s-secret" (include "pyclaw-mysql.fullname" .) -}}
+{{- printf "%s-secret" (include "claw-saas-mysql.fullname" .) -}}
 {{- end -}}
 {{- end -}}

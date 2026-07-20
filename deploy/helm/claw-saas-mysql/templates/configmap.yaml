@@ -1,11 +1,11 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "pyclaw-mysql.fullname" . }}-config
+  name: {{ include "claw-saas-mysql.fullname" . }}-config
   labels:
-    {{- include "pyclaw-mysql.labels" . | nindent 4 }}
+    {{- include "claw-saas-mysql.labels" . | nindent 4 }}
 data:
-  pyclaw.cnf: |
+  claw-saas.cnf: |
     [mysqld]
     character-set-server={{ .Values.config.characterSetServer }}
     collation-server={{ .Values.config.collationServer }}

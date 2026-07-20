@@ -1,0 +1,6 @@
+apiVersion: v2
+name: claw-saas-mysql
+description: Single-node MySQL for Claw SaaS and K3s deployments
+type: application
+version: 0.1.0
+appVersion: "8.4"

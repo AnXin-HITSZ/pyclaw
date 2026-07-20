@@ -2,9 +2,9 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: {{ include "pyclaw-mysql.fullname" . }}-bootstrap-databases
+  name: {{ include "claw-saas-mysql.fullname" . }}-bootstrap-databases
   labels:
-    {{- include "pyclaw-mysql.labels" . | nindent 4 }}
+    {{- include "claw-saas-mysql.labels" . | nindent 4 }}
   annotations:
     "helm.sh/hook": post-install,post-upgrade
     "helm.sh/hook-weight": "5"
@@ -17,7 +17,7 @@ spec:
   template:
     metadata:
       labels:
-        {{- include "pyclaw-mysql.selectorLabels" . | nindent 8 }}
+        {{- include "claw-saas-mysql.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: database-bootstrap
     spec:
       restartPolicy: OnFailure
@@ -33,19 +33,19 @@ spec:
             - name: MYSQL_ROOT_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "pyclaw-mysql.secretName" . }}
+                  name: {{ include "claw-saas-mysql.secretName" . }}
                   key: {{ .Values.mysql.auth.rootPasswordKey }}
             - name: MYSQL_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "pyclaw-mysql.secretName" . }}
+                  name: {{ include "claw-saas-mysql.secretName" . }}
                   key: {{ .Values.mysql.auth.passwordKey }}
           command:
             - sh
             - -c
             - |
               set -eu
-              host='{{ include "pyclaw-mysql.fullname" . }}'
+              host='{{ include "claw-saas-mysql.fullname" . }}'
               until mysqladmin ping -h "$host" -uroot -p"$MYSQL_ROOT_PASSWORD" --silent; do
                 sleep 2
               done
