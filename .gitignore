@@ -6,13 +6,7 @@ __pycache__/
 dist/
 build/
 *.egg-info/
-chatdata/*
-!chatdata/.gitkeep
-
-# Java backend (legacy and new monorepo paths)
-spring-backend/target/
-spring-backend/data/
-spring-backend/maven-repository/
+# Java backend
 backend/**/target/
 backend/**/data/
 backend/maven-repository/
@@ -27,13 +21,10 @@ runtime/**/.venv/
 runtime/**/.pytest_cache/
 
 # K3s production values and secrets. Commit *.example.yaml templates instead.
-pyclaw-values-k3s.yaml
-spring-values-k3s.yaml
-values-k3s.yaml
-values-k3s.yaml.bak
+saas-claw-values-k3s.yaml
+saas-claw-mysql-values-k3s.yaml
 *.secret.yaml
 certs/
 
 # Host SSH material
 known_hosts
-pyclaw_host_ops_ed25519*
