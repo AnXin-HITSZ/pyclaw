@@ -5,7 +5,7 @@ import com.claw.saas.runtime.client.ClawServiceClient;
 import com.claw.saas.runtime.domain.AuthenticatedPrincipal;
 import com.claw.saas.runtime.domain.ToolApprovalDecision;
 import com.claw.saas.runtime.domain.ToolApprovalStatus;
-import com.claw.saas.runtime.dto.PyclawApprovalResponse;
+import com.claw.saas.runtime.dto.SaasClawApprovalResponse;
 import com.claw.saas.runtime.dto.ToolApprovalResponse;
 import com.claw.saas.runtime.entity.ToolApprovalRequestEntity;
 import com.claw.saas.runtime.exception.ApiException;
@@ -45,25 +45,25 @@ public class ToolApprovalServiceImpl implements ToolApprovalService {
 
     @Override
     @Transactional
-    public ToolApprovalResponse createFromPyclaw(
+    public ToolApprovalResponse createFromSaasClaw(
             String clawId, String ownerUserId, String clawName,
             String sessionId, String agentId, String agentKey, String roleKey,
-            PyclawApprovalResponse payload, Authentication authentication) {
-        return createFromPyclaw(clawId, ownerUserId, clawName, sessionId, agentId, agentKey, roleKey,
+            SaasClawApprovalResponse payload, Authentication authentication) {
+        return createFromSaasClaw(clawId, ownerUserId, clawName, sessionId, agentId, agentKey, roleKey,
                 payload, null, null, null, null, null, authentication);
     }
 
     @Override
     @Transactional
-    public ToolApprovalResponse createFromPyclaw(
+    public ToolApprovalResponse createFromSaasClaw(
             String clawId, String ownerUserId, String clawName,
             String sessionId, String agentId, String agentKey, String roleKey,
-            PyclawApprovalResponse payload,
+            SaasClawApprovalResponse payload,
             String executingAgentInstanceId, String executingRoleKey,
             String callingAgentInstanceId, String callingRoleKey,
             String conversationId, Authentication authentication) {
         if (payload == null || payload.id() == null || payload.id().isBlank()) {
-            throw new ApiException(HttpStatus.BAD_GATEWAY, "pyclaw returned PENDING_APPROVAL without an approval payload");
+            throw new ApiException(HttpStatus.BAD_GATEWAY, "saas-claw returned PENDING_APPROVAL without an approval payload");
         }
         OffsetDateTime now = OffsetDateTime.now();
         ToolApprovalRequestEntity entity = new ToolApprovalRequestEntity();

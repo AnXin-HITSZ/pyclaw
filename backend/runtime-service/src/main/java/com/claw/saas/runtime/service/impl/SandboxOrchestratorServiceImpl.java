@@ -19,8 +19,8 @@ public class SandboxOrchestratorServiceImpl implements SandboxOrchestratorServic
     private static final String APP_LABEL = "app.kubernetes.io/name";
     private static final String PART_OF_LABEL = "app.kubernetes.io/part-of";
     private static final String COMPONENT_LABEL = "app.kubernetes.io/component";
-    private static final String USER_LABEL = "pyclaw.io/owner-user-id";
-    private static final String CLAW_LABEL = "pyclaw.io/claw-id";
+    private static final String USER_LABEL = "saas-claw.io/owner-user-id";
+    private static final String CLAW_LABEL = "saas-claw.io/claw-id";
 
     private final ObjectProvider<KubernetesClient> clientProvider;
     private final SandboxProperties properties;
@@ -45,7 +45,7 @@ public class SandboxOrchestratorServiceImpl implements SandboxOrchestratorServic
         if (!properties.isEnabled()) return;
         String namespace = namespaceForUser(userId);
         Map<String, String> labels = baseUserLabels(userId);
-        labels.put("pyclaw.io/username", dnsLabel(username));
+        labels.put("saas-claw.io/username", dnsLabel(username));
         client().namespaces().resource(new io.fabric8.kubernetes.api.model.NamespaceBuilder()
                 .withNewMetadata().withName(namespace).withLabels(labels).endMetadata()
                 .build()).serverSideApply();
@@ -87,9 +87,9 @@ public class SandboxOrchestratorServiceImpl implements SandboxOrchestratorServic
                 .withImage(properties.getRunnerImage())
                 .withImagePullPolicy(properties.getRunnerImagePullPolicy())
                 .addNewPort().withName("http").withContainerPort(properties.getRunnerPort()).endPort()
-                .addNewEnv().withName("PYCLAW_CLAW_ID").withValue(clawId).endEnv()
-                .addNewEnv().withName("PYCLAW_OWNER_USER_ID").withValue(userId).endEnv()
-                .addNewEnv().withName("PYCLAW_CLAW_NAME").withValue(clawName == null ? "" : clawName).endEnv()
+                .addNewEnv().withName("SAAS_CLAW_CLAW_ID").withValue(clawId).endEnv()
+                .addNewEnv().withName("SAAS_CLAW_OWNER_USER_ID").withValue(userId).endEnv()
+                .addNewEnv().withName("SAAS_CLAW_CLAW_NAME").withValue(clawName == null ? "" : clawName).endEnv()
                 .addNewEnvFrom().withNewSecretRef(clawSecretName(clawId), true).endEnvFrom()
                 .addNewVolumeMount().withName("workspace").withMountPath(properties.getWorkspaceMountPath()).endVolumeMount()
                 .withResources(resources)
@@ -218,7 +218,7 @@ public class SandboxOrchestratorServiceImpl implements SandboxOrchestratorServic
     private void ensureResourceQuota(String namespace) {
         if (!properties.isResourceQuotaEnabled()) return;
         client().resourceQuotas().inNamespace(namespace).resource(new io.fabric8.kubernetes.api.model.ResourceQuotaBuilder()
-                .withNewMetadata().withName("pyclaw-user-quota").endMetadata()
+                .withNewMetadata().withName("saas-claw-user-quota").endMetadata()
                 .withNewSpec()
                 .addToHard("requests.cpu", new Quantity(properties.getNamespaceCpuRequestQuota()))
                 .addToHard("limits.cpu", new Quantity(properties.getNamespaceCpuLimitQuota()))
@@ -233,7 +233,7 @@ public class SandboxOrchestratorServiceImpl implements SandboxOrchestratorServic
     private void ensureLimitRange(String namespace) {
         if (!properties.isLimitRangeEnabled()) return;
         client().limitRanges().inNamespace(namespace).resource(new io.fabric8.kubernetes.api.model.LimitRangeBuilder()
-                .withNewMetadata().withName("pyclaw-default-limits").endMetadata()
+                .withNewMetadata().withName("saas-claw-default-limits").endMetadata()
                 .withNewSpec().addNewLimit().withType("Container")
                 .addToDefaultRequest("cpu", new Quantity(properties.getDefaultCpuRequest()))
                 .addToDefaultRequest("memory", new Quantity(properties.getDefaultMemoryRequest()))
@@ -259,7 +259,7 @@ public class SandboxOrchestratorServiceImpl implements SandboxOrchestratorServic
                 .withIngress(new io.fabric8.kubernetes.api.model.networking.v1.NetworkPolicyIngressRuleBuilder()
                         .withFrom(new io.fabric8.kubernetes.api.model.networking.v1.NetworkPolicyPeerBuilder()
                                 .withNewNamespaceSelector()
-                                .addToMatchLabels("kubernetes.io/metadata.name", "pyclaw")
+                                .addToMatchLabels("kubernetes.io/metadata.name", "saas-claw")
                                 .endNamespaceSelector().build())
                         .withPorts(new io.fabric8.kubernetes.api.model.networking.v1.NetworkPolicyPortBuilder()
                                 .withProtocol("TCP")
@@ -285,7 +285,7 @@ public class SandboxOrchestratorServiceImpl implements SandboxOrchestratorServic
             throw new IllegalStateException("sandbox image pull secret not found: namespace=" + sourceNamespace + " name=" + secretName);
         }
         Map<String, String> labels = new LinkedHashMap<>();
-        labels.put(PART_OF_LABEL, "pyclaw");
+        labels.put(PART_OF_LABEL, "saas-claw");
         labels.put(COMPONENT_LABEL, "sandbox-image-pull-secret");
         client().secrets().inNamespace(targetNamespace).resource(new io.fabric8.kubernetes.api.model.SecretBuilder()
                 .withNewMetadata().withName(secretName).withLabels(labels).endMetadata()
@@ -310,7 +310,7 @@ public class SandboxOrchestratorServiceImpl implements SandboxOrchestratorServic
 
     private Map<String, String> baseUserLabels(String userId) {
         Map<String, String> labels = new LinkedHashMap<>();
-        labels.put(PART_OF_LABEL, "pyclaw");
+        labels.put(PART_OF_LABEL, "saas-claw");
         labels.put(properties.getNamespaceLabelKey(), dnsLabel(userId));
         labels.put(USER_LABEL, dnsLabel(userId));
         return labels;

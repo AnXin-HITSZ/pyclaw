@@ -2,22 +2,22 @@ package com.claw.saas.runtime.service;
 
 import com.claw.saas.runtime.domain.AuthenticatedPrincipal;
 import com.claw.saas.runtime.domain.ToolApprovalDecision;
-import com.claw.saas.runtime.dto.PyclawApprovalResponse;
+import com.claw.saas.runtime.dto.SaasClawApprovalResponse;
 import com.claw.saas.runtime.dto.ToolApprovalResponse;
 import com.claw.saas.runtime.entity.ToolApprovalRequestEntity;
 import org.springframework.security.core.Authentication;
 
 public interface ToolApprovalService {
 
-    ToolApprovalResponse createFromPyclaw(
+    ToolApprovalResponse createFromSaasClaw(
             String clawId, String ownerUserId, String clawName,
             String sessionId, String agentId, String agentKey, String roleKey,
-            PyclawApprovalResponse payload, Authentication authentication);
+            SaasClawApprovalResponse payload, Authentication authentication);
 
-    ToolApprovalResponse createFromPyclaw(
+    ToolApprovalResponse createFromSaasClaw(
             String clawId, String ownerUserId, String clawName,
             String sessionId, String agentId, String agentKey, String roleKey,
-            PyclawApprovalResponse payload,
+            SaasClawApprovalResponse payload,
             String executingAgentInstanceId, String executingRoleKey,
             String callingAgentInstanceId, String callingRoleKey,
             String conversationId, Authentication authentication);

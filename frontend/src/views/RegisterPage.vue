@@ -5,10 +5,10 @@
     <div class="auth-card">
       <div class="auth-brand">
         <span class="brand-mark">◢</span>
-        <span class="brand-name">PyClaw</span>
+        <span class="brand-name">SaasClaw</span>
       </div>
       <h1>创建账号</h1>
-      <p class="auth-sub">加入 PyClaw Multi-Agent 工作区</p>
+      <p class="auth-sub">加入 SaasClaw Multi-Agent 工作区</p>
       <form @submit.prevent="handleRegister">
         <div class="form-group">
           <label for="username">用户名</label>

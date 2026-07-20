@@ -38,7 +38,7 @@ jobs:
           echo "== Cleanup previous bootstrap job =="
           sudo /usr/local/bin/k3s kubectl -n saas-claw delete job saas-claw-mysql-bootstrap-databases --ignore-not-found
 
-          echo "== Deploy pyclaw-mysql =="
+          echo "== Deploy MySQL =="
           set +e
           sudo helm --kubeconfig /etc/rancher/k3s/k3s.yaml upgrade --install saas-claw-mysql ./deploy/helm/saas-claw-mysql \
             -n saas-claw \

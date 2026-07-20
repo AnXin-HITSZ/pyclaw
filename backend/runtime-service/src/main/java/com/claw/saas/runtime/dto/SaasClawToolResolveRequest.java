@@ -3,7 +3,7 @@ package com.claw.saas.runtime.dto;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 
-public record PyclawToolResolveRequest(
+public record SaasClawToolResolveRequest(
         String profile,
         List<String> allow,
         List<String> deny,

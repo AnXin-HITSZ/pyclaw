@@ -24,7 +24,7 @@ class SandboxEnvironment:
         self._workspace = (
             Path(workspace_dir).resolve()
             if workspace_dir
-            else Path(os.getenv("PYCLAW_WORKSPACE", "/workspace")).resolve()
+            else Path(os.getenv("SAAS_CLAW_WORKSPACE", "/workspace")).resolve()
         )
         self._base_env = dict(os.environ)
         if env:

@@ -5,8 +5,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "runtime.sandbox")
 public class SandboxProperties {
     private boolean enabled;
-    private String namespacePrefix = "pyclaw-user";
-    private String namespaceLabelKey = "pyclaw.io/owner-user-id";
+    private String namespacePrefix = "saas-claw-user";
+    private String namespaceLabelKey = "saas-claw.io/owner-user-id";
     private String runnerImage;
     private String runnerImagePullPolicy = "IfNotPresent";
     private int runnerPort = 8000;

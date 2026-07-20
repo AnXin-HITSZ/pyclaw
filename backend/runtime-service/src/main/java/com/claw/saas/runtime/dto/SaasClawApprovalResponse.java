@@ -3,7 +3,7 @@ package com.claw.saas.runtime.dto;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.Map;
 
-public record PyclawApprovalResponse(
+public record SaasClawApprovalResponse(
         String id,
         @JsonProperty("tool_name") String toolName,
         String risk,

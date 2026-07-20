@@ -1,13 +1,13 @@
-# pyclaw
+# saas-claw
 
-`pyclaw` 是一个 OpenClaw-inspired Python agent runtime。当前版本已经包含：
+`saas-claw` 是一个 OpenClaw-inspired Python agent runtime。当前版本已经包含：
 
 - OpenAI / OpenAI-compatible provider adapter
 - mock provider
 - session transcript JSONL 持久化
 - FastAPI API 入口：`/healthz`、`/v1/agent/run`
 - Spring Backend 鉴权入口：登录、JWT、API Token、用户管理、Provider 管理、微信/飞书 Channel 管理、审计和用量记录
-- CLI 入口：`pyclaw` / `python -m openclaw`
+- CLI 入口：`saas-claw` / `python -m openclaw`
 - 工具系统：`read`、`list_dir`、`write`、`edit`、`apply_patch`、`shell`、`web_fetch`、`web_search`
 - 工具安全边界：workspace path guard、readonly guard、SSRF guard、shell cwd guard
 - Helm / K3s 部署配置
@@ -55,13 +55,13 @@ OPENAI_API_MODE=chat_completions
 使用真实 provider：
 
 ```cmd
-pyclaw "你好"
+saas-claw "你好"
 ```
 
 使用 mock provider：
 
 ```cmd
-pyclaw --provider mock "你好"
+saas-claw --provider mock "你好"
 ```
 
 等价 Python 模块入口：
@@ -73,7 +73,7 @@ python -m openclaw "你好"
 输出完整 assistant message JSON：
 
 ```cmd
-pyclaw --json "你好"
+saas-claw --json "你好"
 ```
 
 ## 4. 主命令参数
@@ -111,9 +111,9 @@ pyclaw --json "你好"
 示例：
 
 ```cmd
-pyclaw --tool-profile readonly "请阅读 README 并总结"
-pyclaw --tool-profile coding "请修改 README"
-pyclaw --tool-profile full "请读取 README 并搜索相关资料"
+saas-claw --tool-profile readonly "请阅读 README 并总结"
+saas-claw --tool-profile coding "请修改 README"
+saas-claw --tool-profile full "请读取 README 并搜索相关资料"
 ```
 
 ## 6. Transcript 命令
@@ -127,21 +127,21 @@ pyclaw --tool-profile full "请读取 README 并搜索相关资料"
 指定 session id 运行：
 
 ```cmd
-pyclaw --provider mock --session-id demo "你好"
+saas-claw --provider mock --session-id demo "你好"
 ```
 
 查看 transcript：
 
 ```cmd
-pyclaw transcripts show demo --format text
-pyclaw transcripts show demo --format detail
-pyclaw transcripts show demo --format json
+saas-claw transcripts show demo --format text
+saas-claw transcripts show demo --format detail
+saas-claw transcripts show demo --format json
 ```
 
 指定 transcript 目录：
 
 ```cmd
-pyclaw --chatdata-dir .\chatdata transcripts show demo --format detail
+saas-claw --chatdata-dir .\chatdata transcripts show demo --format detail
 ```
 
 ## 7. Tools 命令
@@ -149,15 +149,15 @@ pyclaw --chatdata-dir .\chatdata transcripts show demo --format detail
 ### 7.1 查看工具列表
 
 ```cmd
-pyclaw tools list
-pyclaw --json tools list
+saas-claw tools list
+saas-claw --json tools list
 ```
 
 ### 7.2 查看工具详情
 
 ```cmd
-pyclaw tools describe read
-pyclaw --json tools describe read
+saas-claw tools describe read
+saas-claw --json tools describe read
 ```
 
 ### 7.3 手动执行工具
@@ -167,13 +167,13 @@ pyclaw --json tools describe read
 JSON 形式：
 
 ```cmd
-pyclaw --json tools run read "{\"path\":\"README.md\"}"
+saas-claw --json tools run read "{\"path\":\"README.md\"}"
 ```
 
 `key=value` 形式：
 
 ```cmd
-pyclaw tools run read path=README.md
+saas-claw tools run read path=README.md
 ```
 
 注意：`tools run` 是人工显式执行入口，会使用 full registry；Agent prompt 默认仍使用 `--tool-profile coding`。
@@ -185,7 +185,7 @@ pyclaw tools run read path=README.md
 读取 workspace 内文本文件。
 
 ```cmd
-pyclaw --json tools run read "{\"path\":\"README.md\"}"
+saas-claw --json tools run read "{\"path\":\"README.md\"}"
 ```
 
 参数：
@@ -202,7 +202,7 @@ pyclaw --json tools run read "{\"path\":\"README.md\"}"
 列出 workspace 内目录。
 
 ```cmd
-pyclaw --json tools run list_dir "{\"path\":\"chatdata\"}"
+saas-claw --json tools run list_dir "{\"path\":\"chatdata\"}"
 ```
 
 参数：
@@ -217,13 +217,13 @@ pyclaw --json tools run list_dir "{\"path\":\"chatdata\"}"
 如果想查看 `chatdata` 下有哪些 transcript 文件，先执行：
 
 ```cmd
-pyclaw --json tools run list_dir "{\"path\":\"chatdata\"}"
+saas-claw --json tools run list_dir "{\"path\":\"chatdata\"}"
 ```
 
 然后再读取具体文件，例如：
 
 ```cmd
-pyclaw --json tools run read "{\"path\":\"chatdata/demo.jsonl\"}"
+saas-claw --json tools run read "{\"path\":\"chatdata/demo.jsonl\"}"
 ```
 
 ### write
@@ -231,7 +231,7 @@ pyclaw --json tools run read "{\"path\":\"chatdata/demo.jsonl\"}"
 写入 workspace 内文本文件。
 
 ```cmd
-pyclaw --json tools run write "{\"path\":\"tmp.txt\",\"content\":\"hello\"}"
+saas-claw --json tools run write "{\"path\":\"tmp.txt\",\"content\":\"hello\"}"
 ```
 
 参数：
@@ -248,7 +248,7 @@ pyclaw --json tools run write "{\"path\":\"tmp.txt\",\"content\":\"hello\"}"
 对文件做精确文本替换。
 
 ```cmd
-pyclaw --json tools run edit "{\"path\":\"tmp.txt\",\"old_text\":\"hello\",\"new_text\":\"hi\"}"
+saas-claw --json tools run edit "{\"path\":\"tmp.txt\",\"old_text\":\"hello\",\"new_text\":\"hi\"}"
 ```
 
 参数：
@@ -265,7 +265,7 @@ pyclaw --json tools run edit "{\"path\":\"tmp.txt\",\"old_text\":\"hello\",\"new
 当前是保守版 exact-text patch，复用 `edit` 的执行逻辑。
 
 ```cmd
-pyclaw --json tools run apply_patch "{\"path\":\"tmp.txt\",\"old_text\":\"hi\",\"new_text\":\"hello again\"}"
+saas-claw --json tools run apply_patch "{\"path\":\"tmp.txt\",\"old_text\":\"hi\",\"new_text\":\"hello again\"}"
 ```
 
 参数同 `edit`：
@@ -282,7 +282,7 @@ pyclaw --json tools run apply_patch "{\"path\":\"tmp.txt\",\"old_text\":\"hi\",\
 在 workspace 内执行 shell 命令。
 
 ```cmd
-pyclaw --json tools run shell "{\"command\":\"echo hello\"}"
+saas-claw --json tools run shell "{\"command\":\"echo hello\"}"
 ```
 
 参数：
@@ -299,7 +299,7 @@ pyclaw --json tools run shell "{\"command\":\"echo hello\"}"
 抓取公开 HTTP(S) URL。
 
 ```cmd
-pyclaw --json tools run web_fetch "{\"url\":\"https://example.com\"}"
+saas-claw --json tools run web_fetch "{\"url\":\"https://example.com\"}"
 ```
 
 参数：
@@ -317,7 +317,7 @@ pyclaw --json tools run web_fetch "{\"url\":\"https://example.com\"}"
 简单 web 搜索。
 
 ```cmd
-pyclaw --json tools run web_search "{\"query\":\"OpenClaw agent tools\",\"limit\":5}"
+saas-claw --json tools run web_search "{\"query\":\"OpenClaw agent tools\",\"limit\":5}"
 ```
 
 参数：
@@ -351,15 +351,15 @@ curl -X POST http://localhost:8000/v1/agent/run ^
   -d "{\"prompt\":\"hello\",\"provider\":\"mock\",\"session_id\":\"demo\",\"tool_profile\":\"minimal\"}"
 ```
 
-如果设置了 `PYCLAW_API_TOKEN`，`/v1/agent/run` 需要携带：
+如果设置了 `SAAS_CLAW_API_TOKEN`，`/v1/agent/run` 需要携带：
 
 ```text
-Authorization: Bearer <PYCLAW_API_TOKEN>
+Authorization: Bearer <SAAS_CLAW_API_TOKEN>
 ```
 
 ## 10. Spring Backend
 
-`spring-backend/` 是 pyclaw 的 Spring Boot 鉴权与管理后端，职责包括：
+`spring-backend/` 是 saas-claw 的 Spring Boot 鉴权与管理后端，职责包括：
 
 - 登录与 JWT
 - API Token
@@ -388,25 +388,25 @@ mvn -s .mvn\settings.xml -gs .mvn\settings.xml test
 
 主要部署文档：
 
-- [pyclaw K3s Helm 部署 SOP](docs/000/0000/pyclaw-k3s-helm-deployment-sop.md)
+- [saas-claw K3s Helm 部署 SOP](docs/000/0000/saas-claw-k3s-helm-deployment-sop.md)
 - [Spring Backend K3s 部署 SOP](docs/000/0000/spring-backend-k3s-deployment-sop.md)
 - [K3s 系统镜像 ACR 镜像 SOP](docs/000/0000/k3s-system-images-acr-mirror-sop.md)
-- [pyclaw Helm Chart 实现说明](docs/000/0000/pyclaw-helm-chart-implementation-notes.md)
+- [saas-claw Helm Chart 实现说明](docs/000/0000/saas-claw-helm-chart-implementation-notes.md)
 
 推荐生产入口：
 
 ```text
-公网 -> Spring Backend -> pyclaw-api ClusterIP -> 模型服务
+公网 -> Spring Backend -> saas-claw-api ClusterIP -> 模型服务
 ```
 
-`pyclaw-api` 自身应保留 `PYCLAW_API_TOKEN` 作为内部服务鉴权。
+`saas-claw-api` 自身应保留 `SAAS_CLAW_API_TOKEN` 作为内部服务鉴权。
 
 ## 12. Gateway 命令
 
 当前 `gateway run` 只是保留入口，还没有实现：
 
 ```cmd
-pyclaw gateway run
+saas-claw gateway run
 ```
 
 会返回：

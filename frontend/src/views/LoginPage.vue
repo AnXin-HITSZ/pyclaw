@@ -5,7 +5,7 @@
     <div class="auth-card">
       <div class="auth-brand">
         <span class="brand-mark">◢</span>
-        <span class="brand-name">PyClaw</span>
+        <span class="brand-name">SaasClaw</span>
       </div>
       <h1>欢迎回来</h1>
       <p class="auth-sub">登录你的 Multi-Agent 工作区</p>

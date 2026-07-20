@@ -66,7 +66,7 @@ import PageHeader from "../components/ui/PageHeader.vue";
 
 const pods = ref([
   {
-    name: "pyclaw-api", status: "Running",
+    name: "saas-claw-api", status: "Running",
     cpuPct: 23, cpuText: "0.23 / 1.0 核",
     memPct: 45, memText: "128 / 256 MiB",
     diskPct: 12, diskText: "1.2 / 10 GiB",
@@ -80,7 +80,7 @@ const pods = ref([
     restarts: 0, uptime: "3 天",
   },
   {
-    name: "pyclaw-web", status: "Running",
+    name: "saas-claw-web", status: "Running",
     cpuPct: 5, cpuText: "0.05 / 0.3 核",
     memPct: 28, memText: "72 / 256 MiB",
     diskPct: 4, diskText: "0.4 / 10 GiB",

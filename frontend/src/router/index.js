@@ -124,7 +124,7 @@ const router = createRouter({
 
 function getStoredAuthorities() {
   try {
-    const user = JSON.parse(localStorage.getItem("pyclaw.user") || "null");
+    const user = JSON.parse(localStorage.getItem("saas-claw.user") || "null");
     if (user && user.authorities) {
       if (Array.isArray(user.authorities)) return user.authorities;
       if (typeof user.authorities === "string") return user.authorities.split(",").map(s => s.trim());
@@ -137,17 +137,17 @@ function getStoredAuthorities() {
 
 router.beforeEach(async (to, from, next) => {
   if (to.meta.requiresAuth || to.meta.authority) {
-    const token = localStorage.getItem("pyclaw.token");
+    const token = localStorage.getItem("saas-claw.token");
     if (!token) {
       return next("/login");
     }
-    const user = JSON.parse(localStorage.getItem("pyclaw.user") || "null");
+    const user = JSON.parse(localStorage.getItem("saas-claw.user") || "null");
     if (!user) {
       try {
         const me = await api.get("/api/auth/me");
-        localStorage.setItem("pyclaw.user", JSON.stringify(me));
+        localStorage.setItem("saas-claw.user", JSON.stringify(me));
       } catch {
-        localStorage.removeItem("pyclaw.token");
+        localStorage.removeItem("saas-claw.token");
         return next("/login");
       }
     }

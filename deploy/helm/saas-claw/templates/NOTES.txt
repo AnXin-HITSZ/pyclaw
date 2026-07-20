@@ -11,7 +11,7 @@ Services deployed:
   agent-marketplace-service  (port 8084)
   billing-service            (port 8085)
   skill-marketplace-service  (port 8086)
-  pyclaw-runtime-api         (port 8090)
+  saas-claw-runtime-api      (port 8090)
 
 Check pod status:
   kubectl -n {{ .Release.Namespace }} get pods

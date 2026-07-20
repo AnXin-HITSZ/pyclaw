@@ -56,9 +56,9 @@ jobs:
             context: backend
             dockerfile: backend/Dockerfile
             build-args: SERVICE_NAME=skill-marketplace-service
-          - name: pyclaw-runtime-api
-            context: runtime/pyclaw-runtime-api
-            dockerfile: runtime/pyclaw-runtime-api/Dockerfile
+          - name: control-plane
+            context: runtime/control-plane
+            dockerfile: runtime/control-plane/Dockerfile
 
     steps:
       - name: Checkout
@@ -168,7 +168,7 @@ jobs:
               --set agent-marketplace-service.image.tag="$IMAGE_TAG" \
               --set billing-service.image.tag="$IMAGE_TAG" \
               --set skill-marketplace-service.image.tag="$IMAGE_TAG" \
-              --set pyclaw-runtime-api.image.tag="$IMAGE_TAG" \
+              --set control-plane.image.tag="$IMAGE_TAG" \
               --timeout 10m
           }
 

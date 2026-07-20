@@ -5,8 +5,8 @@ from fastapi import APIRouter
 
 router = APIRouter(tags=["health"])
 
-CLAW_ID = os.getenv("PYCLAW_CLAW_ID", "")
-OWNER_USER_ID = os.getenv("PYCLAW_OWNER_USER_ID", "")
+CLAW_ID = os.getenv("SAAS_CLAW_CLAW_ID", "")
+OWNER_USER_ID = os.getenv("SAAS_CLAW_OWNER_USER_ID", "")
 
 
 @router.get("/healthz")

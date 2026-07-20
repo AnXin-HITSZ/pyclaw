@@ -14,7 +14,7 @@ runtime:
     read-timeout-seconds: 600
   sandbox:
     enabled: false
-    namespace-prefix: pyclaw-user
+    namespace-prefix: saas-claw-user
     runner-image: ${RUNTIME_SANDBOX_RUNNER_IMAGE:}
     runner-port: 8000
 

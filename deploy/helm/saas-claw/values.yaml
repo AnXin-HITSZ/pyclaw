@@ -56,9 +56,9 @@ skill-marketplace-service:
     tag: latest
     pullPolicy: IfNotPresent
 
-pyclaw-runtime-api:
+control-plane:
   image:
-    repository: saas-claw/pyclaw-runtime-api
+    repository: saas-claw/control-plane
     tag: latest
     pullPolicy: IfNotPresent
 

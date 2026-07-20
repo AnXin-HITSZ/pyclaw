@@ -49,7 +49,7 @@ docs/superpowers/plans/2026-07-19-claw-saas-skeleton-plan.md       阶段一计�
 | agent-marketplace-service | 8084 | Spring Web MVC + JPA + OSS |
 | billing-service | 8085 | Spring Web MVC + JPA |
 | skill-marketplace-service | 8086 | Spring Web MVC + JPA + OSS |
-| pyclaw-runtime-api | 8090 | FastAPI (控制面) |
+| saas-claw-runtime-api | 8090 | FastAPI (控制面) |
 | claw-runner | 8091 | FastAPI (数据面) |
 
 ## 当前状态
@@ -63,5 +63,5 @@ docs/superpowers/plans/2026-07-19-claw-saas-skeleton-plan.md       阶段一计�
 4. skill-marketplace-service
 5. billing-service
 6. gateway + backend-for-frontend
-7. Python Runtime: pyclaw-runtime-api → claw-runner
+7. Python Runtime: saas-claw-runtime-api → claw-runner
 ```

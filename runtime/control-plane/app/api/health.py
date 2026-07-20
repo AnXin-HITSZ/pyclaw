@@ -7,4 +7,4 @@ router = APIRouter(tags=["health"])
 
 @router.get("/healthz")
 def healthz():
-    return {"status": "ok", "service": "pyclaw-runtime-api", "version": "0.1.0"}
+    return {"status": "ok", "service": "control-plane", "version": "0.1.0"}

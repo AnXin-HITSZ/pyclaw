@@ -3,7 +3,7 @@
     <aside class="sidebar">
       <router-link to="/workspace/claws" class="brand">
         <span class="brand-mark">◢</span>
-        <span>PyClaw</span>
+        <span>SaasClaw</span>
       </router-link>
 
       <nav class="side-nav" aria-label="Workspace navigation">
@@ -92,7 +92,7 @@
       <header class="mobile-topbar">
         <router-link to="/workspace/claws" class="brand compact">
           <span class="brand-mark">◢</span>
-          <span>PyClaw</span>
+          <span>SaasClaw</span>
         </router-link>
         <button class="btn-logout" type="button" @click="handleLogout">退出</button>
       </header>

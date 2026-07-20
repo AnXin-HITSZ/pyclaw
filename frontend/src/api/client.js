@@ -1,7 +1,7 @@
 const BASE_URL = "";
 
 async function request(path, options = {}) {
-  const token = localStorage.getItem("pyclaw.token");
+  const token = localStorage.getItem("saas-claw.token");
   const headers = {
     "Content-Type": "application/json",
     ...options.headers,
@@ -16,8 +16,8 @@ async function request(path, options = {}) {
   });
 
   if (res.status === 401) {
-    localStorage.removeItem("pyclaw.token");
-    localStorage.removeItem("pyclaw.user");
+    localStorage.removeItem("saas-claw.token");
+    localStorage.removeItem("saas-claw.user");
     if (window.location.pathname !== "/login" && window.location.pathname !== "/register" && window.location.pathname !== "/") {
       window.location.href = "/login";
     }

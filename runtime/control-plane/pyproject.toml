@@ -1,5 +1,5 @@
 [project]
-name = "pyclaw-runtime-api"
+name = "control-plane"
 version = "0.1.0"
 description = "Claw SaaS Runtime control plane — execution engine"
 requires-python = ">=3.11"

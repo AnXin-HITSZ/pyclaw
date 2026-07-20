@@ -15,10 +15,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 
 /**
- * HTTP client for calling the FastAPI Pyclaw Runtime API.
+ * HTTP client for calling the FastAPI SaasClaw Runtime API.
  */
 @Component
-public class PyclawClient {
+public class SaasClawClient {
     private final RuntimeProperties properties;
     private final ObjectMapper objectMapper;
     private final HttpClient httpClient;
@@ -28,7 +28,7 @@ public class PyclawClient {
             "proxy-connection", "http2-settings"
     );
 
-    public PyclawClient(RuntimeProperties properties, ObjectMapper objectMapper) {
+    public SaasClawClient(RuntimeProperties properties, ObjectMapper objectMapper) {
         this.properties = properties;
         this.objectMapper = objectMapper;
         Duration timeout = Duration.ofSeconds(properties.readTimeoutSeconds());
@@ -38,15 +38,15 @@ public class PyclawClient {
                 .build();
     }
 
-    public PyclawAgentRunResponse runAgent(PyclawAgentRunRequest request) {
+    public SaasClawAgentRunResponse runAgent(SaasClawAgentRunRequest request) {
         return postForAgentRunResponse("/v1/agent/run", request, "Agent run failed");
     }
 
-    public PyclawAgentRunResponse resumeAgent(PyclawAgentResumeRequest request) {
+    public SaasClawAgentRunResponse resumeAgent(SaasClawAgentResumeRequest request) {
         return postForAgentRunResponse("/v1/agent/resume", request, "Agent resume failed");
     }
 
-    private PyclawAgentRunResponse postForAgentRunResponse(String path, Object requestBody, String failureMessage) {
+    private SaasClawAgentRunResponse postForAgentRunResponse(String path, Object requestBody, String failureMessage) {
         try {
             String body = objectMapper.writeValueAsString(requestBody);
             String baseUrl = trimTrailingSlash(properties.baseUrl());
@@ -57,7 +57,7 @@ public class PyclawClient {
             addInternalAuthorization(builder);
             HttpResponse<String> response = httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() >= 200 && response.statusCode() < 300) {
-                return objectMapper.readValue(response.body(), PyclawAgentRunResponse.class);
+                return objectMapper.readValue(response.body(), SaasClawAgentRunResponse.class);
             }
             throw new ApiException(HttpStatus.valueOf(response.statusCode()), failureMessage + ": " + response.body());
         } catch (ApiException e) {
@@ -67,7 +67,7 @@ public class PyclawClient {
         }
     }
 
-    public PyclawToolCatalogResponse toolCatalog() {
+    public SaasClawToolCatalogResponse toolCatalog() {
         try {
             String baseUrl = trimTrailingSlash(properties.baseUrl());
             HttpRequest.Builder builder = HttpRequest.newBuilder()
@@ -76,7 +76,7 @@ public class PyclawClient {
             addInternalAuthorization(builder);
             HttpResponse<String> response = httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() >= 200 && response.statusCode() < 300) {
-                return objectMapper.readValue(response.body(), PyclawToolCatalogResponse.class);
+                return objectMapper.readValue(response.body(), SaasClawToolCatalogResponse.class);
             }
             throw new ApiException(HttpStatus.valueOf(response.statusCode()), "Tool catalog failed: " + response.body());
         } catch (ApiException e) {
@@ -86,7 +86,7 @@ public class PyclawClient {
         }
     }
 
-    public PyclawToolResolveResponse resolveTools(PyclawToolResolveRequest request) {
+    public SaasClawToolResolveResponse resolveTools(SaasClawToolResolveRequest request) {
         try {
             String body = objectMapper.writeValueAsString(request);
             String baseUrl = trimTrailingSlash(properties.baseUrl());
@@ -97,7 +97,7 @@ public class PyclawClient {
             addInternalAuthorization(builder);
             HttpResponse<String> response = httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() >= 200 && response.statusCode() < 300) {
-                return objectMapper.readValue(response.body(), PyclawToolResolveResponse.class);
+                return objectMapper.readValue(response.body(), SaasClawToolResolveResponse.class);
             }
             throw new ApiException(HttpStatus.valueOf(response.statusCode()), "Tool resolve failed: " + response.body());
         } catch (ApiException e) {

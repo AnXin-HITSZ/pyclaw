@@ -2,8 +2,8 @@ import { reactive, computed } from "vue";
 import { api } from "../api/client.js";
 
 const state = reactive({
-  user: JSON.parse(localStorage.getItem("pyclaw.user") || "null"),
-  token: localStorage.getItem("pyclaw.token") || null,
+  user: JSON.parse(localStorage.getItem("saas-claw.user") || "null"),
+  token: localStorage.getItem("saas-claw.token") || null,
   loading: false,
 });
 
@@ -23,7 +23,7 @@ export function useAuth() {
     try {
       const res = await api.post("/api/auth/login", { username, password });
       state.token = res.accessToken;
-      localStorage.setItem("pyclaw.token", res.accessToken);
+      localStorage.setItem("saas-claw.token", res.accessToken);
       await fetchMe();
       return true;
     } finally {
@@ -36,7 +36,7 @@ export function useAuth() {
     try {
       const res = await api.post("/api/auth/register", { username, password, displayName });
       state.token = res.accessToken;
-      localStorage.setItem("pyclaw.token", res.accessToken);
+      localStorage.setItem("saas-claw.token", res.accessToken);
       await fetchMe();
       return true;
     } finally {
@@ -48,20 +48,20 @@ export function useAuth() {
     try {
       const user = await api.get("/api/auth/me");
       state.user = user;
-      localStorage.setItem("pyclaw.user", JSON.stringify(user));
+      localStorage.setItem("saas-claw.user", JSON.stringify(user));
     } catch {
       state.user = null;
       state.token = null;
-      localStorage.removeItem("pyclaw.token");
-      localStorage.removeItem("pyclaw.user");
+      localStorage.removeItem("saas-claw.token");
+      localStorage.removeItem("saas-claw.user");
     }
   }
 
   function logout() {
     state.user = null;
     state.token = null;
-    localStorage.removeItem("pyclaw.token");
-    localStorage.removeItem("pyclaw.user");
+    localStorage.removeItem("saas-claw.token");
+    localStorage.removeItem("saas-claw.user");
   }
 
   async function checkAuth() {

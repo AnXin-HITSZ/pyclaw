@@ -1,6 +1,6 @@
 """Sandbox resource limits — constrains command and tool execution.
 
-All limits are overridable via environment variables (PYCLAW_ prefix).
+All limits are overridable via environment variables (SAAS_CLAW_ prefix).
 """
 
 from __future__ import annotations
@@ -26,11 +26,11 @@ class SandboxLimits:
 
     @classmethod
     def from_env(cls) -> "SandboxLimits":
-        """Build limits from environment variables (PYCLAW_ prefix)."""
+        """Build limits from environment variables (SAAS_CLAW_ prefix)."""
         import os
 
         def _int(key: str, default: int) -> int:
-            val = os.getenv(f"PYCLAW_{key}", "")
+            val = os.getenv(f"SAAS_CLAW_{key}", "")
             return int(val) if val else default
 
         return cls(

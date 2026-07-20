@@ -11,15 +11,15 @@ import org.springframework.stereotype.Service;
 @Service
 public class ToolCatalogServiceImpl implements ToolCatalogService {
 
-    private final PyclawClient pyclawClient;
+    private final SaasClawClient saasClawClient;
 
-    public ToolCatalogServiceImpl(PyclawClient pyclawClient) {
-        this.pyclawClient = pyclawClient;
+    public ToolCatalogServiceImpl(SaasClawClient saasClawClient) {
+        this.saasClawClient = saasClawClient;
     }
 
     @Override
     public List<ToolCatalogEntryResponse> catalog() {
-        PyclawToolCatalogResponse response = pyclawClient.toolCatalog();
+        SaasClawToolCatalogResponse response = saasClawClient.toolCatalog();
         return response.tools().stream()
                 .map(this::toResponse)
                 .toList();
@@ -27,7 +27,7 @@ public class ToolCatalogServiceImpl implements ToolCatalogService {
 
     @Override
     public List<String> profiles() {
-        PyclawToolCatalogResponse response = pyclawClient.toolCatalog();
+        SaasClawToolCatalogResponse response = saasClawClient.toolCatalog();
         if (response.profiles() == null || response.profiles().isEmpty()) {
             return List.of("minimal", "readonly", "messaging", "coding", "full");
         }
@@ -37,30 +37,30 @@ public class ToolCatalogServiceImpl implements ToolCatalogService {
     @Override
     public EffectiveToolsResponse effective(EffectiveToolsRequest request) {
         String profile = normalizeProfile(request.profile());
-        PyclawToolResolveRequest resolveRequest = new PyclawToolResolveRequest(
+        SaasClawToolResolveRequest resolveRequest = new SaasClawToolResolveRequest(
                 profile,
                 request.allow(),
                 request.deny(),
                 request.alsoAllow(),
                 request.readonly()
         );
-        PyclawToolResolveResponse response = pyclawClient.resolveTools(resolveRequest);
+        SaasClawToolResolveResponse response = saasClawClient.resolveTools(resolveRequest);
 
         List<String> effectiveTools = response.tools().stream()
-                .map(PyclawToolCatalogEntry::name)
+                .map(SaasClawToolCatalogEntry::name)
                 .sorted()
                 .collect(Collectors.toList());
 
         List<String> deniedTools = response.deniedTools() == null ? List.of() :
                 response.deniedTools().stream()
-                        .map(PyclawDeniedTool::name)
+                        .map(SaasClawDeniedTool::name)
                         .sorted()
                         .collect(Collectors.toList());
 
         return new EffectiveToolsResponse(response.profile(), effectiveTools, deniedTools);
     }
 
-    private ToolCatalogEntryResponse toResponse(PyclawToolCatalogEntry entry) {
+    private ToolCatalogEntryResponse toResponse(SaasClawToolCatalogEntry entry) {
         return new ToolCatalogEntryResponse(
                 entry.name(),
                 entry.label(),

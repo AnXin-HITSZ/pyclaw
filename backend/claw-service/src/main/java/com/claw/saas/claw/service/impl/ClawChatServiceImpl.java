@@ -46,7 +46,7 @@ public class ClawChatServiceImpl implements ClawChatService {
     @Override
     public ClawChatRunResponse run(String clawId, ClawChatRunRequest request, Authentication authentication) {
         // TODO: Extract to runtime-service orchestrator
-        // This method previously called: ConversationOrchestratorService, PyclawClient,
+        // This method previously called: ConversationOrchestratorService, SaasClawClient,
         // SandboxClient, ProviderConfigService, AuditLogService, ToolApprovalService,
         // ConversationService, UsageRecordRepository
         log.warn("ClawChatService.run() is not yet implemented in claw-service. " +

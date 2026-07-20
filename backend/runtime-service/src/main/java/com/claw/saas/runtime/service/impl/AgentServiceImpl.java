@@ -6,8 +6,8 @@ import com.claw.saas.runtime.client.UsageClient;
 import com.claw.saas.runtime.domain.AuthenticatedPrincipal;
 import com.claw.saas.runtime.dto.AgentRunRequest;
 import com.claw.saas.runtime.dto.AgentRunResponse;
-import com.claw.saas.runtime.dto.PyclawAgentRunRequest;
-import com.claw.saas.runtime.dto.PyclawAgentRunResponse;
+import com.claw.saas.runtime.dto.SaasClawAgentRunRequest;
+import com.claw.saas.runtime.dto.SaasClawAgentRunResponse;
 import com.claw.saas.runtime.entity.ProviderConfigEntity;
 import com.claw.saas.runtime.exception.ApiException;
 import com.claw.saas.runtime.repository.ProviderConfigRepository;
@@ -20,7 +20,7 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class AgentServiceImpl implements AgentService {
-    private final PyclawClient pyclawClient;
+    private final SaasClawClient saasClawClient;
     private final AuditLogClient auditLogClient;
     private final UsageClient usageClient;
     private final ProviderConfigRepository providerConfigs;
@@ -28,14 +28,14 @@ public class AgentServiceImpl implements AgentService {
     private final SessionServiceClient sessionServiceClient;
 
     public AgentServiceImpl(
-            PyclawClient pyclawClient,
+            SaasClawClient saasClawClient,
             AuditLogClient auditLogClient,
             UsageClient usageClient,
             ProviderConfigRepository providerConfigs,
             ProviderConfigService providerConfigService,
             SessionServiceClient sessionServiceClient
     ) {
-        this.pyclawClient = pyclawClient;
+        this.saasClawClient = saasClawClient;
         this.auditLogClient = auditLogClient;
         this.usageClient = usageClient;
         this.providerConfigs = providerConfigs;
@@ -57,13 +57,13 @@ public class AgentServiceImpl implements AgentService {
             requireProviderAccess(providerConfig, principal);
         }
 
-        String provider = providerConfig == null ? defaultProvider(request.provider()) : pyclawProvider(providerConfig.getProviderType());
+        String provider = providerConfig == null ? defaultProvider(request.provider()) : saasClawProvider(providerConfig.getProviderType());
         String model = request.model() != null && !request.model().isBlank()
                 ? request.model()
                 : providerConfig == null ? null : providerConfig.getModel();
         String apiKey = providerConfig == null ? null : providerConfigService.getDecryptedApiKey(providerConfig);
         try {
-            PyclawAgentRunResponse response = pyclawClient.runAgent(new PyclawAgentRunRequest(
+            SaasClawAgentRunResponse response = saasClawClient.runAgent(new SaasClawAgentRunRequest(
                     request.prompt(),
                     provider,
                     request.sessionId(),
@@ -110,10 +110,10 @@ public class AgentServiceImpl implements AgentService {
     }
 
     private String defaultProvider(String requestedProvider) {
-        return requestedProvider == null || requestedProvider.isBlank() ? "openai" : pyclawProvider(requestedProvider);
+        return requestedProvider == null || requestedProvider.isBlank() ? "openai" : saasClawProvider(requestedProvider);
     }
 
-    private String pyclawProvider(String providerType) {
+    private String saasClawProvider(String providerType) {
         return "openai-compatible".equalsIgnoreCase(providerType) ? "openai" : providerType;
     }
 }

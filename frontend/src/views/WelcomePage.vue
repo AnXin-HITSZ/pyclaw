@@ -6,7 +6,7 @@
       <div class="logo-badge">
         <span class="logo-mark">◢</span>
       </div>
-      <h1 class="brand-title">PyClaw</h1>
+      <h1 class="brand-title">SaasClaw</h1>
       <p class="subtitle">Multi-Agent Workspace — 构建、管理、运行你的 AI Agent</p>
       <div class="features">
         <div class="feature">
@@ -23,7 +23,7 @@
         </div>
       </div>
       <AppButton variant="primary" class="btn-start" :loading="starting" loading-text="检查登录态..." @click="handleStart">
-        开启我的 PyClaw 之旅
+        开启我的 SaasClaw 之旅
       </AppButton>
       <p class="login-link">
         已有账号？<router-link to="/login">立即登录</router-link>

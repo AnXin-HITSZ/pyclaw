@@ -1,6 +1,6 @@
 package com.claw.saas.runtime.dto;
 
-public record PyclawDeniedTool(
+public record SaasClawDeniedTool(
         String name,
         String reason
 ) {}

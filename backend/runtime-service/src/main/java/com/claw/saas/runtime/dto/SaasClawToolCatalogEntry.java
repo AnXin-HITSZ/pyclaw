@@ -3,7 +3,7 @@ package com.claw.saas.runtime.dto;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 
-public record PyclawToolCatalogEntry(
+public record SaasClawToolCatalogEntry(
         String name,
         String label,
         String description,

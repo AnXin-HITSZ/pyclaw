@@ -1,16 +1,16 @@
 package com.claw.saas.runtime.service.impl;
 
-import com.claw.saas.runtime.dto.PyclawAgentRunRequest;
+import com.claw.saas.runtime.dto.SaasClawAgentRunRequest;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class PyclawAgentRunRequestTest {
+class SaasClawAgentRunRequestTest {
 
     @Test
     void compactConstructorShouldSetDefaultsForNullFields() {
-        PyclawAgentRunRequest request = new PyclawAgentRunRequest(
+        SaasClawAgentRunRequest request = new SaasClawAgentRunRequest(
                 "test prompt", "openai", "session-1", null, null, null, null, null
         );
         assertEquals("minimal", request.toolProfile());
@@ -24,7 +24,7 @@ class PyclawAgentRunRequestTest {
 
     @Test
     void compactConstructorShouldNotOverrideExplicitValues() {
-        PyclawAgentRunRequest request = new PyclawAgentRunRequest(
+        SaasClawAgentRunRequest request = new SaasClawAgentRunRequest(
                 "test prompt", "openai", "session-1", "coding", "gpt-4",
                 "openai", "https://api.openai.com", "sk-test"
         );
@@ -37,7 +37,7 @@ class PyclawAgentRunRequestTest {
 
     @Test
     void fullConstructorShouldPreserveAllFields() {
-        PyclawAgentRunRequest request = new PyclawAgentRunRequest(
+        SaasClawAgentRunRequest request = new SaasClawAgentRunRequest(
                 "prompt", "provider", "sess", "profile", "model",
                 "mode", "url", "key", "system-prompt",
                 List.of("tool-a"), List.of("tool-b"), List.of("tool-c"),

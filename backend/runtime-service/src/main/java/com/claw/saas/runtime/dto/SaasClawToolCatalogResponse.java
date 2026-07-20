@@ -2,7 +2,7 @@ package com.claw.saas.runtime.dto;
 
 import java.util.List;
 
-public record PyclawToolCatalogResponse(
+public record SaasClawToolCatalogResponse(
         List<String> profiles,
-        List<PyclawToolCatalogEntry> tools
+        List<SaasClawToolCatalogEntry> tools
 ) {}

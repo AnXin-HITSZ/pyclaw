@@ -1,10 +1,10 @@
-"""Application settings for pyclaw-runtime-api control plane."""
+"""Application settings for control-plane control plane."""
 
 from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    model_config = {"env_prefix": "PYCLAW_", "case_sensitive": False}
+    model_config = {"env_prefix": "SAAS_CLAW_", "case_sensitive": False}
 
     host: str = "0.0.0.0"
     port: int = 8090
