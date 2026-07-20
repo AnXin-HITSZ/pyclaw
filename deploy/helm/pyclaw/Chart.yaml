@@ -1,6 +1,0 @@
-apiVersion: v2
-name: pyclaw
-description: Helm chart for the pyclaw FastAPI agent service
-type: application
-version: 0.1.0
-appVersion: "0.1.0"

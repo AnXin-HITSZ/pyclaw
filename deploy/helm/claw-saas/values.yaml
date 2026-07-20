@@ -39,7 +39,7 @@ ingress:
   className: ""
   annotations: {}
   hosts:
-    - host: pyclaw.example.com
+    - host: claw-saas.example.com
       paths:
         - path: /
           pathType: Prefix
@@ -67,7 +67,7 @@ env:
   OPENCLAW_CHANNEL_TOOL_PROFILE: messaging
   OPENCLAW_CHANNEL_WEBHOOK_SYNC: "false"
   OPENCLAW_CHANNEL_CONFIG_SOURCE: spring
-  OPENCLAW_SPRING_BACKEND_BASE_URL: http://pyclaw-spring-backend.pyclaw.svc.cluster.local:8080
+  OPENCLAW_SPRING_BACKEND_BASE_URL: http://pyclaw-spring-backend.claw-saas.svc.cluster.local:8080
   OPENCLAW_CHANNEL_CONFIG_TIMEOUT_SECONDS: "3"
 
   # Channel platform switches. Keep disabled until secrets are configured.
@@ -84,8 +84,8 @@ extraEnv: []
 
 hostSsh:
   enabled: false
-  existingSecret: pyclaw-host-ssh-secret
-  mountPath: /var/run/secrets/pyclaw-host-ssh
+  existingSecret: claw-saas-host-ssh-secret
+  mountPath: /var/run/secrets/claw-saas-host-ssh
 
 ingressQueue:
   enabled: true
@@ -99,7 +99,7 @@ worker:
   replicaCount: 1
   channels: wechat,feishu
   pollIntervalSeconds: 1
-  ownerId: pyclaw-channel-worker
+  ownerId: claw-saas-channel-worker
   logLevel: INFO
   extraEnv: []
   resources:
@@ -113,19 +113,19 @@ secret:
   create: true
   existingSecret: ""
   values:
-    # pyclaw API and LLM provider secrets.
+    # claw-saas API and LLM provider secrets.
     OPENAI_API_KEY: ""
     OPENAI_BASE_URL: ""
     OPENAI_ORGANIZATION: ""
     OPENAI_PROJECT: ""
     PYCLAW_API_TOKEN: ""
-    # Token used by pyclaw-api and channel-worker to read Spring Backend
+    # Token used by claw-saas-api and channel-worker to read Spring Backend
     # internal runtime config APIs. It should match Spring Backend
     # secret.values.PYCLAW_INTERNAL_API_TOKEN.
     OPENCLAW_RUNTIME_CONFIG_TOKEN: ""
     OPENCLAW_INTERNAL_API_TOKEN: ""
     # Redis-backed pending approval store. Required when tool approval is enabled.
-    # Example: redis://:password@redis-master.pyclaw.svc.cluster.local:6379/0
+    # Example: redis://:password@redis-master.claw-saas.svc.cluster.local:6379/0
     OPENCLAW_REDIS_URL: ""
 
     # WeChat channel secrets.

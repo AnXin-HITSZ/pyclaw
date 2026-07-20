@@ -1,0 +1,6 @@
+# Claw SaaS local development compose file.
+# Phase 2 will add all 8 backend services + 2 runtime services + DB + Redis.
+version: "3.9"
+
+services:
+  # Placeholder — services added in Phase 2

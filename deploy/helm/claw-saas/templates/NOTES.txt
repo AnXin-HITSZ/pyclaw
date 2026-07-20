@@ -1,4 +1,4 @@
-pyclaw has been installed.
+claw-saas has been installed.
 
 Release: {{ .Release.Name }}
 Namespace: {{ .Release.Namespace }}

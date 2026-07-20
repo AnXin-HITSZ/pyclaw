@@ -35,6 +35,7 @@ Common labels.
 helm.sh/chart: {{ include "pyclaw.chart" . }}
 {{ include "pyclaw.selectorLabels" . }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
+app.kubernetes.io/part-of: claw-saas
 {{- end -}}
 
 {{/*
