@@ -166,6 +166,7 @@ jobs:
             sudo helm --kubeconfig "$KUBECONFIG_PATH" upgrade --install saas-claw ./deploy/helm/saas-claw \
               -n "$NAMESPACE" \
               --create-namespace \
+              -f saas-claw-values-k3s.yaml \
               --set global.imagePullSecret=aliyun-acr-pull-secret \
               --set global.secretName=saas-claw-secret \
               --set gateway.image.tag="$IMAGE_TAG" \
