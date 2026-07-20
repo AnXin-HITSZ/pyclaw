@@ -1,0 +1,82 @@
+# Example K3s values for Claw SaaS production deployment.
+# Copy to claw-saas-values-k3s.yaml on the ECS server at /opt/claw-saas/
+# and replace placeholders with actual values.
+# Do NOT commit real secrets to this file.
+
+global:
+  imagePullSecret: aliyun-acr-pull-secret
+  # Secret named claw-saas-secret must be created in the claw-saas namespace
+  # with keys: SPRING_DATASOURCE_PASSWORD, SPRING_DATA_REDIS_PASSWORD, etc.
+  secretName: claw-saas-secret
+
+shared:
+  datasourceUrl: "jdbc:mysql://claw-saas-mysql:3306/claw_saas_control?useUnicode=true&characterEncoding=utf8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai"
+  datasourceUsername: claw_saas
+  jpaDdlAuto: update
+  redisHost: redis-master.claw-saas.svc.cluster.local
+  redisPort: "6379"
+
+# Image tags are set by CI at deploy time (--set <service>.image.tag=<sha>).
+# Defaults below are placeholders.
+gateway:
+  image:
+    repository: <ACR_REGISTRY>/clawsaas/gateway
+    tag: latest
+    pullPolicy: IfNotPresent
+
+backend-for-frontend:
+  image:
+    repository: <ACR_REGISTRY>/clawsaas/backend-for-frontend
+    tag: latest
+    pullPolicy: IfNotPresent
+
+claw-service:
+  image:
+    repository: <ACR_REGISTRY>/clawsaas/claw-service
+    tag: latest
+    pullPolicy: IfNotPresent
+
+runtime-service:
+  image:
+    repository: <ACR_REGISTRY>/clawsaas/runtime-service
+    tag: latest
+    pullPolicy: IfNotPresent
+
+agent-marketplace-service:
+  image:
+    repository: <ACR_REGISTRY>/clawsaas/agent-marketplace-service
+    tag: latest
+    pullPolicy: IfNotPresent
+
+billing-service:
+  image:
+    repository: <ACR_REGISTRY>/clawsaas/billing-service
+    tag: latest
+    pullPolicy: IfNotPresent
+
+skill-marketplace-service:
+  image:
+    repository: <ACR_REGISTRY>/clawsaas/skill-marketplace-service
+    tag: latest
+    pullPolicy: IfNotPresent
+
+pyclaw-runtime-api:
+  image:
+    repository: <ACR_REGISTRY>/clawsaas/pyclaw-runtime-api
+    tag: latest
+    pullPolicy: IfNotPresent
+
+ingress:
+  enabled: true
+  className: traefik
+  hosts:
+    - host: saas.claw.anxin-hitsz.com
+      paths:
+        - path: /api
+          pathType: Prefix
+        - path: /actuator
+          pathType: Prefix
+  tls:
+    - secretName: saas-claw-tls
+      hosts:
+        - saas.claw.anxin-hitsz.com

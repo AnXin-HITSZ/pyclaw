@@ -1,6 +1,6 @@
-# Example K3s values for pyclaw MySQL.
-# Copy to pyclaw-mysql-values-k3s.yaml on the server and replace placeholders there.
-# Do not put real root/user passwords in this file; keep them in pyclaw-mysql-secret.
+# Example K3s values for Claw SaaS MySQL.
+# Copy to claw-saas-mysql-values-k3s.yaml on the server and replace placeholders there.
+# Do not put real root/user passwords in this file; keep them in claw-saas-mysql-secret.
 
 image:
   repository: mysql
@@ -13,14 +13,14 @@ service:
   port: 3306
 
 mysql:
-  database: pyclaw_runtime
+  database: claw_saas_runtime
   databases:
-    runtime: pyclaw_runtime
-    control: pyclaw_control
-  user: pyclaw
+    runtime: claw_saas_runtime
+    control: claw_saas_control
+  user: claw_saas
   auth:
     createSecret: false
-    existingSecret: pyclaw-mysql-secret
+    existingSecret: claw-saas-mysql-secret
     rootPasswordKey: MYSQL_ROOT_PASSWORD
     databaseKey: MYSQL_DATABASE
     userKey: MYSQL_USER
