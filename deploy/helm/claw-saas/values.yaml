@@ -6,8 +6,13 @@ shared:
   datasourceUrl: "jdbc:mysql://claw-saas-mysql:3306/claw_saas_control?useUnicode=true&characterEncoding=utf8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai"
   datasourceUsername: claw_saas
   jpaDdlAuto: update
-  redisHost: redis-master.claw-saas.svc.cluster.local
+  redisHost: redis-master
   redisPort: "6379"
+
+redis:
+  maxmemory: 256mb
+  persistence:
+    size: 1Gi
 
 gateway:
   image:
