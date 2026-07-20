@@ -1,0 +1,27 @@
+spring:
+  application:
+    name: runtime-service
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+  datasource:
+    url: jdbc:h2:mem:runtime-test;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+  flyway:
+    enabled: false
+
+runtime:
+  encryption:
+    secret: test-secret-key-for-testing-only
+  fastapi:
+    base-url: http://localhost:8090
+    connect-timeout-seconds: 5
+    read-timeout-seconds: 30
+  sandbox:
+    enabled: false
+
+clients:
+  claw-service:
+    url: http://localhost:8082
+  billing-service:
+    url: http://localhost:8085

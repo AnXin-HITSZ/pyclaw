@@ -3,3 +3,23 @@ spring:
     name: runtime-service
 server:
   port: 8083
+
+runtime:
+  encryption:
+    secret: ${RUNTIME_ENCRYPTION_SECRET:changeme}
+  fastapi:
+    base-url: ${RUNTIME_FASTAPI_BASE_URL:http://localhost:8090}
+    api-token: ${RUNTIME_FASTAPI_API_TOKEN:}
+    connect-timeout-seconds: 10
+    read-timeout-seconds: 600
+  sandbox:
+    enabled: false
+    namespace-prefix: pyclaw-user
+    runner-image: ${RUNTIME_SANDBOX_RUNNER_IMAGE:}
+    runner-port: 8000
+
+clients:
+  claw-service:
+    url: ${CLAW_SERVICE_URL:http://localhost:8082}
+  billing-service:
+    url: ${BILLING_SERVICE_URL:http://localhost:8085}

@@ -13,6 +13,16 @@ public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
+    @ExceptionHandler(ApiException.class)
+    public ResponseEntity<Map<String, Object>> handleApiException(ApiException ex) {
+        log.warn("API exception: status={} message={}", ex.status(), ex.getMessage());
+        return ResponseEntity.status(ex.status()).body(Map.of(
+                "code", ex.status().value(),
+                "message", ex.getMessage(),
+                "requestId", ""
+        ));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleException(Exception ex) {
         log.error("Unhandled exception", ex);
