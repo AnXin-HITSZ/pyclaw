@@ -1,0 +1,65 @@
+{{- $svc := index .Values "skill-marketplace-service" -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-skill-marketplace-service
+  labels:
+    {{- include "claw-saas.labels" . | nindent 4 }}
+    app.kubernetes.io/name: skill-marketplace-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: skill-marketplace-service
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: skill-marketplace-service
+        app.kubernetes.io/part-of: claw-saas
+    spec:
+      imagePullSecrets:
+        - name: {{ .Values.global.imagePullSecret }}
+      containers:
+        - name: skill-marketplace-service
+          image: "{{ $svc.image.repository }}:{{ $svc.image.tag }}"
+          imagePullPolicy: {{ $svc.image.pullPolicy }}
+          ports:
+            - containerPort: 8086
+          envFrom:
+            - configMapRef:
+                name: {{ .Release.Name }}-shared-config
+            - secretRef:
+                name: {{ .Values.global.secretName }}
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8086
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8086
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: skill-marketplace-service
+  labels:
+    app.kubernetes.io/name: skill-marketplace-service
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8086
+      targetPort: 8086
+  selector:
+    app.kubernetes.io/name: skill-marketplace-service

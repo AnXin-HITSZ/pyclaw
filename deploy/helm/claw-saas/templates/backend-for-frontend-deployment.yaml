@@ -1,0 +1,65 @@
+{{- $svc := index .Values "backend-for-frontend" -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-backend-for-frontend
+  labels:
+    {{- include "claw-saas.labels" . | nindent 4 }}
+    app.kubernetes.io/name: backend-for-frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: backend-for-frontend
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: backend-for-frontend
+        app.kubernetes.io/part-of: claw-saas
+    spec:
+      imagePullSecrets:
+        - name: {{ .Values.global.imagePullSecret }}
+      containers:
+        - name: backend-for-frontend
+          image: "{{ $svc.image.repository }}:{{ $svc.image.tag }}"
+          imagePullPolicy: {{ $svc.image.pullPolicy }}
+          ports:
+            - containerPort: 8081
+          envFrom:
+            - configMapRef:
+                name: {{ .Release.Name }}-shared-config
+            - secretRef:
+                name: {{ .Values.global.secretName }}
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8081
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8081
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-for-frontend
+  labels:
+    app.kubernetes.io/name: backend-for-frontend
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8081
+      targetPort: 8081
+  selector:
+    app.kubernetes.io/name: backend-for-frontend

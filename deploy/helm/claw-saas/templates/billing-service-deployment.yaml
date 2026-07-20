@@ -1,0 +1,65 @@
+{{- $svc := index .Values "billing-service" -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-billing-service
+  labels:
+    {{- include "claw-saas.labels" . | nindent 4 }}
+    app.kubernetes.io/name: billing-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: billing-service
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: billing-service
+        app.kubernetes.io/part-of: claw-saas
+    spec:
+      imagePullSecrets:
+        - name: {{ .Values.global.imagePullSecret }}
+      containers:
+        - name: billing-service
+          image: "{{ $svc.image.repository }}:{{ $svc.image.tag }}"
+          imagePullPolicy: {{ $svc.image.pullPolicy }}
+          ports:
+            - containerPort: 8085
+          envFrom:
+            - configMapRef:
+                name: {{ .Release.Name }}-shared-config
+            - secretRef:
+                name: {{ .Values.global.secretName }}
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8085
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8085
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: billing-service
+  labels:
+    app.kubernetes.io/name: billing-service
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8085
+      targetPort: 8085
+  selector:
+    app.kubernetes.io/name: billing-service

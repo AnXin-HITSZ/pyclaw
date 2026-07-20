@@ -1,13 +1,21 @@
-claw-saas has been installed.
+Claw SaaS has been installed.
 
 Release: {{ .Release.Name }}
 Namespace: {{ .Release.Namespace }}
 
-Health check inside the cluster:
-  kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "pyclaw.fullname" . }} 8000:{{ .Values.service.port }}
-  curl http://localhost:8000/healthz
+Services deployed:
+  gateway                    (port 8080)
+  backend-for-frontend       (port 8081)
+  claw-service               (port 8082)
+  runtime-service            (port 8083)
+  agent-marketplace-service  (port 8084)
+  billing-service            (port 8085)
+  skill-marketplace-service  (port 8086)
+  pyclaw-runtime-api         (port 8090)
 
-Run an agent request:
-  curl -X POST http://localhost:8000/v1/agent/run \
-    -H "Content-Type: application/json" \
-    -d '{"prompt":"hello","provider":"openai","session_id":"demo","tool_profile":"minimal"}'
+Check pod status:
+  kubectl -n {{ .Release.Namespace }} get pods
+
+Check gateway health:
+  kubectl -n {{ .Release.Namespace }} port-forward svc/gateway 8080:8080
+  curl http://localhost:8080/actuator/health

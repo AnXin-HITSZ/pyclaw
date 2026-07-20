@@ -1,0 +1,63 @@
+{{- $svc := index .Values "pyclaw-runtime-api" -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-pyclaw-runtime-api
+  labels:
+    {{- include "claw-saas.labels" . | nindent 4 }}
+    app.kubernetes.io/name: pyclaw-runtime-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: pyclaw-runtime-api
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: pyclaw-runtime-api
+        app.kubernetes.io/part-of: claw-saas
+    spec:
+      imagePullSecrets:
+        - name: {{ .Values.global.imagePullSecret }}
+      containers:
+        - name: pyclaw-runtime-api
+          image: "{{ $svc.image.repository }}:{{ $svc.image.tag }}"
+          imagePullPolicy: {{ $svc.image.pullPolicy }}
+          ports:
+            - containerPort: 8090
+          envFrom:
+            - secretRef:
+                name: {{ .Values.global.secretName }}
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8090
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8090
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pyclaw-runtime-api
+  labels:
+    app.kubernetes.io/name: pyclaw-runtime-api
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8090
+      targetPort: 8090
+  selector:
+    app.kubernetes.io/name: pyclaw-runtime-api

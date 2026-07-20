@@ -1,176 +1,73 @@
-replicaCount: 1
+global:
+  imagePullSecret: aliyun-acr-pull-secret
+  secretName: claw-saas-secret
 
-image:
-  repository: pyclaw-api
-  pullPolicy: IfNotPresent
-  tag: dev
+shared:
+  datasourceUrl: "jdbc:mysql://claw-saas-mysql:3306/claw_saas_control?useUnicode=true&characterEncoding=utf8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai"
+  datasourceUsername: claw_saas
+  jpaDdlAuto: update
+  redisHost: redis-master.claw-saas.svc.cluster.local
+  redisPort: "6379"
 
-imagePullSecrets: []
-nameOverride: ""
-fullnameOverride: ""
+gateway:
+  image:
+    repository: clawsaas/gateway
+    tag: latest
+    pullPolicy: IfNotPresent
 
-serviceAccount:
-  create: true
-  annotations: {}
-  name: ""
+backend-for-frontend:
+  image:
+    repository: clawsaas/backend-for-frontend
+    tag: latest
+    pullPolicy: IfNotPresent
 
-podAnnotations: {}
-podLabels: {}
+claw-service:
+  image:
+    repository: clawsaas/claw-service
+    tag: latest
+    pullPolicy: IfNotPresent
 
-podSecurityContext:
-  fsGroup: 1000
+runtime-service:
+  image:
+    repository: clawsaas/runtime-service
+    tag: latest
+    pullPolicy: IfNotPresent
 
-securityContext:
-  allowPrivilegeEscalation: false
-  capabilities:
-    drop:
-      - ALL
-  runAsGroup: 1000
-  runAsNonRoot: true
-  runAsUser: 1000
+agent-marketplace-service:
+  image:
+    repository: clawsaas/agent-marketplace-service
+    tag: latest
+    pullPolicy: IfNotPresent
 
-service:
-  type: ClusterIP
-  port: 8000
-  targetPort: 8000
+billing-service:
+  image:
+    repository: clawsaas/billing-service
+    tag: latest
+    pullPolicy: IfNotPresent
+
+skill-marketplace-service:
+  image:
+    repository: clawsaas/skill-marketplace-service
+    tag: latest
+    pullPolicy: IfNotPresent
+
+pyclaw-runtime-api:
+  image:
+    repository: clawsaas/pyclaw-runtime-api
+    tag: latest
+    pullPolicy: IfNotPresent
 
 ingress:
-  enabled: false
-  className: ""
-  annotations: {}
+  enabled: true
+  className: traefik
   hosts:
-    - host: claw-saas.example.com
+    - host: saas.claw.anxin-hitsz.com
       paths:
-        - path: /
+        - path: /api
           pathType: Prefix
-  tls: []
-
-resources:
-  requests:
-    cpu: 250m
-    memory: 512Mi
-  limits:
-    cpu: 1000m
-    memory: 1Gi
-
-env:
-  # Base runtime.
-  OPENCLAW_CHATDATA_DIR: /app/chatdata
-
-  # LLM provider. Use chat_completions for OpenAI-compatible gateways.
-  OPENAI_MODEL: gpt-4.1-mini
-  OPENAI_API_MODE: responses
-
-  # Channel Agent runtime.
-  OPENCLAW_CHANNEL_PROVIDER: openai
-  OPENCLAW_CHANNEL_API_MODE: auto
-  OPENCLAW_CHANNEL_TOOL_PROFILE: messaging
-  OPENCLAW_CHANNEL_WEBHOOK_SYNC: "false"
-  OPENCLAW_CHANNEL_CONFIG_SOURCE: spring
-  OPENCLAW_SPRING_BACKEND_BASE_URL: http://pyclaw-spring-backend.claw-saas.svc.cluster.local:8080
-  OPENCLAW_CHANNEL_CONFIG_TIMEOUT_SECONDS: "3"
-
-  # Channel platform switches. Keep disabled until secrets are configured.
-  OPENCLAW_WECHAT_ENABLED: "false"
-  OPENCLAW_WECHAT_NAME: wechat
-  OPENCLAW_WECHAT_REPLY_MODE: async_worker
-  OPENCLAW_WECHAT_PASSIVE_REPLY_TIMEOUT_SECONDS: "4.5"
-  OPENCLAW_WECHAT_PASSIVE_REPLY_FALLBACK_TEXT: "Received. Processing."
-  OPENCLAW_FEISHU_ENABLED: "false"
-  OPENCLAW_FEISHU_NAME: feishu
-  OPENCLAW_FEISHU_REPLY_MODE: async_worker
-
-extraEnv: []
-
-hostSsh:
-  enabled: false
-  existingSecret: claw-saas-host-ssh-secret
-  mountPath: /var/run/secrets/claw-saas-host-ssh
-
-ingressQueue:
-  enabled: true
-  staleAfterSeconds: 300
-  mysql:
-    dsnSecretName: ""
-    dsnSecretKey: OPENCLAW_INGRESS_QUEUE_DSN
-
-worker:
-  enabled: false
-  replicaCount: 1
-  channels: wechat,feishu
-  pollIntervalSeconds: 1
-  ownerId: claw-saas-channel-worker
-  logLevel: INFO
-  extraEnv: []
-  resources:
-    requests:
-      cpu: 100m
-      memory: 256Mi
-    limits:
-      cpu: 1000m
-      memory: 1Gi
-secret:
-  create: true
-  existingSecret: ""
-  values:
-    # claw-saas API and LLM provider secrets.
-    OPENAI_API_KEY: ""
-    OPENAI_BASE_URL: ""
-    OPENAI_ORGANIZATION: ""
-    OPENAI_PROJECT: ""
-    PYCLAW_API_TOKEN: ""
-    # Token used by claw-saas-api and channel-worker to read Spring Backend
-    # internal runtime config APIs. It should match Spring Backend
-    # secret.values.PYCLAW_INTERNAL_API_TOKEN.
-    OPENCLAW_RUNTIME_CONFIG_TOKEN: ""
-    OPENCLAW_INTERNAL_API_TOKEN: ""
-    # Redis-backed pending approval store. Required when tool approval is enabled.
-    # Example: redis://:password@redis-master.claw-saas.svc.cluster.local:6379/0
-    OPENCLAW_REDIS_URL: ""
-
-    # WeChat channel secrets.
-    OPENCLAW_WECHAT_ACCOUNT_ID: ""
-    OPENCLAW_WECHAT_TOKEN: ""
-    OPENCLAW_WECHAT_APP_ID: ""
-    OPENCLAW_WECHAT_APP_SECRET: ""
-    OPENCLAW_WECHAT_ACCESS_TOKEN: ""
-    OPENCLAW_WECHAT_API_BASE_URL: ""
-
-    # Feishu channel secrets.
-    OPENCLAW_FEISHU_ACCOUNT_ID: ""
-    OPENCLAW_FEISHU_APP_ID: ""
-    OPENCLAW_FEISHU_APP_SECRET: ""
-    OPENCLAW_FEISHU_VERIFICATION_TOKEN: ""
-    OPENCLAW_FEISHU_SIGN_SECRET: ""
-    OPENCLAW_FEISHU_ENCRYPT_KEY: ""
-    OPENCLAW_FEISHU_TENANT_ACCESS_TOKEN: ""
-    OPENCLAW_FEISHU_API_BASE_URL: ""
-
-persistence:
-  enabled: true
-  existingClaim: ""
-  storageClassName: ""
-  accessModes:
-    - ReadWriteOnce
-  size: 5Gi
-  mountPath: /app/chatdata
-
-livenessProbe:
-  enabled: true
-  path: /healthz
-  initialDelaySeconds: 20
-  periodSeconds: 30
-  timeoutSeconds: 5
-  failureThreshold: 3
-
-readinessProbe:
-  enabled: true
-  path: /healthz
-  initialDelaySeconds: 5
-  periodSeconds: 10
-  timeoutSeconds: 5
-  failureThreshold: 3
-
-nodeSelector: {}
-tolerations: []
-affinity: {}
+        - path: /actuator
+          pathType: Prefix
+  tls:
+    - secretName: saas-claw-tls
+      hosts:
+        - saas.claw.anxin-hitsz.com

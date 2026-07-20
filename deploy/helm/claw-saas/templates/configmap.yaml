@@ -1,15 +1,12 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "pyclaw.fullname" . }}-config
+  name: {{ .Release.Name }}-shared-config
   labels:
-    {{- include "pyclaw.labels" . | nindent 4 }}
+    {{- include "claw-saas.labels" . | nindent 4 }}
 data:
-  {{- range $key, $value := .Values.env }}
-  {{ $key }}: {{ $value | quote }}
-  {{- end }}
-  {{- if .Values.ingressQueue.enabled }}
-  {{- if not (hasKey .Values.env "OPENCLAW_INGRESS_QUEUE_STALE_AFTER_SECONDS") }}
-  OPENCLAW_INGRESS_QUEUE_STALE_AFTER_SECONDS: {{ .Values.ingressQueue.staleAfterSeconds | quote }}
-  {{- end }}
-  {{- end }}
+  SPRING_DATASOURCE_URL: {{ .Values.shared.datasourceUrl | quote }}
+  SPRING_DATASOURCE_USERNAME: {{ .Values.shared.datasourceUsername | quote }}
+  SPRING_JPA_DDL_AUTO: {{ .Values.shared.jpaDdlAuto | quote }}
+  SPRING_DATA_REDIS_HOST: {{ .Values.shared.redisHost | quote }}
+  SPRING_DATA_REDIS_PORT: {{ .Values.shared.redisPort | quote }}
