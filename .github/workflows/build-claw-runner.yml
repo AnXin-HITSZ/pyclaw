@@ -5,8 +5,8 @@ on:
     branches:
       - main
     paths:
-      - "sandbox-runner/**"
-      - ".github/workflows/build-sandbox-runner.yml"
+      - "runtime/claw-runner/**"
+      - ".github/workflows/build-claw-runner.yml"
   workflow_dispatch:
 
 jobs:
@@ -28,10 +28,10 @@ jobs:
           username: ${{ secrets.ACR_USERNAME }}
           password: ${{ secrets.ACR_PASSWORD }}
 
-      - name: Build and push sandbox-runner image
+      - name: Build and push claw-runner image
         uses: docker/build-push-action@v6
         with:
-          context: ./sandbox-runner
-          file: ./sandbox-runner/Dockerfile
+          context: ./runtime/claw-runner
+          file: ./runtime/claw-runner/Dockerfile
           push: true
           tags: ${{ secrets.ACR_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
