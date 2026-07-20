@@ -3,3 +3,19 @@ spring:
     name: claw-service
 server:
   port: 8082
+
+claw:
+  encryption:
+    secret: ${CLAW_ENCRYPTION_SECRET:changeme}
+  sandbox:
+    endpoint: ${CLAW_SANDBOX_ENDPOINT:http://localhost:8083}
+  runtime:
+    endpoint: ${CLAW_RUNTIME_ENDPOINT:http://localhost:8090}
+
+clients:
+  agent-marketplace:
+    url: ${AGENT_MARKETPLACE_URL:http://localhost:8084}
+  billing:
+    url: ${BILLING_URL:http://localhost:8085}
+  runtime:
+    url: ${RUNTIME_URL:http://localhost:8083}

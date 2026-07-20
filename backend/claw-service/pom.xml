@@ -15,10 +15,18 @@
   <name>claw-saas-claw-service</name>
   <description>Claw service — Claw instances, conversations, messages, Agent install/config (DB CRUD only)</description>
 
+  <properties>
+    <maven.compiler.release>17</maven.compiler.release>
+  </properties>
+
   <dependencies>
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-web</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-security</artifactId>
     </dependency>
     <dependency>
       <groupId>org.springframework.boot</groupId>
