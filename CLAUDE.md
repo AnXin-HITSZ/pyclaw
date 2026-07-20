@@ -1,5 +1,10 @@
 # Claude Code 工作规约
 
+> **新对话必读：** 先阅读以下 3 个文件了解当前上下文，再开始任何工作：
+> 1. `docs/architecture/ARCHITECTURE.md` — 架构、服务、调用关系
+> 2. `docs/plans/migration-plan.md` — 当前进度、已完成、剩余待办、配置速查
+> 3. `docs/superpowers/specs/2026-07-19-claw-saas-refactoring-design.md` — 重构设计决策
+
 ## 项目概述
 
 SaaS Claw 是 Claw SaaS 平台的 monorepo。用户创建 Claw（独立执行环境），每个 Claw 可运行多个 Agent。
