@@ -1,4 +1,4 @@
-name: Deploy Claw SaaS
+name: Deploy SaaS Claw
 
 on:
   push:
