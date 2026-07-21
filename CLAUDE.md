@@ -7,7 +7,7 @@
 
 ## 项目概述
 
-SaaS Claw 是 Claw SaaS 平台的 monorepo。用户创建 Claw（独立执行环境），每个 Claw 可运行多个 Agent。
+SaaS Claw 是一个以 SaaS 形态交付的平台，核心产品单元叫 **Claw**——一个隔离的独立执行环境，每个 Claw 可运行多个 Agent。本仓库是该平台的 monorepo。
 
 - 域名：`saas.claw.anxin-hitsz.com`
 - Maven groupId：`com.claw.saas`

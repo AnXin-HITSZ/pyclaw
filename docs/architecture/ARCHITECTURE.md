@@ -2,7 +2,7 @@
 
 ## 项目说明
 
-SaaS Claw 是一个 Claw SaaS 平台。用户创建 Claw（独立执行环境），每个 Claw 可运行多个 Agent。域名 `saas.claw.anxin-hitsz.com`。
+SaaS Claw 是一个以 SaaS 形态交付的平台，核心产品单元叫 **Claw**——一个隔离的独立执行环境，每个 Claw 可运行多个 Agent。域名 `saas.claw.anxin-hitsz.com`。
 
 ## 目标目录结构
 
