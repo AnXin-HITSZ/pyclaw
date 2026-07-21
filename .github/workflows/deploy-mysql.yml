@@ -43,7 +43,8 @@ jobs:
           sudo helm --kubeconfig /etc/rancher/k3s/k3s.yaml upgrade --install saas-claw-mysql ./deploy/helm/saas-claw-mysql \
             -n saas-claw \
             --create-namespace \
-            -f saas-claw-mysql-values-k3s.example.yaml \
+            -f saas-claw-mysql-values-k3s.yaml \
+            --set imagePullSecrets[0].name=aliyun-acr-pull-secret \
             --timeout 15m &
           helm_pid=$!
           set -e

@@ -160,6 +160,7 @@ jobs:
             -n "$NAMESPACE" \
             --create-namespace \
             -f saas-claw-mysql-values-k3s.yaml \
+            --set imagePullSecrets[0].name=aliyun-acr-pull-secret \
             --timeout 10m
 
           deploy() {
