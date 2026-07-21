@@ -224,6 +224,6 @@ GitHub Actions SSH 到 ECS 执行 helm install 时，如果镜像拉取慢会超
 | 部署路径 | /opt/saas-claw |
 | 域名 | saas.claw.anxin-hitsz.com |
 | DB 用户 | saas_claw |
-| DB 库 | claw_saas_control, claw_saas_runtime |
+| DB 库 | saas_claw_control, saas_claw_runtime |
 | MySQL 服务名 | saas-claw-mysql:3306 |
 | Redis 服务名 | redis-master:6379 |

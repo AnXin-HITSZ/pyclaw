@@ -10,7 +10,7 @@ global:
   secretName: saas-claw-secret
 
 shared:
-  datasourceUrl: "jdbc:mysql://saas-claw-mysql:3306/claw_saas_control?useUnicode=true&characterEncoding=utf8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai"
+  datasourceUrl: "jdbc:mysql://saas-claw-mysql:3306/saas_claw_control?useUnicode=true&characterEncoding=utf8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai"
   datasourceUsername: saas_claw
   jpaDdlAuto: update
   redisHost: redis-master

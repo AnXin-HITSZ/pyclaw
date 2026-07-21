@@ -14,10 +14,10 @@ service:
   port: 3306
 
 mysql:
-  database: claw_saas_runtime
+  database: saas_claw_runtime
   databases:
-    runtime: claw_saas_runtime
-    control: claw_saas_control
+    runtime: saas_claw_runtime
+    control: saas_claw_control
   user: saas_claw
   auth:
     createSecret: false
