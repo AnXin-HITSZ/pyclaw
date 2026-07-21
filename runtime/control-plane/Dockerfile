@@ -8,10 +8,15 @@ WORKDIR /app
 
 RUN useradd --system --uid 10001 runtime
 
-COPY pyproject.toml .
+# Install openclaw engine (local package)
+COPY openclaw/ /openclaw/
+RUN pip install --no-cache-dir /openclaw
+
+# Install control-plane
+COPY control-plane/pyproject.toml .
 RUN pip install --no-cache-dir -e ".[dev]"
 
-COPY app/ ./app/
+COPY control-plane/app/ ./app/
 RUN chown -R runtime:runtime /app
 
 USER runtime

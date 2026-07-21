@@ -1,0 +1,13 @@
+[project]
+name = "openclaw"
+version = "0.1.0"
+description = "Claw runtime engine — Agent, LLM, Tool, Session"
+requires-python = ">=3.11"
+dependencies = [
+    "httpx>=0.28.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+]

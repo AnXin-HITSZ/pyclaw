@@ -57,7 +57,7 @@ jobs:
             dockerfile: backend/Dockerfile
             build-args: SERVICE_NAME=skill-marketplace-service
           - name: control-plane
-            context: runtime/control-plane
+            context: runtime/
             dockerfile: runtime/control-plane/Dockerfile
 
     steps:

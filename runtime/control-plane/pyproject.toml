@@ -11,6 +11,9 @@ dependencies = [
     "httpx>=0.28.0",
 ]
 
+# Note: openclaw is a local package installed separately before this project.
+# Install it first: pip install /path/to/runtime/openclaw
+
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0",
