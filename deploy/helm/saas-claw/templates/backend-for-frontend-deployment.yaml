@@ -25,6 +25,9 @@ spec:
           imagePullPolicy: {{ $svc.image.pullPolicy }}
           ports:
             - containerPort: 8081
+          env:
+            - name: JAVA_TOOL_OPTIONS
+              value: "-Xmx192m -Xms64m"
           envFrom:
             - configMapRef:
                 name: {{ .Release.Name }}-shared-config
