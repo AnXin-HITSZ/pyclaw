@@ -27,7 +27,7 @@ spec:
             - containerPort: 8082
           env:
             - name: JAVA_TOOL_OPTIONS
-              value: "-Xmx384m -Xms128m"
+              value: "-Xmx512m -Xms192m"
           envFrom:
             - configMapRef:
                 name: {{ .Release.Name }}-shared-config
@@ -37,21 +37,21 @@ spec:
             httpGet:
               path: /actuator/health
               port: 8082
-            initialDelaySeconds: 120
+            initialDelaySeconds: 300
             periodSeconds: 30
           readinessProbe:
             httpGet:
               path: /actuator/health
               port: 8082
-            initialDelaySeconds: 60
+            initialDelaySeconds: 120
             periodSeconds: 10
           resources:
             requests:
               cpu: 50m
-              memory: 128Mi
+              memory: 192Mi
             limits:
               cpu: 200m
-              memory: 512Mi
+              memory: 640Mi
 ---
 apiVersion: v1
 kind: Service
