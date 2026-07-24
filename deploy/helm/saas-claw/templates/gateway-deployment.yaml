@@ -33,6 +33,13 @@ spec:
                 name: {{ .Release.Name }}-shared-config
             - secretRef:
                 name: {{ .Values.global.secretName }}
+          startupProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 60
           livenessProbe:
             httpGet:
               path: /actuator/health
